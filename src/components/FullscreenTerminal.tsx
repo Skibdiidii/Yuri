@@ -41,6 +41,43 @@ interface ChatMessage {
   fileEdits?: Array<{ path: string; action: string; summary: string }>;
 }
 
+function CodeBlock({ content, language }: { content: string; language: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="bg-zinc-950 border border-white/10 rounded-lg overflow-hidden font-mono text-xs my-3 shadow-lg">
+      <div className="bg-zinc-900 px-3 py-1.5 flex items-center justify-between border-b border-white/5">
+        <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">{language}</span>
+        <button 
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-2 py-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded transition-all active:scale-95 cursor-pointer"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3 h-3 text-emerald-400" />
+              <span className="text-emerald-400">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3" />
+              <span>Copy Code</span>
+            </>
+          )}
+        </button>
+      </div>
+      <div className="p-3 overflow-x-auto max-h-[500px]">
+        <pre className="text-zinc-200 font-mono whitespace-pre text-[12px] leading-relaxed">
+          <code>{content}</code>
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) {
   const [activeTab, setActiveTab] = useState<'terminal' | 'ai' | 'system' | 'browser'>('terminal');
   const [connStatus, setConnStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -564,10 +601,46 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
     }
   };
 
+  const parseMarkdownCodeBlocks = (
+    text: string, 
+    blocks: { type: 'text' | 'thought' | 'command' | 'code'; content: string; language?: string }[]
+  ) => {
+    const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+    let currentPos = 0;
+    let match;
+    let found = false;
+
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      found = true;
+      if (match.index > currentPos) {
+        const preText = text.substring(currentPos, match.index).trim();
+        if (preText) blocks.push({ type: 'text', content: preText });
+      }
+      
+      const lang = match[1].toLowerCase().trim();
+      const codeContent = match[2].trim();
+      
+      if (['bash', 'sh', 'shell', 'zsh'].includes(lang)) {
+        blocks.push({ type: 'command', content: codeContent });
+      } else {
+        blocks.push({ type: 'code', content: codeContent, language: lang || 'plaintext' });
+      }
+      
+      currentPos = codeBlockRegex.lastIndex;
+    }
+
+    if (currentPos < text.length) {
+      const remaining = text.substring(currentPos).trim();
+      if (remaining) blocks.push({ type: 'text', content: remaining });
+    }
+
+    if (!found && text.trim()) {
+      blocks.push({ type: 'text', content: text.trim() });
+    }
+  };
+
   const parseAiResponse = (text: string) => {
-    const blocks: { type: 'text' | 'thought' | 'command'; content: string }[] = [];
-    
-    // First check if there are explicit XML tags: <thought> and <command>
+    const blocks: { type: 'text' | 'thought' | 'command' | 'code'; content: string; language?: string }[] = [];
     const hasXmlTags = /<(thought|command)>[\s\S]*?<\/\1>/.test(text);
 
     if (hasXmlTags) {
@@ -578,7 +651,9 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
       while ((match = tagRegex.exec(text)) !== null) {
         if (match.index > currentPos) {
           const preText = text.substring(currentPos, match.index).trim();
-          if (preText) blocks.push({ type: 'text', content: preText });
+          if (preText) {
+            parseMarkdownCodeBlocks(preText, blocks);
+          }
         }
         blocks.push({ type: match[1] as 'thought' | 'command', content: match[2].trim() });
         currentPos = tagRegex.lastIndex;
@@ -586,36 +661,12 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
 
       if (currentPos < text.length) {
         const remaining = text.substring(currentPos).trim();
-        if (remaining) blocks.push({ type: 'text', content: remaining });
+        if (remaining) {
+          parseMarkdownCodeBlocks(remaining, blocks);
+        }
       }
     } else {
-      // Fallback: Check for markdown code blocks (```bash or ```sh or ```)
-      const codeBlockRegex = /```(?:bash|sh|shell|zsh)?\n([\s\S]*?)```/g;
-      let currentPos = 0;
-      let match;
-      let foundCode = false;
-
-      while ((match = codeBlockRegex.exec(text)) !== null) {
-        foundCode = true;
-        if (match.index > currentPos) {
-          const preText = text.substring(currentPos, match.index).trim();
-          if (preText) blocks.push({ type: 'text', content: preText });
-        }
-        const cmd = match[1].trim();
-        if (cmd) {
-          blocks.push({ type: 'command', content: cmd });
-        }
-        currentPos = codeBlockRegex.lastIndex;
-      }
-
-      if (currentPos < text.length) {
-        const remaining = text.substring(currentPos).trim();
-        if (remaining) blocks.push({ type: 'text', content: remaining });
-      }
-
-      if (!foundCode && text.trim()) {
-        blocks.push({ type: 'text', content: text.trim() });
-      }
+      parseMarkdownCodeBlocks(text, blocks);
     }
 
     return blocks.filter(b => b.content);
@@ -839,6 +890,11 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
                             </div>
                           );
                         }
+                        if (block.type === 'code') {
+                          return (
+                            <CodeBlock key={bi} content={block.content} language={block.language || 'plaintext'} />
+                          );
+                        }
                         const hasWebsite = block.content.includes('<website_preview') || block.content.includes('<!DOCTYPE html') || block.content.includes('<html');
                         return (
                           <div key={bi} className="space-y-3">
@@ -858,11 +914,9 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
                               </div>
                             )}
                             <div className="text-sm text-zinc-300 leading-relaxed prose prose-invert prose-xs max-w-none break-words overflow-hidden prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-white/5 prose-pre:overflow-x-auto prose-code:text-indigo-300 prose-code:bg-indigo-500/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
-                              <ExpandableContainer title="Text" maxHeight={400}>
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {block.content}
-                                </ReactMarkdown>
-                              </ExpandableContainer>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {block.content}
+                              </ReactMarkdown>
                             </div>
                           </div>
                         );

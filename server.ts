@@ -3069,10 +3069,11 @@ async function startServer() {
       "3. RICH MEDIA (IMAGES & VIDEOS): Automatically curate and embed high-resolution, topic-relevant royalty-free images (Unsplash) and videos.\n" +
       "4. OUTPUT FORMAT FOR WEBSITES: When you generate a website, wrap the complete HTML in `<website_preview name=\"Website Title\">\n...HTML code...\n</website_preview>`.\n" +
       "5. IMPORTANT: NEVER show raw HTML website code in your chat response text. The UI automatically extracts and loads the website into the Browser Preview tab. Keep your conversational response clean and concise, and do not dump raw HTML code in the chat.\n\n" +
-      "EXECUTION FORMAT (AUTONOMOUS LINUX AGENT):\n" +
-      "- Always use <thought>Reasoning and step-by-step plan</thought>.\n" +
+      "EXECUTION & CONVERSATIONAL FORMAT (MANDATORY):\n" +
+      "- ALWAYS start your response with a friendly, highly detailed, step-by-step conversational planning phase in this format: 'Okay, the user asked for [prompt]. I'm planning on how I can make this. Okay, so first we will...'.\n" +
+      "- Walk the user through your exact logic and thoughts naturally in a conversational voice.\n" +
+      "- Always write out every codeblock (such as Roblox Luau scripts, web scripts, configuration files, etc.) FULLY and in complete, un-truncated markdown blocks (e.g. ```lua ... ```).\n" +
       "- If a shell command should be executed next, output <command>the_exact_command</command>.\n" +
-      "- Once all commands have finished or when providing direct answers, give a clean, polished final summary without any <command> tags.\n" +
       "- Current System Context:\n" +
       "  * Files: " + (fileContext || "None") + "\n" +
       "  * Status: " + (statusContext || "Online") + "\n" +
