@@ -28,69 +28,7 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 
 
-// Bulletproof FitAddon prototype patching to prevent any xterm dimension errors
-if (typeof window !== 'undefined' && FitAddon && FitAddon.prototype) {
-  FitAddon.prototype.proposeDimensions = function(this: any) {
-    try {
-      const t = this._terminal;
-      if (!t) return undefined;
-      const el = t.element;
-      const parent = el ? el.parentElement : null;
-      if (!el || !parent) return undefined;
-
-      const core = t._core;
-      const renderService = core?._renderService;
-      const dims = renderService?.dimensions;
-
-      const parentStyle = window.getComputedStyle(parent);
-      const parentHeight = parseInt(parentStyle.getPropertyValue('height')) || parent.clientHeight || parent.offsetHeight || 400;
-      const parentWidth = Math.max(0, parseInt(parentStyle.getPropertyValue('width')) || parent.clientWidth || parent.offsetWidth || 800);
-
-      const elStyle = window.getComputedStyle(el);
-      const paddingTop = parseInt(elStyle.getPropertyValue('padding-top')) || 0;
-      const paddingBottom = parseInt(elStyle.getPropertyValue('padding-bottom')) || 0;
-      const paddingLeft = parseInt(elStyle.getPropertyValue('padding-left')) || 0;
-      const paddingRight = parseInt(elStyle.getPropertyValue('padding-right')) || 0;
-
-      const scrollBarWidth = (t.options && t.options.scrollback === 0) ? 0 : (core?.viewport?.scrollBarWidth || 0);
-
-      const availableHeight = Math.max(0, parentHeight - (paddingTop + paddingBottom));
-      const availableWidth = Math.max(0, parentWidth - (paddingLeft + paddingRight) - scrollBarWidth);
-
-      const fontSize = (t.options && t.options.fontSize) ? t.options.fontSize : 14;
-      const cellWidth = (dims && dims.css && dims.css.cell && dims.css.cell.width > 0) ? dims.css.cell.width : (fontSize * 0.605);
-      const cellHeight = (dims && dims.css && dims.css.cell && dims.css.cell.height > 0) ? dims.css.cell.height : (fontSize * 1.2);
-
-      const cols = Math.max(10, Math.floor(availableWidth / (cellWidth || 8.4)));
-      const rows = Math.max(4, Math.floor(availableHeight / (cellHeight || 17)));
-
-      if (isNaN(cols) || isNaN(rows) || cols <= 0 || rows <= 0) {
-        return { cols: 80, rows: 24 };
-      }
-
-      return { cols, rows };
-    } catch (e) {
-      return { cols: 80, rows: 24 };
-    }
-  };
-
-  FitAddon.prototype.fit = function(this: any) {
-    try {
-      const t = this._terminal;
-      if (!t || !t.element || !t.element.parentElement) return;
-      const proposed = this.proposeDimensions();
-      if (!proposed || !proposed.cols || !proposed.rows || isNaN(proposed.cols) || isNaN(proposed.rows)) return;
-      if (t.rows !== proposed.rows || t.cols !== proposed.cols) {
-        if (t._core && t._core._renderService && typeof t._core._renderService.clear === 'function') {
-          try { t._core._renderService.clear(); } catch (_) {}
-        }
-        t.resize(proposed.cols, proposed.rows);
-      }
-    } catch (e) {
-      // Safe failover
-    }
-  };
-}
+import '../lib/patchXterm';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -460,22 +398,29 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
 
     const fitAddon = new FitAddon();
 
+    let isDisposed = false;
+    let rafId: number | null = null;
+
     term.loadAddon(fitAddon);
     term.loadAddon(new WebLinksAddon());
     term.open(terminalRef.current);
     
     const resizeTerminal = () => {
-      if (!terminalRef.current) return;
-      requestAnimationFrame(() => {
+      if (isDisposed || !terminalRef.current) return;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (isDisposed || !terminalRef.current) return;
         try {
           fitAddon.fit();
           const screen = terminalRef.current?.querySelector('.xterm-screen');
           const height = screen?.clientHeight || terminalRef.current?.offsetHeight || 0;
-          setTerminalDimensions({
-            cols: term.cols,
-            rows: term.rows,
-            cellHeight: height / term.rows
-          });
+          if (term.rows > 0) {
+            setTerminalDimensions({
+              cols: term.cols,
+              rows: term.rows,
+              cellHeight: height / term.rows
+            });
+          }
           if (wsInstance.current?.readyState === WebSocket.OPEN) {
             wsInstance.current.send(JSON.stringify({ 
               type: "resize", 
@@ -585,15 +530,17 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
     const secondResize = setTimeout(resizeTerminal, 500);
 
     return () => {
+      isDisposed = true;
+      if (rafId) cancelAnimationFrame(rafId);
       clearTimeout(initialResize);
       clearTimeout(secondResize);
-      resizeObserver.disconnect();
+      try { resizeObserver.disconnect(); } catch (_) {}
       window.removeEventListener('resize', resizeTerminal);
       window.visualViewport?.removeEventListener('resize', resizeTerminal);
       window.visualViewport?.removeEventListener('scroll', resizeTerminal);
-      onDataDisposable.dispose();
-      ws.close();
-      term.dispose();
+      try { onDataDisposable.dispose(); } catch (_) {}
+      try { ws.close(); } catch (_) {}
+      try { term.dispose(); } catch (_) {}
       xtermInstance.current = null;
       wsInstance.current = null;
     };

@@ -5,69 +5,7 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 
 
-// Bulletproof FitAddon prototype patching to prevent any xterm dimension errors
-if (typeof window !== 'undefined' && FitAddon && FitAddon.prototype) {
-  FitAddon.prototype.proposeDimensions = function(this: any) {
-    try {
-      const t = this._terminal;
-      if (!t) return undefined;
-      const el = t.element;
-      const parent = el ? el.parentElement : null;
-      if (!el || !parent) return undefined;
-
-      const core = t._core;
-      const renderService = core?._renderService;
-      const dims = renderService?.dimensions;
-
-      const parentStyle = window.getComputedStyle(parent);
-      const parentHeight = parseInt(parentStyle.getPropertyValue('height')) || parent.clientHeight || parent.offsetHeight || 400;
-      const parentWidth = Math.max(0, parseInt(parentStyle.getPropertyValue('width')) || parent.clientWidth || parent.offsetWidth || 800);
-
-      const elStyle = window.getComputedStyle(el);
-      const paddingTop = parseInt(elStyle.getPropertyValue('padding-top')) || 0;
-      const paddingBottom = parseInt(elStyle.getPropertyValue('padding-bottom')) || 0;
-      const paddingLeft = parseInt(elStyle.getPropertyValue('padding-left')) || 0;
-      const paddingRight = parseInt(elStyle.getPropertyValue('padding-right')) || 0;
-
-      const scrollBarWidth = (t.options && t.options.scrollback === 0) ? 0 : (core?.viewport?.scrollBarWidth || 0);
-
-      const availableHeight = Math.max(0, parentHeight - (paddingTop + paddingBottom));
-      const availableWidth = Math.max(0, parentWidth - (paddingLeft + paddingRight) - scrollBarWidth);
-
-      const fontSize = (t.options && t.options.fontSize) ? t.options.fontSize : 13;
-      const cellWidth = (dims && dims.css && dims.css.cell && dims.css.cell.width > 0) ? dims.css.cell.width : (fontSize * 0.605);
-      const cellHeight = (dims && dims.css && dims.css.cell && dims.css.cell.height > 0) ? dims.css.cell.height : (fontSize * 1.2);
-
-      const cols = Math.max(10, Math.floor(availableWidth / (cellWidth || 7.8)));
-      const rows = Math.max(4, Math.floor(availableHeight / (cellHeight || 15.6)));
-
-      if (isNaN(cols) || isNaN(rows) || cols <= 0 || rows <= 0) {
-        return { cols: 80, rows: 24 };
-      }
-
-      return { cols, rows };
-    } catch (e) {
-      return { cols: 80, rows: 24 };
-    }
-  };
-
-  FitAddon.prototype.fit = function(this: any) {
-    try {
-      const t = this._terminal;
-      if (!t || !t.element || !t.element.parentElement) return;
-      const proposed = this.proposeDimensions();
-      if (!proposed || !proposed.cols || !proposed.rows || isNaN(proposed.cols) || isNaN(proposed.rows)) return;
-      if (t.rows !== proposed.rows || t.cols !== proposed.cols) {
-        if (t._core && t._core._renderService && typeof t._core._renderService.clear === 'function') {
-          try { t._core._renderService.clear(); } catch (_) {}
-        }
-        t.resize(proposed.cols, proposed.rows);
-      }
-    } catch (e) {
-      // Safe failover
-    }
-  };
-}
+import '../lib/patchXterm';
 
 export default function SystemConsoleTab({ fullscreen = false, onOpenFullTerminal }: { fullscreen?: boolean; onOpenFullTerminal?: () => void }) {
   const [stats, setStats] = useState<any>(null);
@@ -139,6 +77,10 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
     if (!terminalRef.current) return;
 
     
+    let isDisposed = false;
+    let resizeTimer: any = null;
+    let resizeObserver: ResizeObserver | null = null;
+
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: 'block',
@@ -175,7 +117,8 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
     term.loadAddon(fitAddon);
     term.open(terminalRef.current);
     
-    setTimeout(() => {
+    resizeTimer = setTimeout(() => {
+      if (isDisposed) return;
       try {
         fitAddon.fit();
       } catch (e) {}
@@ -184,7 +127,6 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
     xtermInstance.current = term;
     fitAddonInstance.current = fitAddon;
 
-    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = localStorage.getItem('token') || '';
     const wsUrl = `${protocol}//${window.location.host}/api/system/shell-ws?token=${encodeURIComponent(token)}`;
@@ -192,6 +134,7 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
     wsInstance.current = ws;
 
     ws.onopen = () => {
+      if (isDisposed) return;
       setConnStatus('connected');
       
       try {
@@ -204,42 +147,48 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
     };
 
     ws.onmessage = (event) => {
+      if (isDisposed) return;
       try {
         const data = event.data;
         if (typeof data === 'string') {
-          
           if (data.includes('[SHOW_NEOFETCH_IMAGE]')) {
             const match = data.match(/\[SHOW_NEOFETCH_IMAGE\]\s+([^\r\n\s]+)/);
             if (match && match[1]) {
               setNeofetchImage(match[1]);
-              setTimeout(() => setNeofetchImage(null), 15000); 
+              setTimeout(() => {
+                if (!isDisposed) setNeofetchImage(null);
+              }, 15000); 
               return;
             }
           }
         }
       } catch (e) {}
-      term.write(event.data);
+      try {
+        term.write(event.data);
+      } catch (_) {}
     };
 
     ws.onclose = () => {
+      if (isDisposed) return;
       setConnStatus('disconnected');
-      term.writeln('\r\n\x1b[1;31m[WebSocket Connection Closed. Click Reconnect or refresh to try again]\x1b[0m');
+      try {
+        term.writeln('\r\n\x1b[1;31m[WebSocket Connection Closed. Click Reconnect or refresh to try again]\x1b[0m');
+      } catch (_) {}
     };
 
     ws.onerror = (err) => {
       console.error("Shell WebSocket Error", err);
-      setConnStatus('disconnected');
+      if (!isDisposed) setConnStatus('disconnected');
     };
 
-    
     const onDataDisposable = term.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "input", data: data }));
       }
     });
 
-    
     const handleResize = () => {
+      if (isDisposed) return;
       try {
         fitAddon.fit();
         if (ws.readyState === WebSocket.OPEN) {
@@ -253,11 +202,25 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
     };
     window.addEventListener('resize', handleResize);
 
+    try {
+      if (terminalRef.current) {
+        resizeObserver = new ResizeObserver(() => {
+          handleResize();
+        });
+        resizeObserver.observe(terminalRef.current);
+      }
+    } catch (_) {}
+
     return () => {
+      isDisposed = true;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      if (resizeObserver) {
+        try { resizeObserver.disconnect(); } catch (_) {}
+      }
       window.removeEventListener('resize', handleResize);
-      onDataDisposable.dispose();
-      ws.close();
-      term.dispose();
+      try { onDataDisposable.dispose(); } catch (_) {}
+      try { ws.close(); } catch (_) {}
+      try { term.dispose(); } catch (_) {}
       xtermInstance.current = null;
       wsInstance.current = null;
     };
