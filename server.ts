@@ -3130,6 +3130,50 @@ async function startServer() {
       return { reply: cleanReply, fileEdits };
     }
 
+    async function runCodeFactorCorrection(rawText: string): Promise<string> {
+      if (!rawText || !rawText.includes("```")) {
+        return rawText;
+      }
+      try {
+        console.log("[CODEFACTOR ENGINE] Codeblocks detected. Initiating automated code quality review and auto-fix...");
+        
+        const codeFactorSystemInstruction = 
+          "You are the CodeFactor.io Automated Auto-Fix and Code Quality Optimizer Engine.\n" +
+          "Your absolute mission is to review, lint, and correct ALL programming code blocks inside the user's message, ensuring they are completely free of syntax errors, type mismatches, missing variables, or runtime bugs across all programming languages.\n\n" +
+          "CRITICAL COMPILATION & LINT RULES:\n" +
+          "1. ROBLOX LUAU & EXPLOIT CODE: Ensure proper game service retrievals, correct use of the `task` scheduler (use `task.wait` over `wait`), avoid undeclared variables/methods, ensure correct local references, and resolve syntax/indentation errors.\n" +
+          "2. JAVASCRIPT & TYPESCRIPT: Resolve any unresolved variables, type safety errors, or invalid property lookups.\n" +
+          "3. HTML, CSS, PYTHON: Close any unclosed brackets, parenthesis, quotes, or tags, and enforce clean logic.\n\n" +
+          "INSTRUCTION:\n" +
+          "- Keep all conversational texts, thought blocks, layout, and tags from the original message completely untouched.\n" +
+          "- Only fix, optimize, and correct the code blocks themselves to be 100% executable, correct, and bug-free.\n" +
+          "- Return the exact full message with the corrected code blocks substituted in.";
+
+        const correctionResponse = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{ role: "user", parts: [{ text: rawText }] }],
+          config: {
+            systemInstruction: codeFactorSystemInstruction,
+            safetySettings: [
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+          }
+        });
+
+        const correctedText = correctionResponse.text?.trim();
+        if (correctedText) {
+          console.log("[CODEFACTOR ENGINE] Auto-fix pass completed successfully.");
+          return correctedText;
+        }
+      } catch (err: any) {
+        console.warn("[CODEFACTOR ENGINE] Failed to auto-correct code blocks:", err.message);
+      }
+      return rawText;
+    }
+
     // Try Gemini API first if GEMINI_API_KEY is configured
     if (process.env.GEMINI_API_KEY) {
       try {
@@ -3167,8 +3211,9 @@ async function startServer() {
           }
         });
 
-        const replyText = response.text?.trim();
+        let replyText = response.text?.trim();
         if (replyText) {
+          replyText = await runCodeFactorCorrection(replyText);
           syncPreviewFromReply(replyText);
           const processed = processReplyForClient(replyText);
           return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
@@ -3206,9 +3251,10 @@ async function startServer() {
         throw new Error(data.error?.message || data.message || "Mistral API Error");
       }
 
-      const reply = data.choices?.[0]?.message?.content;
+      let reply = data.choices?.[0]?.message?.content;
       if (!reply) throw new Error("Mistral returned an empty response.");
       
+      reply = await runCodeFactorCorrection(reply);
       syncPreviewFromReply(reply);
       const processed = processReplyForClient(reply);
       res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
