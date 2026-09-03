@@ -3066,13 +3066,9 @@ async function startServer() {
       "When the user asks you to build any website (e.g. for a barber shop, gym, restaurant, SaaS company, gaming group, creative portfolio, e-commerce, or any business or personal topic):\n" +
       "1. Build a COMPLETE, production-ready, beautiful modern website in a single file HTML with embedded CSS and JavaScript.\n" +
       "2. STYLING: Always use Tailwind CSS via CDN (<script src=\"https://cdn.tailwindcss.com\"></script>), modern typography (Google Fonts like Plus Jakarta Sans, Cinzel, Inter, Playfair), and icons (FontAwesome 6 or inline SVG).\n" +
-      "3. RICH MEDIA (IMAGES & VIDEOS): Automatically curate and embed high-resolution, topic-relevant royalty-free images (Unsplash) and videos:\n" +
-      "   - For Barber: Real haircut photos, fade styling, grooming shears, salon chairs, beard trims, and video clips.\n" +
-      "   - For Fitness/Gym: Training, lifting, athletic workout visuals, and workout videos.\n" +
-      "   - For Coffee/Dining: Sizzling dishes, artisan espresso, cozy ambiance, culinary clips.\n" +
-      "   - For Tech/SaaS: Product mockups, clean dashboards, modern gradients.\n" +
-      "   - For any other topic: Dynamically pick pristine Unsplash URLs with relevant keywords & high resolution.\n" +
-      "4. OUTPUT FORMAT FOR WEBSITES: When you generate a website, wrap the complete HTML in `<website_preview name=\"Website Title\">\n...HTML code...\n</website_preview>`. You can also write the file directly to `/tmp/preview/index.html` using a shell command if using <command>.\n\n" +
+      "3. RICH MEDIA (IMAGES & VIDEOS): Automatically curate and embed high-resolution, topic-relevant royalty-free images (Unsplash) and videos.\n" +
+      "4. OUTPUT FORMAT FOR WEBSITES: When you generate a website, wrap the complete HTML in `<website_preview name=\"Website Title\">\n...HTML code...\n</website_preview>`.\n" +
+      "5. IMPORTANT: NEVER show raw HTML website code in your chat response text. The UI automatically extracts and loads the website into the Browser Preview tab. Keep your conversational response clean and concise, and do not dump raw HTML code in the chat.\n\n" +
       "EXECUTION FORMAT (AUTONOMOUS LINUX AGENT):\n" +
       "- Always use <thought>Reasoning and step-by-step plan</thought>.\n" +
       "- If a shell command should be executed next, output <command>the_exact_command</command>.\n" +
@@ -3081,6 +3077,56 @@ async function startServer() {
       "  * Files: " + (fileContext || "None") + "\n" +
       "  * Status: " + (statusContext || "Online") + "\n" +
       "  * Terminal: " + (terminalContext || "Clean");
+
+    // Helper to process reply for client (strips raw HTML website code and builds fileEdits)
+    function processReplyForClient(rawReply: string) {
+      let cleanReply = rawReply;
+      const fileEdits: Array<{ path: string; action: string; summary: string }> = [];
+
+      if (cleanReply.includes("<website_preview")) {
+        const startIdx = cleanReply.indexOf("<website_preview");
+        const endIdx = cleanReply.lastIndexOf("</website_preview>");
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          const previewBlock = cleanReply.substring(startIdx, endIdx + 18);
+          cleanReply = cleanReply.replace(previewBlock, "").trim();
+        }
+        fileEdits.push({
+          path: "public/index.html",
+          action: "created",
+          summary: "Generated complete production website with Tailwind & rich media"
+        });
+      } else if (cleanReply.includes("<!DOCTYPE html>") || cleanReply.includes("<html")) {
+        const start = cleanReply.indexOf("<!DOCTYPE html>");
+        const htmlStart = start !== -1 ? start : cleanReply.indexOf("<html");
+        const end = cleanReply.lastIndexOf("</html>");
+        if (htmlStart !== -1 && end !== -1 && end > htmlStart) {
+          const htmlBlock = cleanReply.substring(htmlStart, end + 7);
+          cleanReply = cleanReply.replace(htmlBlock, "").trim();
+        }
+        fileEdits.push({
+          path: "public/index.html",
+          action: "created",
+          summary: "Generated HTML application code"
+        });
+      }
+
+      if (cleanReply.includes("<command>")) {
+        const match = cleanReply.match(/<command>([\s\S]*?)<\/command>/);
+        if (match && match[1]) {
+          fileEdits.push({
+            path: "terminal/shell",
+            action: "executed",
+            summary: match[1].trim()
+          });
+        }
+      }
+
+      if (!cleanReply) {
+        cleanReply = "I have successfully processed your request and updated the application.";
+      }
+
+      return { reply: cleanReply, fileEdits };
+    }
 
     // Try Gemini API first if GEMINI_API_KEY is configured
     if (process.env.GEMINI_API_KEY) {
@@ -3122,7 +3168,8 @@ async function startServer() {
         const replyText = response.text?.trim();
         if (replyText) {
           syncPreviewFromReply(replyText);
-          return res.json({ success: true, reply: replyText });
+          const processed = processReplyForClient(replyText);
+          return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
         }
       } catch (geminiErr: any) {
         console.warn("[AI AGENT] Gemini generation error, falling back to Mistral:", geminiErr.message);
@@ -3161,7 +3208,8 @@ async function startServer() {
       if (!reply) throw new Error("Mistral returned an empty response.");
       
       syncPreviewFromReply(reply);
-      res.json({ success: true, reply });
+      const processed = processReplyForClient(reply);
+      res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
     } catch (err: any) {
       console.error("[AI CHAT ERROR]", err);
       res.status(500).json({ success: false, error: err.message });

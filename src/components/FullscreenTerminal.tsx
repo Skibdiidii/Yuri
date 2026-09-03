@@ -38,6 +38,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  fileEdits?: Array<{ path: string; action: string; summary: string }>;
 }
 
 export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) {
@@ -242,7 +243,8 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
       const assistantMsg: ChatMessage = {
         role: 'assistant',
         content: data.reply,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        fileEdits: data.fileEdits || []
       };
 
       const nextHistory = [...currentHistory, assistantMsg];
@@ -781,66 +783,94 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
                       <div className="text-sm text-zinc-300 break-words">{msg.content}</div>
                     )
                   ) : (
-                    parseAiResponse(msg.content).map((block, bi) => {
-                      if (block.type === 'thought') {
-                        return (
-                          <ExpandableContainer key={bi} title="Thought Process" maxHeight={100}>
-                            <div className="bg-indigo-500/5 border border-indigo-500/10 rounded p-3 text-[11px] text-indigo-300 italic flex gap-3">
-                              <Brain className="w-4 h-4 shrink-0 opacity-50" />
-                              <p>{block.content}</p>
+                    <>
+                      {msg.role === 'assistant' && msg.fileEdits && msg.fileEdits.length > 0 && (
+                        <div className="bg-[#14141c] border border-white/10 rounded-xl overflow-hidden shadow-xl mb-3">
+                          <div className="bg-[#1c1c26] px-3 py-2 flex items-center justify-between border-b border-white/5 text-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                              <span className="font-bold text-zinc-200">AI Studio File Edits & Operations</span>
                             </div>
-                          </ExpandableContainer>
-                        );
-                      }
-                      if (block.type === 'command') {
-                        return (
-                          <div key={bi} className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg overflow-hidden font-mono">
-                            <div className="bg-emerald-500/10 px-3 py-1.5 flex items-center justify-between border-b border-emerald-500/10">
-                              <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter">Shell Executable</span>
-                              <button 
-                                onClick={() => handleManualCommandRun(block.content)}
-                                className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-[9px] font-black rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.3)] active:scale-95"
-                              >
-                                <Play className="w-2.5 h-2.5 fill-current" /> RUN
-                              </button>
-                            </div>
-                            <ExpandableContainer title="Code" maxHeight={200}>
-                              <pre className="p-3 text-xs text-emerald-200 overflow-x-auto">
-                                <code>{block.content}</code>
-                              </pre>
-                            </ExpandableContainer>
+                            <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-zinc-400 font-mono">{msg.fileEdits.length} file(s) updated</span>
                           </div>
-                        );
-                      }
-                      const hasWebsite = block.content.includes('<website_preview') || block.content.includes('<!DOCTYPE html') || block.content.includes('<html');
-                      return (
-                        <div key={bi} className="space-y-3">
-                          {hasWebsite && (
-                            <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 text-xs text-amber-300 font-semibold">
-                                <Globe className="w-4 h-4 text-amber-400" />
-                                <span>Website Preview Ready</span>
+                          <div className="divide-y divide-white/5">
+                            {msg.fileEdits.map((fe, fei) => (
+                              <div key={fei} className="px-3 py-2.5 flex items-center justify-between text-xs hover:bg-white/5 transition-colors">
+                                <div className="flex items-center gap-2 font-mono">
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${fe.action === 'created' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                                    {fe.action}
+                                  </span>
+                                  <span className="text-zinc-200 font-semibold">{fe.path}</span>
+                                </div>
+                                <span className="text-zinc-400 text-[11px] truncate max-w-xs">{fe.summary}</span>
                               </div>
-                              <button
-                                onClick={() => setActiveTab('browser')}
-                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
-                              >
-                                <Globe className="w-3.5 h-3.5" />
-                                Open In Browser Preview
-                              </button>
-                            </div>
-                          )}
-                          <div className="text-sm text-zinc-300 leading-relaxed prose prose-invert prose-xs max-w-none break-words overflow-hidden prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-white/5 prose-pre:overflow-x-auto prose-code:text-indigo-300 prose-code:bg-indigo-500/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
-                            <ExpandableContainer title="Text" maxHeight={400}>
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {block.content}
-                              </ReactMarkdown>
-                            </ExpandableContainer>
+                            ))}
                           </div>
                         </div>
-                      );
-                    })
+                      )}
+                      {parseAiResponse(msg.content).map((block, bi) => {
+                        if (block.type === 'thought') {
+                          return (
+                            <ExpandableContainer key={bi} title="Thought Process" maxHeight={100}>
+                              <div className="bg-indigo-500/5 border border-indigo-500/10 rounded p-3 text-[11px] text-indigo-300 italic flex gap-3">
+                                <Brain className="w-4 h-4 shrink-0 opacity-50" />
+                                <p>{block.content}</p>
+                              </div>
+                            </ExpandableContainer>
+                          );
+                        }
+                        if (block.type === 'command') {
+                          return (
+                            <div key={bi} className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg overflow-hidden font-mono">
+                              <div className="bg-emerald-500/10 px-3 py-1.5 flex items-center justify-between border-b border-emerald-500/10">
+                                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter">Shell Executable</span>
+                                <button 
+                                  onClick={() => handleManualCommandRun(block.content)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-[9px] font-black rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.3)] active:scale-95"
+                                >
+                                  <Play className="w-2.5 h-2.5 fill-current" /> RUN
+                                </button>
+                              </div>
+                              <ExpandableContainer title="Code" maxHeight={200}>
+                                <pre className="p-3 text-xs text-emerald-200 overflow-x-auto">
+                                  <code>{block.content}</code>
+                                </pre>
+                              </ExpandableContainer>
+                            </div>
+                          );
+                        }
+                        const hasWebsite = block.content.includes('<website_preview') || block.content.includes('<!DOCTYPE html') || block.content.includes('<html');
+                        return (
+                          <div key={bi} className="space-y-3">
+                            {hasWebsite && (
+                              <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 text-xs text-amber-300 font-semibold">
+                                  <Globe className="w-4 h-4 text-amber-400" />
+                                  <span>Website Preview Ready</span>
+                                </div>
+                                <button
+                                  onClick={() => setActiveTab('browser')}
+                                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+                                >
+                                  <Globe className="w-3.5 h-3.5" />
+                                  Open In Browser Preview
+                                </button>
+                              </div>
+                            )}
+                            <div className="text-sm text-zinc-300 leading-relaxed prose prose-invert prose-xs max-w-none break-words overflow-hidden prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-white/5 prose-pre:overflow-x-auto prose-code:text-indigo-300 prose-code:bg-indigo-500/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+                              <ExpandableContainer title="Text" maxHeight={400}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {block.content}
+                                </ReactMarkdown>
+                              </ExpandableContainer>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </>
+                </div>
                   )}
+                  </>
                 </div>
               </div>
             ))}
