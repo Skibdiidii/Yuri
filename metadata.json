@@ -1,0 +1,10 @@
+{
+  "name": "Yuri",
+  "description": "An elegant and formal Discord automation and status customizer dashboard with RPC settings, custom voice presence, connection tools, and automated utilities.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
