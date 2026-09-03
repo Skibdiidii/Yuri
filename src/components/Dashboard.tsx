@@ -14,6 +14,7 @@ import RotatorTab from './RotatorTab';
 import UsernameFinderTab from './UsernameFinderTab';
 import MetricsDashboard from './MetricsDashboard';
 import AudioVmTab from './AudioVmTab';
+import { BrowserPreviewTab } from './BrowserPreviewTab';
 import { CHANGELOG } from '../constants/changelog';
 
 interface DashboardProps {
@@ -23,7 +24,7 @@ interface DashboardProps {
 const API_BASE = '';
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder'>(() => {
+  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser'>(() => {
     const isDirect = localStorage.getItem('isAdminDirect') === 'true';
     if (isDirect) {
       localStorage.removeItem('isAdminDirect');
@@ -662,6 +663,13 @@ Useless piece of shit`,
             />
 
             <SidebarItem 
+              active={activeTab === 'browser'} 
+              onClick={() => setActiveTab('browser')} 
+              icon={Globe} 
+              label="Website Preview" 
+              badge="AI"
+            />
+            <SidebarItem 
               active={activeTab === 'system_console'} 
               onClick={() => setActiveTab('system_console')} 
               icon={Terminal} 
@@ -778,6 +786,11 @@ Useless piece of shit`,
               className="max-w-7xl mx-auto"
             >
             {activeTab === 'system_console' && <SystemConsoleTab onOpenFullTerminal={() => setShowTerminal(true)} />}
+            {activeTab === 'browser' && (
+              <div className="h-[calc(100vh-12rem)] w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                <BrowserPreviewTab />
+              </div>
+            )}
             {activeTab === 'metrics' && <MetricsDashboard />}
               {activeTab === 'username_finder' && <UsernameFinderTab token={loggedInToken} addLog={addLog} />}
               {activeTab === 'rotator' && <RotatorTab token={loggedInToken} addLog={addLog} />}

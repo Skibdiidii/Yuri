@@ -20,12 +20,14 @@ import {
   Palette,
   Image as ImageIcon,
   Monitor,
-  Sparkles
+  Sparkles,
+  Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
+import { BrowserPreviewTab } from './BrowserPreviewTab';
 
 
 import '../lib/patchXterm';
@@ -39,7 +41,7 @@ interface ChatMessage {
 }
 
 export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) {
-  const [activeTab, setActiveTab] = useState<'terminal' | 'ai' | 'system'>('terminal');
+  const [activeTab, setActiveTab] = useState<'terminal' | 'ai' | 'system' | 'browser'>('terminal');
   const [connStatus, setConnStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [neofetchImage, setNeofetchImage] = useState<string | null>(null);
   const [neofetchLine, setNeofetchLine] = useState<number | null>(null);
@@ -660,6 +662,15 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
           <Activity className="w-3.5 h-3.5" />
           SYSTEM
         </button>
+        <button 
+          onClick={() => setActiveTab('browser')}
+          className={`px-4 h-full text-[10px] font-black tracking-[0.1em] transition-all flex items-center gap-2 ${
+            activeTab === 'browser' ? 'bg-[#050508]/40 text-amber-400 border-x border-white/5' : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Globe className="w-3.5 h-3.5" />
+          BROWSER_PREVIEW
+        </button>
         
         <div className="ml-auto flex items-center gap-3 pr-3">
           <button 
@@ -801,13 +812,31 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
                           </div>
                         );
                       }
+                      const hasWebsite = block.content.includes('<website_preview') || block.content.includes('<!DOCTYPE html') || block.content.includes('<html');
                       return (
-                        <div key={bi} className="text-sm text-zinc-300 leading-relaxed prose prose-invert prose-xs max-w-none break-words overflow-hidden prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-white/5 prose-pre:overflow-x-auto prose-code:text-indigo-300 prose-code:bg-indigo-500/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
-                          <ExpandableContainer title="Text" maxHeight={400}>
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {block.content}
-                            </ReactMarkdown>
-                          </ExpandableContainer>
+                        <div key={bi} className="space-y-3">
+                          {hasWebsite && (
+                            <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 text-xs text-amber-300 font-semibold">
+                                <Globe className="w-4 h-4 text-amber-400" />
+                                <span>Website Preview Ready</span>
+                              </div>
+                              <button
+                                onClick={() => setActiveTab('browser')}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+                              >
+                                <Globe className="w-3.5 h-3.5" />
+                                Open In Browser Preview
+                              </button>
+                            </div>
+                          )}
+                          <div className="text-sm text-zinc-300 leading-relaxed prose prose-invert prose-xs max-w-none break-words overflow-hidden prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-white/5 prose-pre:overflow-x-auto prose-code:text-indigo-300 prose-code:bg-indigo-500/10 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+                            <ExpandableContainer title="Text" maxHeight={400}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {block.content}
+                              </ReactMarkdown>
+                            </ExpandableContainer>
+                          </div>
                         </div>
                       );
                     })
@@ -1098,6 +1127,16 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
               </div>
             </footer>
           </div>
+        </div>
+
+        {/* Browser & Live Website Preview Tab */}
+        <div className={`absolute inset-0 z-20 ${activeTab === 'browser' ? 'block' : 'hidden'}`}>
+          <BrowserPreviewTab 
+            onSendMessageToAi={(promptText) => {
+              setAiPrompt(promptText);
+              setActiveTab('ai');
+            }}
+          />
         </div>
       </div>
 
