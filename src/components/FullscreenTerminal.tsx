@@ -867,10 +867,8 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
                           </div>
                         );
                       })}
-                  </>
-                </div>
+                    </>
                   )}
-                  </>
                 </div>
               </div>
             ))}
