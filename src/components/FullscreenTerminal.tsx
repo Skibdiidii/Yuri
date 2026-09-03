@@ -862,7 +862,7 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
                       {parseAiResponse(msg.content).map((block, bi) => {
                         if (block.type === 'thought') {
                           return (
-                            <ExpandableContainer key={bi} title="Thought Process" maxHeight={100}>
+                            <ExpandableContainer key={bi} title="Thought Process" maxHeight={100} startCollapsed={true}>
                               <div className="bg-indigo-500/5 border border-indigo-500/10 rounded p-3 text-[11px] text-indigo-300 italic flex gap-3">
                                 <Brain className="w-4 h-4 shrink-0 opacity-50" />
                                 <p>{block.content}</p>
@@ -1266,36 +1266,36 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
   );
 }
 
-function ExpandableContainer({ children, maxHeight = 160, title }: { children: React.ReactNode, maxHeight?: number, title?: string }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function ExpandableContainer({ children, maxHeight = 160, title, startCollapsed = false }: { children: React.ReactNode, maxHeight?: number, title?: string, startCollapsed?: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(!startCollapsed);
   const contentRef = useRef<HTMLDivElement>(null);
   const [shouldShowToggle, setShouldShowToggle] = useState(false);
 
   useEffect(() => {
     if (contentRef.current) {
-      setShouldShowToggle(contentRef.current.scrollHeight > maxHeight);
+      setShouldShowToggle(startCollapsed || contentRef.current.scrollHeight > maxHeight);
     }
-  }, [children, maxHeight]);
+  }, [children, maxHeight, startCollapsed]);
 
   return (
     <div className="relative group">
       <motion.div 
         initial={false}
-        animate={{ height: isExpanded ? 'auto' : (shouldShowToggle ? maxHeight : 'auto') }}
+        animate={{ height: isExpanded ? 'auto' : (startCollapsed ? 0 : (shouldShowToggle ? maxHeight : 'auto')) }}
         transition={{ type: 'spring', damping: 20, stiffness: 100 }}
         className="overflow-hidden relative"
       >
         <div ref={contentRef}>
           {children}
         </div>
-        {!isExpanded && shouldShowToggle && (
+        {!isExpanded && shouldShowToggle && !startCollapsed && (
           <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent pointer-events-none" />
         )}
       </motion.div>
       {shouldShowToggle && (
         <button 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="mt-1 text-[9px] font-bold text-indigo-400/60 hover:text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-1.5 transition-colors py-1"
+          className="mt-1 text-[9px] font-bold text-indigo-400/60 hover:text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-1.5 transition-colors py-1 cursor-pointer"
         >
           <div className="w-1 h-1 bg-indigo-500 rounded-full" />
           {isExpanded ? 'Minimize' : `Expand ${title || 'Results'}`}
