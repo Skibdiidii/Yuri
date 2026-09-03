@@ -69,10 +69,14 @@ function CodeBlock({ content, language }: { content: string; language: string })
           )}
         </button>
       </div>
-      <div className="p-3 overflow-x-auto max-h-[500px]">
-        <pre className="text-zinc-200 font-mono whitespace-pre text-[12px] leading-relaxed">
-          <code>{content}</code>
-        </pre>
+      <div className="p-3">
+        <ExpandableContainer title="Code content" maxHeight={150} startCollapsed={true}>
+          <div className="overflow-x-auto">
+            <pre className="text-zinc-200 font-mono whitespace-pre text-[12px] leading-relaxed">
+              <code>{content}</code>
+            </pre>
+          </div>
+        </ExpandableContainer>
       </div>
     </div>
   );
