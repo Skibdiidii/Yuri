@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",
+    "@distube/ytdl-core": "^4.16.12",
     "@google/genai": "^2.16.0",
     "@snazzah/davey": "^0.1.12",
     "@supabase/supabase-js": "^2.98.0",

@@ -18,6 +18,17 @@ import {
   type GuildMember,
   type Role,
 } from "discord.js";
+import {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  VoiceConnectionStatus,
+  entersState,
+  getVoiceConnection,
+  StreamType,
+} from "@discordjs/voice";
+import ytdl from "@distube/ytdl-core";
 import path from "path";
 import fs from "fs";
 
@@ -95,6 +106,139 @@ const snipedMessages = new Map<
 // Track AFK statuses
 const afkUsers = new Map<string, { message: string; timestamp: number }>();
 
+// ==========================================
+// VOICE & REAL-TIME 24/7 MUSIC STREAMING SYSTEM
+// ==========================================
+export interface GuildVoiceState {
+  connection: any;
+  player: any;
+  currentSong: { title: string; url: string; requestedBy: string; thumbnail?: string } | null;
+  loop: boolean;
+  channelId: string;
+}
+
+export const guildVoiceStates = new Map<string, GuildVoiceState>();
+
+export async function searchYouTube(query: string): Promise<string | null> {
+  const clean = query.trim();
+  if (ytdl.validateURL(clean)) return clean;
+  try {
+    const res = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(clean)}`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    });
+    const html = await res.text();
+    const match = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
+    if (match && match[1]) {
+      return `https://www.youtube.com/watch?v=${match[1]}`;
+    }
+  } catch (e) {
+    console.error("[VOICE/MUSIC] YouTube search error:", e);
+  }
+  return null;
+}
+
+export async function playYouTubeAudio(
+  guildId: string,
+  url: string,
+  title?: string,
+  requestedBy?: string
+): Promise<boolean> {
+  const voiceState = guildVoiceStates.get(guildId);
+  if (!voiceState || !voiceState.connection) return false;
+
+  try {
+    let songTitle = title;
+    let songThumb = "";
+    try {
+      const info = await ytdl.getInfo(url);
+      songTitle = songTitle || info.videoDetails.title;
+      songThumb = info.videoDetails.thumbnails?.[0]?.url || "";
+    } catch {}
+
+    voiceState.currentSong = {
+      title: songTitle || "YouTube Track",
+      url,
+      requestedBy: requestedBy || "User",
+      thumbnail: songThumb,
+    };
+
+    const stream = ytdl(url, {
+      filter: "audioonly",
+      quality: "highestaudio",
+      highWaterMark: 1 << 25,
+      dlChunkSize: 0,
+    });
+
+    const resource = createAudioResource(stream, {
+      inputType: StreamType.Arbitrary,
+    });
+
+    voiceState.player.play(resource);
+    voiceState.connection.subscribe(voiceState.player);
+    return true;
+  } catch (err) {
+    console.error("[VOICE/MUSIC] Play audio error:", err);
+    return false;
+  }
+}
+
+export function getOrCreateGuildVoice(guild: any, channelId: string): GuildVoiceState {
+  let state = guildVoiceStates.get(guild.id);
+  if (state && state.connection && state.connection.state.status !== VoiceConnectionStatus.Destroyed) {
+    return state;
+  }
+
+  const connection = joinVoiceChannel({
+    channelId: channelId,
+    guildId: guild.id,
+    adapterCreator: guild.voiceAdapterCreator,
+    selfDeaf: false,
+    selfMute: false,
+  });
+
+  const player = createAudioPlayer();
+
+  state = {
+    connection,
+    player,
+    currentSong: null,
+    loop: false,
+    channelId,
+  };
+
+  player.on(AudioPlayerStatus.Idle, () => {
+    if (state.loop && state.currentSong) {
+      playYouTubeAudio(guild.id, state.currentSong.url, state.currentSong.title, state.currentSong.requestedBy);
+    } else {
+      state.currentSong = null;
+    }
+  });
+
+  player.on("error", (error) => {
+    console.error("[VOICE/MUSIC] Audio Player Error:", error.message);
+  });
+
+  connection.on(VoiceConnectionStatus.Disconnected, async () => {
+    try {
+      await Promise.race([
+        entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+        entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+      ]);
+    } catch {
+      try {
+        connection.destroy();
+      } catch {}
+      guildVoiceStates.delete(guild.id);
+    }
+  });
+
+  guildVoiceStates.set(guild.id, state);
+  return state;
+}
+
 export function isAuthorizedSelfbotUser(
   authorId: string,
   activeClients?: Map<string, any>,
@@ -130,115 +274,33 @@ export function isAllowed(
   return isAuthorizedSelfbotUser(authorId, activeClients, sessions);
 }
 
-// Full Discord Application (Slash) Commands Definition (All SB + Bot Tools)
+// Discord Application (Slash) Commands Definition
 export const YURI_SLASH_COMMANDS = [
   {
-    name: "whois",
-    description: "Inspect detailed profile, snowflake ID, tenure, and roles of a user",
-    options: [
-      {
-        name: "user",
-        description: "Target user to inspect (mention or ID)",
-        type: ApplicationCommandOptionType.User,
-        required: false,
-      },
-    ],
+    name: "help",
+    description: "Display Yuri 24/7 Companion help menu & command directory (Russian Roulette, Music, Roles)",
     integration_types: [0, 1],
     contexts: [0, 1, 2],
   },
   {
-    name: "avatar",
-    description: "Extract high-resolution 4096px direct avatar link and artwork",
-    options: [
-      {
-        name: "user",
-        description: "Target user to view avatar for",
-        type: ApplicationCommandOptionType.User,
-        required: false,
-      },
-    ],
+    name: "russian",
+    description: "Play Russian Roulette - spin the 6-chamber cylinder and pull the trigger!",
     integration_types: [0, 1],
     contexts: [0, 1, 2],
   },
   {
-    name: "banner",
-    description: "Extract high-resolution profile banner link and artwork",
+    name: "give",
+    description: "Assign a role in the server (Authorized Owner Only)",
     options: [
-      {
-        name: "user",
-        description: "Target user to view banner for",
-        type: ApplicationCommandOptionType.User,
-        required: false,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "giverole",
-    description: "Assign a guild role to a server member",
-    options: [
-      {
-        name: "member",
-        description: "The member to grant the role to",
-        type: ApplicationCommandOptionType.User,
-        required: true,
-      },
       {
         name: "role",
-        description: "The role to assign",
+        description: "The server role to assign",
         type: ApplicationCommandOptionType.Role,
         required: true,
       },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "removerole",
-    description: "Remove an existing role from a server member",
-    options: [
-      {
-        name: "member",
-        description: "The member to remove the role from",
-        type: ApplicationCommandOptionType.User,
-        required: true,
-      },
-      {
-        name: "role",
-        description: "The role to remove",
-        type: ApplicationCommandOptionType.Role,
-        required: true,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "serverinfo",
-    description: "Display comprehensive guild metrics, boost tier, and member statistics",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "membercount",
-    description: "Display live server member, human, and bot breakdown",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "roles",
-    description: "List all server roles and their Snowflake IDs",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "perms",
-    description: "Inspect user or channel permission bitfields",
-    options: [
       {
         name: "user",
-        description: "Target user to inspect permissions for",
+        description: "The target member to receive the role (defaults to you)",
         type: ApplicationCommandOptionType.User,
         required: false,
       },
@@ -247,60 +309,12 @@ export const YURI_SLASH_COMMANDS = [
     contexts: [0, 1, 2],
   },
   {
-    name: "uptime",
-    description: "Check Yuri 24/7 background companion uptime & health",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "ping",
-    description: "Check Gateway WebSocket latency & REST roundtrip",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "afk",
-    description: "Set smart AFK status with automatic response trigger",
+    name: "playmusic",
+    description: "Play real-time YouTube music 24/7 in your voice channel",
     options: [
       {
-        name: "message",
-        description: "Custom away message",
-        type: ApplicationCommandOptionType.String,
-        required: false,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "purge",
-    description: "Purge recent messages in the current channel",
-    options: [
-      {
-        name: "count",
-        description: "Number of messages to clear (1-100)",
-        type: ApplicationCommandOptionType.Integer,
-        required: true,
-        minValue: 1,
-        maxValue: 100,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "form",
-    description: "Open an interactive Discord Modal Form where you can put anything to send.",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "say",
-    description: "Send a message as the bot.",
-    options: [
-      {
-        name: "message",
-        description: "Message to send",
+        name: "query",
+        description: "YouTube URL or music name to stream",
         type: ApplicationCommandOptionType.String,
         required: true,
       },
@@ -309,132 +323,14 @@ export const YURI_SLASH_COMMANDS = [
     contexts: [0, 1, 2],
   },
   {
-    name: "embed",
-    description: "Send an embed.",
-    options: [
-      {
-        name: "message",
-        description: "Message to put in the embed",
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-    ],
+    name: "leavevc",
+    description: "Disconnect Yuri from the current Voice Channel",
     integration_types: [0, 1],
     contexts: [0, 1, 2],
   },
   {
-    name: "whitelist",
-    description: "Whitelist a user.",
-    options: [
-      {
-        name: "user",
-        description: "User to whitelist",
-        type: ApplicationCommandOptionType.User,
-        required: true,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "unwhitelist",
-    description: "Remove a user from the whitelist.",
-    options: [
-      {
-        name: "user",
-        description: "User to remove",
-        type: ApplicationCommandOptionType.User,
-        required: true,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "whitelisted",
-    description: "List whitelisted users.",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "snipe",
-    description: "Retrieve recently deleted message in this channel",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "math",
-    description: "Perform quick mathematical calculation",
-    options: [
-      {
-        name: "expression",
-        description: "Math expression (e.g. 24 * 7 + 100)",
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "8ball",
-    description: "Ask the magic 8-ball a question",
-    options: [
-      {
-        name: "question",
-        description: "Your question",
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "coinflip",
-    description: "Flip a coin (Heads or Tails)",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "dice",
-    description: "Roll a dice",
-    options: [
-      {
-        name: "sides",
-        description: "Number of sides (default: 6)",
-        type: ApplicationCommandOptionType.Integer,
-        required: false,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "mock",
-    description: "Convert text to MoCkInG format",
-    options: [
-      {
-        name: "text",
-        description: "Text to mock",
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-    ],
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
-    name: "reverse",
-    description: "Reverse input text string",
-    options: [
-      {
-        name: "text",
-        description: "Text to reverse",
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-    ],
+    name: "loop",
+    description: "Toggle 24/7 loop/repeat mode for the current music track in VC",
     integration_types: [0, 1],
     contexts: [0, 1, 2],
   },
@@ -507,9 +403,9 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
   const p = page === 2 || page === 3 ? page : 1;
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
-    .setTitle("⚡ Yuri Selfbot Companion • Operations Directory")
+    .setTitle("⚡ Yuri Companion • Operations Directory")
     .setFooter({
-      text: `Yuri Companion Service • Page ${p} of 3 • Slash & Prefix Supported`,
+      text: `Yuri Companion Service • Page ${p} of 3 • 24/7 Active`,
       iconURL: botUser?.displayAvatarURL(),
     })
     .setTimestamp();
@@ -517,27 +413,22 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
   if (p === 1) {
     embed
       .setDescription(
-        "Dedicated companion service operating 24/7 with pure embed responses, interactive buttons, and verified user access control."
+        "Dedicated companion service operating 24/7 with pure embed responses, voice channel music streaming, and Russian Roulette."
       )
       .addFields(
         {
-          name: "👤 User & Profile Intelligence",
+          name: "🎲 Russian Roulette",
           value: [
-            "`/whois [user]` or `.whois [user]` — Detailed profile, Snowflake ID, creation date & join tenure",
-            "`/avatar [user]` or `.avatar [user]` — High-res 4096px direct avatar link with artwork embed",
-            "`/banner [user]` or `.banner [user]` — High-resolution profile banner image extractor",
-            "`.id [user]` — Direct Discord Snowflake ID extraction",
-            "`.createdat [user]` — Exact account registration timestamp & relative days",
-            "`.joinedat [user]` — Server join timestamp & relative tenure",
+            "`/russian` — Spin the 6-chamber cylinder and pull the trigger (1 lethal round, 5 safe rounds)!",
+            "`.russian` — Text prefix trigger for Russian Roulette",
           ].join("\n"),
         },
         {
-          name: "🎭 Identity & Roles",
+          name: "🎵 24/7 Voice Channel Music Streaming",
           value: [
-            "`/giverole <member> <role>` or `.giverole` — Grant server role with permission validation",
-            "`/removerole <member> <role>` or `.removerole` — Revoke server role",
-            "`/roles` or `.roles` — List assigned server roles and IDs",
-            "`/perms [user]` or `.perms` — Inspect channel and guild permission bitfields",
+            "`/playmusic <query>` — Connect Yuri to your voice channel and stream real-time YouTube music 24/7",
+            "`/loop` — Toggle 24/7 repeating loop mode for currently playing music",
+            "`/leavevc` — Disconnect Yuri from the voice channel",
           ].join("\n"),
         }
       )
@@ -545,25 +436,22 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
   } else if (p === 2) {
     embed
       .setDescription(
-        "Server management, role allocation, and channel moderation capabilities."
+        "Server administration, role allocation, and security authority."
       )
       .addFields(
         {
-          name: "🏰 Guild & Server Intelligence",
+          name: "👑 Role Administration (Owner Only)",
           value: [
-            "`/serverinfo` or `.serverinfo` — Guild stats, owner ID, members (online/bots), boost level & channels",
-            "`/membercount` or `.membercount` — Human vs Bot member count breakdown",
-            "`/purge <count>` or `.purge <count>` — Bulk clear messages in current text channel",
-            "`/snipe` or `.snipe` — Recover the most recently deleted message in channel",
+            "`/give <role> [user]` — Assign a server role with permission & hierarchy validation",
+            "`.give <@role> [@user]` or `.giverole` — Prefix shorthand for role assignment",
           ].join("\n"),
         },
         {
-          name: "🛡️ Role Administration",
+          name: "🛡️ Server Operations",
           value: [
-            "`/giverole <member> <role>` — Assign any manageable role to a server member",
-            "`/removerole <member> <role>` — Revoke a role from a member",
-            "`.role give <user> <role>` — Prefix shorthand for role assignment",
-            "`.role remove <user> <role>` — Prefix shorthand for role revocation",
+            "`.serverinfo` or `.si` — Display comprehensive guild metrics & statistics",
+            "`.membercount` — Human vs Bot breakdown in server",
+            "`.purge <count>` — Bulk clean messages in current channel",
           ].join("\n"),
         }
       )
@@ -571,36 +459,23 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
   } else {
     embed
       .setDescription(
-        "Utilities, automation scripts, and Yuri Companion access controls."
+        "Diagnostics, service health, and Yuri Companion status."
       )
       .addFields(
         {
-          name: "⚡ Core Diagnostics & Presence",
+          name: "⚡ Diagnostics & Presence",
           value: [
-            "`/uptime` or `.uptime` — Service continuous runtime and host health",
-            "`/ping` or `.ping` — Real-time Gateway WebSocket latency & REST response",
-            "`/afk [message]` or `.afk [message]` — Smart AFK status with automatic reply trigger",
-            "`/say <text>` or `.say <text>` — Broadcast message via Yuri Companion",
-            "`/embed <desc> [title]` or `.embed` — Broadcast formatted crimson embed",
+            "`/help` — Display interactive command directory",
+            "`.uptime` — Continuous 24/7 uptime & memory metrics",
+            "`.ping` — Real-time Gateway WebSocket latency & REST response",
           ].join("\n"),
         },
         {
-          name: "🎲 Fun & Utility Tools",
+          name: "🔐 Authorized Access",
           value: [
-            "`/math <expression>` or `.math` — Instant mathematical calculation",
-            "`/8ball <question>` or `.8ball` — Magic 8-ball prophetic answer",
-            "`/coinflip` or `.coinflip` — Flip a coin (Heads/Tails)",
-            "`/dice [sides]` or `.dice` — Roll polyhedral dice",
-            "`/mock <text>` or `.mock` — MoCkInG text converter",
-            "`/reverse <text>` or `.reverse` — Invert text string",
-          ].join("\n"),
-        },
-        {
-          name: "🔐 Authorized Selfbot Accounts",
-          value: [
-            "`/whitelisted` or `.whitelisted` — View authorized selfbot accounts",
-            "`/whitelist <id>` or `.whitelist <id>` — Add authorized selfbot user ID",
-            "`/unwhitelist <id>` or `.unwhitelist <id>` — Remove authorized selfbot user ID",
+            "`.whitelisted` — View authorized companion user list",
+            "`.whitelist <id>` — Whitelist user ID",
+            "`.unwhitelist <id>` — Revoke user whitelist",
           ].join("\n"),
         }
       )
@@ -611,17 +486,17 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("yuri_help_1")
-      .setLabel("👤 Profile & Roles")
+      .setLabel("🎲 Roulette & Music")
       .setStyle(p === 1 ? ButtonStyle.Danger : ButtonStyle.Secondary)
       .setDisabled(p === 1),
     new ButtonBuilder()
       .setCustomId("yuri_help_2")
-      .setLabel("🏰 Guild & Admin")
+      .setLabel("👑 Roles & Admin")
       .setStyle(p === 2 ? ButtonStyle.Danger : ButtonStyle.Secondary)
       .setDisabled(p === 2),
     new ButtonBuilder()
       .setCustomId("yuri_help_3")
-      .setLabel("⚡ Tools & Whitelist")
+      .setLabel("⚡ Diagnostics")
       .setStyle(p === 3 ? ButtonStyle.Danger : ButtonStyle.Secondary)
       .setDisabled(p === 3)
   );
@@ -641,6 +516,7 @@ async function createAndRunBot(
       GatewayIntentBits.DirectMessages,
       GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildVoiceStates,
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User],
   });
@@ -806,718 +682,225 @@ async function createAndRunBot(
 
     const { commandName, options, user, guild, member } = interaction as ChatInputCommandInteraction;
 
-    // Public commands are accessible to all users for instant testing
-    const PUBLIC_COMMANDS = new Set([
-      "whois",
-      "avatar",
-      "banner",
-      "serverinfo",
-      "membercount",
-      "roles",
-      "perms",
-      "ping",
-      "uptime",
-      "snipe",
-      "afk",
-      "math",
-      "8ball",
-      "coinflip",
-      "dice",
-      "mock",
-      "reverse",
-    ]);
-    const isPublic = PUBLIC_COMMANDS.has(commandName);
-    const hasAdmin =
-      (member as any)?.permissions?.has?.(PermissionFlagsBits.ManageRoles) ||
-      (member as any)?.permissions?.has?.(PermissionFlagsBits.Administrator);
-    const isAuth =
-      isAuthorizedSelfbotUser(user.id, activeClients, sessions) || hasAdmin;
-
-    // Strict Access Control for privileged commands only
-    if (!isPublic && !isAuth) {
-      return interaction.reply({
-        embeds: [buildAccessDeniedEmbed(user.id)],
-        ephemeral: true,
-      });
-    }
-
     try {
-      // 2. /whois
-      if (commandName === "whois") {
-        const targetUser = options.getUser("user") || user;
-        let fullUser = targetUser;
-        try {
-          fullUser = await bot.users.fetch(targetUser.id, { force: true });
-        } catch {}
-
-        const targetMember = guild?.members.cache.get(targetUser.id);
-        const avatarUrl = fullUser.displayAvatarURL({ size: 4096 });
-        const bannerUrl = fullUser.bannerURL ? fullUser.bannerURL({ size: 4096 }) : null;
-        const displayName = fullUser.globalName || fullUser.displayName || fullUser.username;
-
-        const rolesList =
-          targetMember && targetMember.roles.cache.size > 1
-            ? targetMember.roles.cache
-                .filter((r) => r.id !== guild?.id)
-                .map((r) => `<@&${r.id}>`)
-                .slice(0, 10)
-                .join(" ")
-            : "No custom roles";
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setAuthor({ name: `${fullUser.tag} ${fullUser.bot ? "[BOT]" : ""}`, iconURL: avatarUrl })
-          .setTitle("👤 User Profile Intelligence")
-          .setThumbnail(avatarUrl)
-          .addFields(
-            { name: "🏷️ Tag & Identifier", value: `\`${fullUser.tag}\`\nID: \`${fullUser.id}\``, inline: true },
-            { name: "📛 Display Name", value: `**${displayName}**`, inline: true },
-            { name: "🤖 Account Type", value: fullUser.bot ? "`Bot Application`" : "`Standard User`", inline: true },
-            {
-              name: "📅 Account Created",
-              value: `<t:${Math.floor(fullUser.createdTimestamp / 1000)}:F>\n(<t:${Math.floor(fullUser.createdTimestamp / 1000)}:R>)`,
-              inline: true,
-            }
-          );
-
-        if (targetMember?.joinedTimestamp) {
-          embed.addFields({
-            name: "📥 Joined Server",
-            value: `<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:F>\n(<t:${Math.floor(targetMember.joinedTimestamp / 1000)}:R>)`,
-            inline: true,
-          });
-        }
-
-        if (targetMember) {
-          embed.addFields({ name: "🛡️ Assigned Roles", value: rolesList, inline: false });
-        }
-
-        if (bannerUrl) {
-          embed.setImage(bannerUrl);
-        }
-
-        embed.setFooter({ text: "Yuri Selfbot Companion", iconURL: bot.user?.displayAvatarURL() }).setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+      // 1. /help
+      if (commandName === "help") {
+        const { embed, components } = buildHelpEmbed(1, bot.user);
+        return await interaction.reply({ embeds: [embed], components });
       }
 
-      // 3. /avatar
-      if (commandName === "avatar") {
-        const targetUser = options.getUser("user") || user;
-        const avatarUrl = targetUser.displayAvatarURL({ size: 4096 });
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(`🖼️ ${targetUser.tag}'s Avatar`)
-          .setDescription(`[Direct High-Res Link (4096px)](${avatarUrl})`)
-          .setImage(avatarUrl)
-          .setFooter({ text: `Requested by ${user.tag}`, iconURL: user.displayAvatarURL() })
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 4. /banner
-      if (commandName === "banner") {
-        const targetUser = options.getUser("user") || user;
-        let fullUser = targetUser;
-        try {
-          fullUser = await bot.users.fetch(targetUser.id, { force: true });
-        } catch {}
-
-        const bannerUrl = fullUser.bannerURL ? fullUser.bannerURL({ size: 4096 }) : null;
-        if (!bannerUrl) {
+      // 2. /russian (Russian Roulette)
+      if (commandName === "russian") {
+        const isDead = Math.random() < 1 / 6;
+        if (isDead) {
           const embed = new EmbedBuilder()
             .setColor(0xed4245)
-            .setTitle("🖼️ Profile Banner")
-            .setDescription(`User **${fullUser.tag}** does not have a custom profile banner configured.`)
-            .setTimestamp();
-          return interaction.reply({ embeds: [embed] });
-        }
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(`🖼️ ${fullUser.tag}'s Banner`)
-          .setDescription(`[Direct High-Res Link (4096px)](${bannerUrl})`)
-          .setImage(bannerUrl)
-          .setFooter({ text: `Requested by ${user.tag}`, iconURL: user.displayAvatarURL() })
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 5. /giverole
-      if (commandName === "giverole") {
-        if (!guild) {
-          return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-        }
-        const targetUser = options.getUser("member", true);
-        const role = options.getRole("role", true) as Role;
-
-        const botMember = guild.members.me;
-        if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle("⚠️ Missing Permission")
-            .setDescription("Yuri Companion lacks the **Manage Roles** permission in this server.")
-            .setTimestamp();
-          return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-
-        if (botMember.roles.highest.position <= role.position) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle("⚠️ Role Hierarchy Issue")
-            .setDescription(`Cannot assign <@&${role.id}> because it is higher than or equal to Yuri Companion's highest role.`)
-            .setTimestamp();
-          return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-
-        const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
-        if (!targetMember) {
-          return interaction.reply({ content: "Member not found in this guild.", ephemeral: true });
-        }
-
-        await targetMember.roles.add(role);
-
-        const embed = new EmbedBuilder()
-          .setColor(0x2ecc71)
-          .setTitle("🛡️ Role Granted Successfully")
-          .setThumbnail(targetUser.displayAvatarURL())
-          .addFields(
-            { name: "Target Member", value: `<@${targetUser.id}> (\`${targetUser.tag}\`)`, inline: true },
-            { name: "Role Granted", value: `<@&${role.id}> (\`${role.name}\`)`, inline: true },
-            { name: "Issued By", value: `<@${user.id}>`, inline: true }
-          )
-          .setFooter({ text: "Yuri Selfbot Companion • Role Administration" })
-          .setTimestamp();
-
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 6. /removerole
-      if (commandName === "removerole") {
-        if (!guild) {
-          return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-        }
-        const targetUser = options.getUser("member", true);
-        const role = options.getRole("role", true) as Role;
-
-        const botMember = guild.members.me;
-        if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle("⚠️ Missing Permission")
-            .setDescription("Yuri Companion lacks the **Manage Roles** permission in this server.")
-            .setTimestamp();
-          return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-
-        if (botMember.roles.highest.position <= role.position) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle("⚠️ Role Hierarchy Issue")
-            .setDescription(`Cannot remove <@&${role.id}> because it is higher than or equal to Yuri Companion's highest role.`)
-            .setTimestamp();
-          return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-
-        const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
-        if (!targetMember) {
-          return interaction.reply({ content: "Member not found in this guild.", ephemeral: true });
-        }
-
-        await targetMember.roles.remove(role);
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🛡️ Role Revoked Successfully")
-          .setThumbnail(targetUser.displayAvatarURL())
-          .addFields(
-            { name: "Target Member", value: `<@${targetUser.id}> (\`${targetUser.tag}\`)`, inline: true },
-            { name: "Role Removed", value: `<@&${role.id}> (\`${role.name}\`)`, inline: true },
-            { name: "Issued By", value: `<@${user.id}>`, inline: true }
-          )
-          .setFooter({ text: "Yuri Selfbot Companion • Role Administration" })
-          .setTimestamp();
-
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 7. /serverinfo
-      if (commandName === "serverinfo") {
-        if (!guild) {
-          return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-        }
-
-        const owner = await guild.fetchOwner().catch(() => null);
-        const channelsCount = guild.channels.cache.size;
-        const textChannels = guild.channels.cache.filter((c) => c.isTextBased()).size;
-        const voiceChannels = guild.channels.cache.filter((c) => c.isVoiceBased()).size;
-        const rolesCount = guild.roles.cache.size;
-        const emojisCount = guild.emojis.cache.size;
-        const iconUrl = guild.iconURL({ size: 4096 });
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(`🏰 ${guild.name} • Server Metrics`)
-          .setThumbnail(iconUrl || "")
-          .addFields(
-            { name: "👑 Server Owner", value: owner ? `<@${owner.id}> (${owner.user.tag})` : "Unknown", inline: true },
-            { name: "🆔 Server ID", value: `\`${guild.id}\``, inline: true },
-            { name: "👥 Total Members", value: `\`${guild.memberCount}\``, inline: true },
-            { name: "💬 Channels", value: `Total: \`${channelsCount}\` (Text: \`${textChannels}\` | Voice: \`${voiceChannels}\`)`, inline: true },
-            { name: "🛡️ Roles", value: `\`${rolesCount}\` roles`, inline: true },
-            { name: "🚀 Boost Status", value: `Tier \`${guild.premiumTier}\` (${guild.premiumSubscriptionCount || 0} boosts)`, inline: true },
-            {
-              name: "📅 Server Created",
-              value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:F>\n(<t:${Math.floor(guild.createdTimestamp / 1000)}:R>)`,
-              inline: false,
-            }
-          );
-
-        if (guild.bannerURL()) {
-          embed.setImage(guild.bannerURL({ size: 4096 })!);
-        }
-
-        embed.setFooter({ text: "Yuri Selfbot Companion" }).setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 8. /uptime
-      if (commandName === "uptime") {
-        const totalSeconds = Math.floor((Date.now() - yuriBotStartTime) / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-        const memoryMB = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🚀 Yuri Companion • Service Health & Uptime")
-          .setThumbnail("https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif")
-          .addFields(
-            { name: "⏱️ Continuous Uptime", value: `\`${hours}h ${minutes}m ${seconds}s\` (24/7 Active)`, inline: true },
-            { name: "🏓 Gateway Latency", value: `\`${bot.ws.ping}ms\``, inline: true },
-            { name: "💾 Memory Allocated", value: `\`${memoryMB} MB\``, inline: true },
-            { name: "🏰 Guilds Connected", value: `\`${bot.guilds.cache.size}\``, inline: true },
-            { name: "🛡️ Access Mode", value: "`Authorized Yuri Accounts Only`", inline: true },
-            { name: "⚙️ Engine Version", value: "`Node.js " + process.version + "`", inline: true }
-          )
-          .setFooter({ text: "Yuri Selfbot Companion Service" })
-          .setTimestamp();
-
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 9. /ping
-      if (commandName === "ping") {
-        const wsPing = bot.ws.ping;
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🏓 Gateway Pong!")
-          .addFields(
-            { name: "WebSocket Ping", value: `\`${wsPing}ms\``, inline: true },
-            { name: "Status", value: "🟢 Operational (24/7)", inline: true }
-          )
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 10. /afk
-      if (commandName === "afk") {
-        const note = options.getString("message") || "Away from keyboard currently.";
-        afkUsers.set(user.id, { message: note, timestamp: Date.now() });
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("💤 AFK Mode Activated")
-          .setDescription(`You are now set to AFK.\n\n• **Reason:** \`${note}\`\n• Mentions and replies will be automatically informed.`)
-          .setFooter({ text: "Yuri Selfbot Companion" })
-          .setTimestamp();
-
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 11. /purge
-      if (commandName === "purge") {
-        if (!guild) {
-          return interaction.reply({ content: "Purge is only available in server channels.", ephemeral: true });
-        }
-        const count = options.getInteger("count", true);
-        const channel: any = interaction.channel;
-        if (!channel?.bulkDelete) {
-          return interaction.reply({ content: "Cannot bulk delete in this channel type.", ephemeral: true });
-        }
-
-        const deleted = await channel.bulkDelete(count, true).catch(() => null);
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🧹 Channel Purged")
-          .setDescription(`Successfully purged **${deleted?.size || count}** messages from this channel.`)
-          .setTimestamp();
-
-        return interaction.reply({ embeds: [embed], ephemeral: true });
-      }
-
-      // 12. /form (Discord UI Modal Form)
-      if (commandName === "form") {
-        if (!isAllowed(user.id, activeClients, sessions)) {
-          return interaction.reply({
-            content: "You don't have permission to use this.",
-            ephemeral: true,
-          });
-        }
-
-        const modal = new ModalBuilder()
-          .setCustomId("yuri_modal_form")
-          .setTitle("Yuri Bot Form");
-
-        const messageInput = new TextInputBuilder()
-          .setCustomId("form_message")
-          .setLabel("Message / Content")
-          .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder("Put anything here...")
-          .setRequired(true);
-
-        const titleInput = new TextInputBuilder()
-          .setCustomId("form_title")
-          .setLabel("Title (Optional - for Embed)")
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder("Optional embed title...")
-          .setRequired(false);
-
-        const embedInput = new TextInputBuilder()
-          .setCustomId("form_embed")
-          .setLabel("Send as Embed? (yes / no)")
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder("yes / no (default: no)")
-          .setRequired(false);
-
-        const row1 = new ActionRowBuilder<TextInputBuilder>().addComponents(messageInput);
-        const row2 = new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput);
-        const row3 = new ActionRowBuilder<TextInputBuilder>().addComponents(embedInput);
-
-        modal.addComponents(row1, row2, row3);
-        return await interaction.showModal(modal);
-      }
-
-      // 13. /say
-      if (commandName === "say") {
-        if (!isAllowed(user.id, activeClients, sessions)) {
-          return interaction.reply({
-            content: "You don't have permission to use this.",
-            ephemeral: true,
-          });
-        }
-
-        const msgToSend = options.getString("message") || options.getString("text") || "";
-        await interaction.reply({
-          content: "Notification sent.",
-          ephemeral: true,
-        });
-
-        return interaction.followUp(msgToSend);
-      }
-
-      // 14. /embed
-      if (commandName === "embed") {
-        if (!isAllowed(user.id, activeClients, sessions)) {
-          return interaction.reply({
-            content: "You don't have permission to use this.",
-            ephemeral: true,
-          });
-        }
-
-        const msgToSend = options.getString("message") || options.getString("description") || "";
-        const title = options.getString("title");
-
-        const messageEmbed = new EmbedBuilder()
-          .setDescription(msgToSend)
-          .setColor(0xed4245);
-
-        if (title) messageEmbed.setTitle(title);
-
-        await interaction.reply({
-          content: "Notification sent.",
-          ephemeral: true,
-        });
-
-        return interaction.followUp({ embeds: [messageEmbed] });
-      }
-
-      // 15. /whitelist
-      if (commandName === "whitelist") {
-        if (!isOwner(user.id)) {
-          return interaction.reply({
-            content: "You don't have permission to use this.",
-            ephemeral: true,
-          });
-        }
-
-        const targetUser = options.getUser("user");
-        const targetId = targetUser?.id || (options.getString("user_id") || options.getString("user") || "").trim().replace(/[^0-9]/g, "");
-        if (!targetId) {
-          return interaction.reply({ content: "Invalid user provided.", ephemeral: true });
-        }
-
-        yuriBotAllowedUsers.add(targetId);
-        saveWhitelist();
-
-        return interaction.reply({
-          content: `<@${targetId}> has been whitelisted.`,
-        });
-      }
-
-      // 16. /unwhitelist
-      if (commandName === "unwhitelist") {
-        if (!isOwner(user.id)) {
-          return interaction.reply({
-            content: "You don't have permission to use this.",
-            ephemeral: true,
-          });
-        }
-
-        const targetUser = options.getUser("user");
-        const targetId = targetUser?.id || (options.getString("user_id") || options.getString("user") || "").trim().replace(/[^0-9]/g, "");
-        if (isOwner(targetId)) {
-          return interaction.reply({
-            content: "You can't remove the owner.",
-            ephemeral: true,
-          });
-        }
-
-        yuriBotAllowedUsers.delete(targetId);
-        saveWhitelist();
-
-        return interaction.reply({
-          content: `<@${targetId}> has been removed from the whitelist.`,
-        });
-      }
-
-      // 17. /whitelisted
-      if (commandName === "whitelisted") {
-        if (!isOwner(user.id)) {
-          return interaction.reply({
-            content: "You don't have permission to use this.",
-            ephemeral: true,
-          });
-        }
-
-        if (yuriBotAllowedUsers.size === 0) {
-          return interaction.reply({
-            content: "The whitelist is empty.",
-            ephemeral: true,
-          });
-        }
-
-        const usersList = Array.from(yuriBotAllowedUsers)
-          .sort()
-          .map((userId) => `<@${userId}> (\`${userId}\`)`)
-          .join("\n");
-
-        return interaction.reply({
-          content: usersList,
-          ephemeral: true,
-        });
-      }
-
-      // 17. /snipe
-      if (commandName === "snipe") {
-        const sniped = snipedMessages.get(interaction.channelId);
-        if (!sniped) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle("🎯 Message Snipe")
-            .setDescription("There are no recently deleted messages recorded in this channel.")
-            .setTimestamp();
-          return interaction.reply({ embeds: [embed] });
-        }
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setAuthor({ name: sniped.author, iconURL: sniped.authorAvatar })
-          .setTitle("🎯 Sniped Deleted Message")
-          .setDescription(sniped.content)
-          .setFooter({ text: `Deleted <t:${Math.floor(sniped.timestamp / 1000)}:R>` })
-          .setTimestamp();
-
-        if (sniped.attachments?.length) {
-          embed.setImage(sniped.attachments[0]);
-        }
-
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 18. /membercount
-      if (commandName === "membercount") {
-        if (!guild) return interaction.reply({ content: "This command is only available in servers.", ephemeral: true });
-        const total = guild.memberCount;
-        const bots = guild.members.cache.filter((m: any) => m.user?.bot).size;
-        const humans = total - bots;
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(`👥 ${guild.name} • Member Count`)
-          .addFields(
-            { name: "Total Members", value: `\`${total}\``, inline: true },
-            { name: "Humans", value: `\`${humans}\``, inline: true },
-            { name: "Bots", value: `\`${bots}\``, inline: true }
-          )
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 19. /roles
-      if (commandName === "roles") {
-        if (!guild) return interaction.reply({ content: "This command is only available in servers.", ephemeral: true });
-        const rolesList = guild.roles.cache
-          .filter((r: any) => r.id !== guild.id)
-          .map((r: any) => `<@&${r.id}> (\`${r.id}\`)`)
-          .slice(0, 20)
-          .join("\n");
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(`🛡️ ${guild.name} • Server Roles (${guild.roles.cache.size})`)
-          .setDescription(rolesList || "No custom roles created.")
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 20. /perms
-      if (commandName === "perms") {
-        const targetUser = options.getUser("user") || user;
-        const targetMember = guild?.members.cache.get(targetUser.id);
-        if (!targetMember) {
-          return interaction.reply({ content: "Member not found in current guild.", ephemeral: true });
-        }
-        const keyPerms = [
-          "Administrator",
-          "ManageGuild",
-          "ManageRoles",
-          "ManageChannels",
-          "KickMembers",
-          "BanMembers",
-          "ManageMessages",
-          "MentionEveryone",
-        ];
-        const has = keyPerms.filter((p) => (targetMember.permissions as any).has(PermissionFlagsBits[p as keyof typeof PermissionFlagsBits]));
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(`🔐 Permissions: ${targetUser.tag}`)
-          .setDescription(
-            has.length > 0
-              ? has.map((p) => `✅ \`${p}\``).join("\n")
-              : "Standard member permissions (No key administrator flags)."
-          )
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 21. /math
-      if (commandName === "math") {
-        const expr = options.getString("expression", true);
-        try {
-          const sanitized = expr.replace(/[^0-9+\-*/().^% ]/g, "");
-          // Safe eval
-          const result = Function(`'use strict'; return (${sanitized})`)();
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle("🧮 Math Calculation")
-            .addFields(
-              { name: "Expression", value: `\`${expr}\``, inline: true },
-              { name: "Result", value: `\`${result}\``, inline: true }
+            .setTitle("💥 BANG! • Russian Roulette")
+            .setDescription(
+              `🎲 <@${user.id}> spins the 6-chamber cylinder and pulls the trigger...\n\n` +
+              `☠️ **The hammer struck the loaded chamber! You took a bullet and DIED!**\n\n` +
+              `*Better luck in the next life...*`
             )
+            .setFooter({ text: "Yuri Russian Roulette • 1/6 Lethal Chamber" })
             .setTimestamp();
-          return interaction.reply({ embeds: [embed] });
-        } catch {
-          return interaction.reply({ content: "Invalid mathematical expression.", ephemeral: true });
+          return await interaction.reply({ embeds: [embed] });
+        } else {
+          const embed = new EmbedBuilder()
+            .setColor(0x57f287)
+            .setTitle("🎲 *CLICK!* • Russian Roulette")
+            .setDescription(
+              `🎲 <@${user.id}> spins the 6-chamber cylinder and pulls the trigger...\n\n` +
+              `🛡️ ***Click!* The chamber was empty! You SURVIVED!**\n\n` +
+              `*You wipe the cold sweat from your forehead...*`
+            )
+            .setFooter({ text: "Yuri Russian Roulette • 5/6 Safe Chambers" })
+            .setTimestamp();
+          return await interaction.reply({ embeds: [embed] });
         }
       }
 
-      // 22. /8ball
-      if (commandName === "8ball") {
-        const question = options.getString("question", true);
-        const responses = [
-          "It is certain.",
-          "It is decidedly so.",
-          "Without a doubt.",
-          "Yes definitely.",
-          "You may rely on it.",
-          "As I see it, yes.",
-          "Most likely.",
-          "Outlook good.",
-          "Yes.",
-          "Signs point to yes.",
-          "Reply hazy, try again.",
-          "Ask again later.",
-          "Better not tell you now.",
-          "Cannot predict now.",
-          "Concentrate and ask again.",
-          "Don't count on it.",
-          "My reply is no.",
-          "My sources say no.",
-          "Outlook not so good.",
-          "Very doubtful.",
-        ];
-        const answer = responses[Math.floor(Math.random() * responses.length)];
+      // 3. /give (role only auth to owner)
+      if (commandName === "give") {
+        if (!isOwner(user.id)) {
+          return await interaction.reply({
+            content: "You don't have permission to use this.",
+            ephemeral: true,
+          });
+        }
+
+        if (!guild) {
+          return await interaction.reply({
+            content: "This command can only be executed within a Discord server.",
+            ephemeral: true,
+          });
+        }
+
+        const role = options.getRole("role", true) as Role;
+        const targetUser = options.getUser("user") || user;
+        const targetMember = guild.members.cache.get(targetUser.id) || (await guild.members.fetch(targetUser.id).catch(() => null));
+
+        if (!targetMember) {
+          return await interaction.reply({
+            content: "Target member not found in this server.",
+            ephemeral: true,
+          });
+        }
+
+        const botMember = guild.members.me;
+        if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+          return await interaction.reply({
+            content: "Yuri lacks the **Manage Roles** permission to grant roles.",
+            ephemeral: true,
+          });
+        }
+
+        if (botMember.roles.highest.position <= role.position) {
+          return await interaction.reply({
+            content: `Cannot grant role <@&${role.id}> because it is higher than or equal to Yuri's highest role in role hierarchy.`,
+            ephemeral: true,
+          });
+        }
+
+        try {
+          await targetMember.roles.add(role);
+          const embed = new EmbedBuilder()
+            .setColor(0x57f287)
+            .setTitle("👑 Role Granted")
+            .setDescription(`Successfully granted <@&${role.id}> (\`${role.name}\`) to <@${targetMember.id}>.`)
+            .setFooter({ text: "Yuri Authorized Owner Administration" })
+            .setTimestamp();
+          return await interaction.reply({ embeds: [embed] });
+        } catch (err: any) {
+          return await interaction.reply({
+            content: `Failed to grant role: ${err?.message || err}`,
+            ephemeral: true,
+          });
+        }
+      }
+
+      // 4. /playmusic (real-time 24/7 YouTube music streaming in VC)
+      if (commandName === "playmusic") {
+        if (!guild) {
+          return await interaction.reply({
+            content: "Music can only be played within a server voice channel.",
+            ephemeral: true,
+          });
+        }
+
+        const voiceChannel = (member as GuildMember)?.voice?.channel;
+        if (!voiceChannel) {
+          return await interaction.reply({
+            content: "You must be inside a Voice Channel for Yuri to join you and stream audio!",
+            ephemeral: true,
+          });
+        }
+
+        const query = options.getString("query", true);
+        await interaction.deferReply();
+
+        const ytUrl = await searchYouTube(query);
+        if (!ytUrl) {
+          return await interaction.editReply({
+            content: `Could not locate a playable YouTube track for: \`${query}\``,
+          });
+        }
+
+        try {
+          const state = getOrCreateGuildVoice(guild, voiceChannel.id);
+          const played = await playYouTubeAudio(guild.id, ytUrl, undefined, user.tag);
+
+          if (!played) {
+            return await interaction.editReply({
+              content: "Failed to stream YouTube audio. Please try another track or URL.",
+            });
+          }
+
+          const embed = new EmbedBuilder()
+            .setColor(0xed4245)
+            .setTitle("🎶 Now Playing • 24/7 Voice Stream")
+            .setDescription(
+              `📻 **[${state.currentSong?.title || "YouTube Audio"}](${ytUrl})**\n\n` +
+              `🔊 **Voice Channel:** <#${voiceChannel.id}>\n` +
+              `👤 **Requested By:** <@${user.id}>\n` +
+              `🔁 **Loop Mode:** \`${state.loop ? "ON (24/7 Repeating)" : "OFF"}\``
+            )
+            .setFooter({ text: "Yuri 24/7 Real-Time Voice Engine" })
+            .setTimestamp();
+
+          if (state.currentSong?.thumbnail) {
+            embed.setThumbnail(state.currentSong.thumbnail);
+          }
+
+          return await interaction.editReply({ embeds: [embed] });
+        } catch (err: any) {
+          return await interaction.editReply({
+            content: `Voice stream error: ${err?.message || err}`,
+          });
+        }
+      }
+
+      // 5. /leavevc
+      if (commandName === "leavevc") {
+        if (!guild) {
+          return await interaction.reply({
+            content: "This command can only be executed in a server.",
+            ephemeral: true,
+          });
+        }
+
+        const state = guildVoiceStates.get(guild.id);
+        if (!state || !state.connection) {
+          return await interaction.reply({
+            content: "Yuri is not currently connected to any Voice Channel in this server.",
+            ephemeral: true,
+          });
+        }
+
+        try {
+          state.player?.stop();
+          state.connection?.destroy();
+          guildVoiceStates.delete(guild.id);
+          return await interaction.reply({
+            content: "🔌 Disconnected from Voice Channel and stopped music playback.",
+          });
+        } catch (err: any) {
+          return await interaction.reply({
+            content: `Error leaving VC: ${err?.message || err}`,
+            ephemeral: true,
+          });
+        }
+      }
+
+      // 6. /loop
+      if (commandName === "loop") {
+        if (!guild) {
+          return await interaction.reply({
+            content: "This command can only be executed in a server.",
+            ephemeral: true,
+          });
+        }
+
+        const state = guildVoiceStates.get(guild.id);
+        if (!state || !state.currentSong) {
+          return await interaction.reply({
+            content: "No active music stream is currently playing in voice channel to loop.",
+            ephemeral: true,
+          });
+        }
+
+        state.loop = !state.loop;
         const embed = new EmbedBuilder()
           .setColor(0xed4245)
-          .setTitle("🎱 Magic 8-Ball")
-          .addFields(
-            { name: "Question", value: question, inline: false },
-            { name: "Answer", value: `**${answer}**`, inline: false }
+          .setTitle(state.loop ? "🔂 Music Loop Enabled" : "➡️ Music Loop Disabled")
+          .setDescription(
+            state.loop
+              ? `Current track **${state.currentSong.title}** will now repeat 24/7 continuously.`
+              : "Looping disabled. Track will stop after finishing."
           )
+          .setFooter({ text: "Yuri Voice Music Controller" })
           .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
 
-      // 23. /coinflip
-      if (commandName === "coinflip") {
-        const outcome = Math.random() > 0.5 ? "🪙 Heads" : "🪙 Tails";
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🪙 Coin Flip")
-          .setDescription(`The coin landed on: **${outcome}**!`)
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 24. /dice
-      if (commandName === "dice") {
-        const sides = options.getInteger("sides") || 6;
-        const roll = Math.floor(Math.random() * sides) + 1;
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🎲 Dice Roll")
-          .setDescription(`You rolled a **d${sides}** and got: **${roll}**!`)
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 25. /mock
-      if (commandName === "mock") {
-        const text = options.getString("text", true);
-        const mocked = text
-          .split("")
-          .map((c, i) => (i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()))
-          .join("");
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🤪 MoCkEd TeXt")
-          .setDescription(mocked)
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
-
-      // 26. /reverse
-      if (commandName === "reverse") {
-        const text = options.getString("text", true);
-        const reversed = text.split("").reverse().join("");
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🔄 Reversed Text")
-          .setDescription(reversed)
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return await interaction.reply({ embeds: [embed] });
       }
     } catch (err: any) {
       console.error("[YURI BOT] Slash command error:", err);
