@@ -660,12 +660,6 @@ export const YURI_SLASH_COMMANDS = [
     integration_types: [0, 1],
     contexts: [0, 1, 2],
   },
-  {
-    name: "whitelisted",
-    description: "View all currently authorized Yuri user IDs",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
 ];
 
 // Direct Discord REST API Slash Command Synchronizer (Ensures 100% User & Guild Context registration)
@@ -1887,7 +1881,7 @@ async function createAndRunBot(
       if (commandName === "playmusic") {
         if (!guild) {
           return await interaction.reply({
-            content: "⚠️ Music can only be played within a server voice channel.",
+            content: "⚠️ **Music Error:** Yuri must be a member of the server to play music. Please invite the Yuri Bot to this server using the link in `/help`.",
             ephemeral: true,
           });
         }
@@ -1895,46 +1889,50 @@ async function createAndRunBot(
         const voiceChannel = (member as GuildMember)?.voice?.channel;
         if (!voiceChannel) {
           return await interaction.reply({
-            content: "⚠️ You must be inside a Voice Channel for Yuri to join you and stream audio!",
+            content: "⚠️ **Voice Error:** You must be connected to a voice channel in this server for Yuri to join you and stream audio!",
             ephemeral: true,
           });
         }
 
         const query = options.getString("query", true);
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral: true });
 
-        const result = await playAudioStream(guild, voiceChannel.id, query, user.tag);
-        if (!result.success || !result.track) {
-          return await interaction.editReply({
-            content: `⚠️ Failed to play audio: ${result.error || "Track not found."}`,
-          });
+        try {
+          const result = await playAudioStream(guild, voiceChannel.id, query, user.tag);
+          if (!result.success || !result.track) {
+            return await interaction.editReply({
+              content: `⚠️ Failed to play audio: ${result.error || "Track not found."}`,
+            });
+          }
+
+          const embed = new EmbedBuilder()
+            .setColor(0xed4245)
+            .setTitle("🎶 Now Playing • 24/7 Voice Stream")
+            .setDescription(
+              `📻 **[${result.track.title}](${result.track.url})**\n\n` +
+              `🔊 **Voice Channel:** <#${voiceChannel.id}>\n` +
+              `⏱️ **Duration:** \`${result.track.duration || "Audio"}\`\n` +
+              `👤 **Requested By:** <@${user.id}>\n` +
+              `🔁 **Loop Mode:** \`Available via /loop\``
+            )
+            .setFooter({ text: "Yuri 24/7 Voice Music Engine" })
+            .setTimestamp();
+
+          if (result.track.thumbnail) {
+            embed.setThumbnail(result.track.thumbnail);
+          }
+
+          return await interaction.editReply({ content: "✅ **Playback started!**", embeds: [embed] });
+        } catch (err: any) {
+          return await interaction.editReply({ content: `⚠️ **Playback Error:** ${err.message || err}` }).catch(() => {});
         }
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🎶 Now Playing • 24/7 Voice Stream")
-          .setDescription(
-            `📻 **[${result.track.title}](${result.track.url})**\n\n` +
-            `🔊 **Voice Channel:** <#${voiceChannel.id}>\n` +
-            `⏱️ **Duration:** \`${result.track.duration || "Audio"}\`\n` +
-            `👤 **Requested By:** <@${user.id}>\n` +
-            `🔁 **Loop Mode:** \`Available via /loop\``
-          )
-          .setFooter({ text: "Yuri 24/7 Voice Music Engine" })
-          .setTimestamp();
-
-        if (result.track.thumbnail) {
-          embed.setThumbnail(result.track.thumbnail);
-        }
-
-        return await interaction.editReply({ embeds: [embed] });
       }
 
       // 4. /radio (24/7 Live Radio Streams)
       if (commandName === "radio") {
         if (!guild) {
           return await interaction.reply({
-            content: "⚠️ Radio streams can only be played inside a server voice channel.",
+            content: "⚠️ **Radio Error:** Radio streams can only be played inside a server voice channel. Please invite the Yuri Bot to this server.",
             ephemeral: true,
           });
         }
@@ -1942,37 +1940,41 @@ async function createAndRunBot(
         const voiceChannel = (member as GuildMember)?.voice?.channel;
         if (!voiceChannel) {
           return await interaction.reply({
-            content: "⚠️ You must join a Voice Channel first so Yuri can stream radio for you!",
+            content: "⚠️ **Voice Error:** You must join a Voice Channel first so Yuri can stream radio for you!",
             ephemeral: true,
           });
         }
 
         const stationKey = options.getString("station", true);
         const station = RADIO_STATIONS[stationKey] || RADIO_STATIONS.lofi;
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral: true });
 
-        const res = await playAudioStream(guild, voiceChannel.id, stationKey, user.tag);
-        if (!res.success) {
-          return await interaction.editReply({
-            content: `⚠️ Failed to stream radio: ${res.error || "Unknown error."}`,
-          });
+        try {
+          const res = await playAudioStream(guild, voiceChannel.id, stationKey, user.tag);
+          if (!res.success) {
+            return await interaction.editReply({
+              content: `⚠️ Failed to stream radio: ${res.error || "Unknown error."}`,
+            });
+          }
+
+          const embed = new EmbedBuilder()
+            .setColor(0xed4245)
+            .setTitle("📻 24/7 Live Radio Broadcast Active")
+            .setDescription(
+              `🎶 **Station:** [${station.name}](${station.url})\n` +
+              `🏷️ **Genre:** \`${station.genre}\`\n` +
+              `🔊 **Voice Channel:** <#${voiceChannel.id}>\n` +
+              `👤 **Started By:** <@${user.id}>\n` +
+              `⏱️ **Stream Mode:** \`24/7 Continuous Non-Stop\``
+            )
+            .setThumbnail(station.thumb)
+            .setFooter({ text: "Yuri 24/7 Voice Audio Engine" })
+            .setTimestamp();
+
+          return await interaction.editReply({ content: "✅ **Radio stream started!**", embeds: [embed] });
+        } catch (err: any) {
+          return await interaction.editReply({ content: `⚠️ **Radio Error:** ${err.message || err}` }).catch(() => {});
         }
-
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("📻 24/7 Live Radio Broadcast Active")
-          .setDescription(
-            `🎶 **Station:** [${station.name}](${station.url})\n` +
-            `🏷️ **Genre:** \`${station.genre}\`\n` +
-            `🔊 **Voice Channel:** <#${voiceChannel.id}>\n` +
-            `👤 **Started By:** <@${user.id}>\n` +
-            `⏱️ **Stream Mode:** \`24/7 Continuous Non-Stop\``
-          )
-          .setThumbnail(station.thumb)
-          .setFooter({ text: "Yuri 24/7 Voice Audio Engine" })
-          .setTimestamp();
-
-        return await interaction.editReply({ embeds: [embed] });
       }
 
       // 5. /pause
@@ -2385,7 +2387,12 @@ async function createAndRunBot(
           .setDescription(`**${question}**\n\nReact below to vote: 👍 Yes | 👎 No`)
           .setTimestamp();
 
-        await interaction.reply({ content: "📊 **Generating community poll...**", ephemeral: true });
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp({ content: "📊 **Generating community poll...**", ephemeral: true }).catch(() => {});
+        } else {
+          await interaction.reply({ content: "📊 **Generating community poll...**", ephemeral: true }).catch(() => {});
+        }
+        
         const msg = await interaction.channel?.send({ embeds: [embed] });
         if (msg && "react" in msg) {
           await msg.react("👍").catch(() => {});
@@ -2615,7 +2622,9 @@ async function createAndRunBot(
     } catch (err: any) {
       console.error("[YURI BOT] Slash command error:", err);
       if (!interaction.replied && !interaction.deferred) {
-        interaction.reply({ content: `An error occurred: ${err?.message || err}`, ephemeral: true }).catch(() => {});
+        interaction.reply({ content: `⚠️ **Service Error:** ${err?.message || err}`, ephemeral: true }).catch(() => {});
+      } else {
+        interaction.followUp({ content: `⚠️ **Service Error:** ${err?.message || err}`, ephemeral: true }).catch(() => {});
       }
     }
   });

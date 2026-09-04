@@ -1,6 +1,15 @@
 # What's New / Patch Notes
 
-## Version Update - Dual-Bot Architecture & Global Server Links (Latest)
+## Version Update - Stability & Reliability Patch (Latest)
+
+### 🛠️ Bug Fixes & System Stability
+- **Slash Command Registry Fix**: Resolved a critical `APPLICATION_COMMANDS_DUPLICATE_NAME` error that was preventing the Russian Bot from registering new commands. Pruned duplicate entries in the global command array.
+- **Improved Music Error Messaging**: Updated `/playmusic` and `/radio` with clearer error feedback. If the bot is used in a server where it hasn't been invited yet, it now explicitly requests a server invite rather than showing a generic voice error.
+- **Interaction Flow Optimization**: Implemented `deferReply` for all music and radio commands to prevent **"Interaction Failed"** and **"Unknown Interaction"** errors during search and connection phases.
+- **Reliable Interaction Acknowledgement**: Fixed `Interaction already acknowledged` errors by implementing more robust checks on interaction states before sending replies or error follow-ups.
+- **Ephemeral Search Status**: Search processes now correctly display an ephemeral (private) status to the user while the audio engine connects to the voice channel.
+
+## Version Update - Dual-Bot Architecture & Global Server Links
 
 ### 🚀 Dual-Bot Infrastructure
 - **Russian Controller Bot (`1545467399493521478`)**: Handles music, fun games, and core automation.
