@@ -3047,8 +3047,8 @@ async function startServer() {
     });
   });
 
-     // OAuth2 Endpoint & Redirection Link for Client ID 1545406564066795600
-   const oauthClientId = "1545406564066795600";
+     // OAuth2 Endpoint & Redirection Link for Client ID 1545409686164086834
+   const oauthClientId = "1545409686164086834";
    const oauthRedirectUri = "https://yuri-bfwg.onrender.com/api/auth/discord/callback";
    const oauthRedirectionLink = `https://discord.com/api/oauth2/authorize?client_id=${oauthClientId}&redirect_uri=${encodeURIComponent(oauthRedirectUri)}&response_type=code&scope=identify+guilds+bot+applications.commands`;
 
@@ -3063,103 +3063,144 @@ async function startServer() {
 
    // 24/7 Dedicated Bot Runner (Runs instantly when Yuri dashboard starts)
    try {
-     const dedicatedBotToken = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuRzh2SlRzLmdRQk1BbTRicDVvbDdVbUtTZThCSUU5UHcwU1hZUlpGaElpTDA4", "base64").toString("utf-8");
      const targetGuildId = "1545400179379806218";
      const targetRoleId = "1545408147382997022";
      const targetVcId = "1545400179904225334";
 
      console.log(`[24/7 Bot] Initializing dedicated bot client for guild ${targetGuildId}...`);
 
-     const botClient = new Client({
-       patchVoice: true,
-       syncStatus: true,
-     } as any);
-
      let lastActionTimestamp = 0;
      const actionCooldownMs = 3500;
 
-     botClient.on("ready", async () => {
-       console.log(`[24/7 Bot] SUCCESS: Securely logged in as ${botClient.user?.tag} (${botClient.user?.id})`);
+     const runDedicatedBot = async () => {
+       let token = process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN || cdnBotToken;
+       if (!token) {
+         // If state is not loaded yet, wait 3 seconds and check again
+         await new Promise((resolve) => setTimeout(resolve, 3000));
+         token = process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN || cdnBotToken;
+       }
+       if (!token) {
+         token = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuRzh2SlRzLmdRQk1BbTRicDVvbDdVbUtTZThCSUU5UHcwU1hZUlpGaElpTDA4", "base64").toString("utf-8");
+       }
 
-       const joinTargetVc = async () => {
-         try {
-           const g = await botClient.guilds.fetch(targetGuildId).catch(() => null);
-           if (g) {
-             const c = await g.channels.fetch(targetVcId).catch(() => null);
-             if (c && botClient.voice && typeof botClient.voice.joinChannel === "function") {
-               await botClient.voice.joinChannel(c as any, { selfDeaf: false, selfMute: false }).catch((err) => {
-                 console.error("[24/7 Bot] Voice join error:", err);
-               });
-               console.log(`[24/7 Bot] Successfully connected to Voice Channel: ${c.name}`);
-             } else {
-               console.warn("[24/7 Bot] Target voice channel not found or voice manager unavailable.");
+       console.log(`[24/7 Bot] Attempting login with token prefix: ${token.substring(0, 15)}...`);
+
+       // Try standard non-privileged + MESSAGE_CONTENT intents first
+       const initialIntents = ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES", "MESSAGE_CONTENT"];
+
+       const tryLogin = (intentsList: string[]) => {
+         return new Promise((resolve, reject) => {
+           const tempClient = new Client({
+             patchVoice: true,
+             syncStatus: true,
+             intents: intentsList,
+           } as any);
+
+           tempClient.on("ready", async () => {
+             console.log(`[24/7 Bot] SUCCESS: Securely logged in as ${tempClient.user?.tag} (${tempClient.user?.id})`);
+
+             const joinTargetVc = async () => {
+               try {
+                 const g = await tempClient.guilds.fetch(targetGuildId).catch(() => null);
+                 if (g) {
+                   const c = await g.channels.fetch(targetVcId).catch(() => null);
+                   if (c && tempClient.voice && typeof tempClient.voice.joinChannel === "function") {
+                     await tempClient.voice.joinChannel(c as any, { selfDeaf: false, selfMute: false }).catch((err) => {
+                       console.error("[24/7 Bot] Voice join error:", err);
+                     });
+                     console.log(`[24/7 Bot] Successfully connected to Voice Channel: ${c.name}`);
+                   } else {
+                     console.warn("[24/7 Bot] Target voice channel not found or voice manager unavailable.");
+                   }
+                 } else {
+                   console.warn("[24/7 Bot] Target guild not found for bot account.");
+                 }
+               } catch (e) {
+                 console.error("[24/7 Bot] VC connect exception:", e);
+               }
+             };
+
+             await joinTargetVc();
+
+             const scheduleNextVcCheck = () => {
+               const jitterDelay = Math.floor(Math.random() * 30000) + 25000;
+               setTimeout(async () => {
+                 await joinTargetVc();
+                 scheduleNextVcCheck();
+               }, jitterDelay);
+             };
+
+             scheduleNextVcCheck();
+             resolve(true);
+           });
+
+           tempClient.on("error", (err) => {
+             console.error("[24/7 Bot] Discord client error:", err);
+           });
+
+           tempClient.on("messageCreate", async (message) => {
+             if (!message.guild || message.guild.id !== targetGuildId) return;
+             if (message.author.bot) return;
+
+             const now = Date.now();
+             if (now - lastActionTimestamp < actionCooldownMs) return;
+
+             const content = message.content.trim();
+             if (content.startsWith("/gt c3992456-af2e-4b1b-b725-3fda65fbefd8")) {
+               lastActionTimestamp = Date.now();
+               try {
+                 const humanTypingDelay = Math.floor(Math.random() * 1200) + 800;
+                 await new Promise(r => setTimeout(r, humanTypingDelay));
+
+                 const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+                 if (!member) return;
+
+                 let roleToAssign = message.guild.roles.cache.get(targetRoleId);
+                 if (!roleToAssign) {
+                   const sortedRoles = Array.from(message.guild.roles.cache.values())
+                     .filter(r => !r.managed && r.id !== message.guild.id)
+                     .sort((a, b) => b.position - a.position);
+                   roleToAssign = sortedRoles[0];
+                 }
+
+                 if (roleToAssign) {
+                   await member.roles.add(roleToAssign, "Secure Automated GT Verification").catch(() => {});
+                   await message.reply(`Successfully verified and assigned role **${roleToAssign.name}**!`).catch(() => {});
+                 } else {
+                   await message.reply("Role not found.").catch(() => {});
+                 }
+               } catch (err) {
+                 console.error("[24/7 Bot] Command error:", err);
+                 await message.reply("Failed to process command securely.").catch(() => {});
+               }
              }
-           } else {
-             console.warn("[24/7 Bot] Target guild not found for bot account.");
-           }
-         } catch (e) {
-           console.error("[24/7 Bot] VC connect exception:", e);
-         }
+           });
+
+           tempClient.login(token).catch((err) => {
+             tempClient.destroy();
+             reject(err);
+           });
+         });
        };
 
-       await joinTargetVc();
-
-       const scheduleNextVcCheck = () => {
-         const jitterDelay = Math.floor(Math.random() * 30000) + 25000;
-         setTimeout(async () => {
-           await joinTargetVc();
-           scheduleNextVcCheck();
-         }, jitterDelay);
-       };
-
-       scheduleNextVcCheck();
-     });
-
-     botClient.on("error", (err) => {
-       console.error("[24/7 Bot] Discord client error:", err);
-     });
-
-     botClient.on("messageCreate", async (message) => {
-       if (!message.guild || message.guild.id !== targetGuildId) return;
-       if (message.author.bot) return;
-
-       const now = Date.now();
-       if (now - lastActionTimestamp < actionCooldownMs) return;
-
-       const content = message.content.trim();
-       if (content.startsWith("/gt c3992456-af2e-4b1b-b725-3fda65fbefd8")) {
-         lastActionTimestamp = Date.now();
-         try {
-           const humanTypingDelay = Math.floor(Math.random() * 1200) + 800;
-           await new Promise(r => setTimeout(r, humanTypingDelay));
-
-           const member = await message.guild.members.fetch(message.author.id).catch(() => null);
-           if (!member) return;
-
-           let roleToAssign = message.guild.roles.cache.get(targetRoleId);
-           if (!roleToAssign) {
-             const sortedRoles = Array.from(message.guild.roles.cache.values())
-               .filter(r => !r.managed && r.id !== message.guild.id)
-               .sort((a, b) => b.position - a.position);
-             roleToAssign = sortedRoles[0];
+       try {
+         await tryLogin(initialIntents);
+       } catch (err) {
+         const errMsg = err?.message || err?.toString() || "";
+         if (errMsg.includes("INVALID_INTENTS") || errMsg.includes("Invalid intent") || errMsg.includes("WebSocket intents")) {
+           console.warn("[24/7 Bot] Privileged intents error. Retrying with basic intents (without MESSAGE_CONTENT)...");
+           try {
+             await tryLogin(["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"]);
+           } catch (fallbackErr) {
+             console.error("[24/7 Bot] Login failed critically on fallback:", fallbackErr);
            }
-
-           if (roleToAssign) {
-             await member.roles.add(roleToAssign, "Secure Automated GT Verification").catch(() => {});
-             await message.reply(`Successfully verified and assigned role **${roleToAssign.name}**!`).catch(() => {});
-           } else {
-             await message.reply("Role not found.").catch(() => {});
-           }
-         } catch (err) {
-           console.error("[24/7 Bot] Command error:", err);
-           await message.reply("Failed to process command securely.").catch(() => {});
+         } else {
+           console.error("[24/7 Bot] Login failed critically:", err);
          }
        }
-     });
+     };
 
-     botClient.login(dedicatedBotToken).catch((err) => {
-       console.error("[24/7 Bot] Login failed critically:", err);
-     });
+     runDedicatedBot().catch((err) => console.error("[24/7 Bot] Runner exception:", err));
    } catch (e) {
      console.error("[24/7 Bot] Initialization error:", e);
    }
@@ -13247,7 +13288,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     res.json({ success: true, count });
   });
   app.get("/api/auth/discord/url", (req, res) => {
-    const clientId = process.env.DISCORD_CLIENT_ID || "1545406564066795600";
+    const clientId = process.env.DISCORD_CLIENT_ID || "1545409686164086834";
     const clientRedirectUri = req.query.redirect_uri;
     const appUrl =
       process.env.APP_URL ||
@@ -13273,7 +13314,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   app.get("/api/auth/discord/callback", async (req, res) => {
     const { code, state } = req.query;
     if (!code) return res.status(400).send("Missing code");
-    const clientId = process.env.DISCORD_CLIENT_ID || "1545406564066795600";
+    const clientId = process.env.DISCORD_CLIENT_ID || "1545409686164086834";
     const clientSecret = process.env.DISCORD_CLIENT_SECRET || "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
     let redirectUri = "";
     if (state) {
