@@ -1585,13 +1585,13 @@ export function getYuriBotStatus(getActiveClients?: () => Map<string, any>) {
     inviteUrl: `https://discord.com/oauth2/authorize?client_id=${b.user?.id}&permissions=8&integration_type=1&scope=applications.commands`,
   }));
 
-  const mainBot = botsList.find((b) => b.id === "1545467399493521478") || botsList.find((b) => b.online) || botsList[0];
+  const mainBot = botsList.find((b) => b.id === "1545528232898465893") || botsList.find((b) => b.online) || botsList[0];
   const isOnline = !!(mainBot && mainBot.online);
   const uptimeSec = isOnline ? Math.floor((Date.now() - yuriBotStartTime) / 1000) : 0;
   return {
     online: isOnline,
     tag: mainBot?.tag || "Offline",
-    id: "1545467399493521478",
+    id: "1545528232898465893",
     avatar: mainBot?.avatar || "",
     ping: mainBot?.ping || 0,
     uptime: uptimeSec,

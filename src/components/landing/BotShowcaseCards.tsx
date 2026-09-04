@@ -20,16 +20,16 @@ export function BotShowcaseCards() {
 
   const BOTS: BotInfo[] = [
     {
-      id: '1545467399493521478',
-      name: 'Бог добр Service',
-      tag: 'Бог добр#5735',
+      id: '1545528232898465893',
+      name: 'Yuri Companion Service',
+      tag: 'Yuri Companion#0000',
       status: 'ONLINE',
       ping: 18,
       guildsCount: 1,
       avatarUrl: 'https://cdn.discordapp.com/embed/avatars/1.png',
       badge: 'PRIMARY COMPANION',
       description: 'Dedicated 24/7 companion delivering crimson embed parity, slash commands (/giverole, /whois, /snipe), and live guild moderation.',
-      inviteUrl: 'https://discord.com/oauth2/authorize?client_id=1545467399493521478&permissions=8&integration_type=1&scope=applications.commands'
+      inviteUrl: 'https://discord.com/oauth2/authorize?client_id=1545528232898465893&permissions=8&integration_type=1&scope=applications.commands'
     }
   ];
 
