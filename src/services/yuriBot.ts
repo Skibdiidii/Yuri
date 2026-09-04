@@ -1633,7 +1633,7 @@ export function getYuriBotStatus(getActiveClients?: () => Map<string, any>) {
   return {
     online: isOnline,
     tag: mainBot?.tag || "Offline",
-    id: mainBot?.id || "1490731239811059723",
+    id: mainBot?.id || "1545467399493521478",
     avatar: mainBot?.avatar || "",
     ping: mainBot?.ping || 0,
     uptime: uptimeSec,

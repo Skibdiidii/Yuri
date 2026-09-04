@@ -1054,10 +1054,7 @@ const blacklistedUsers = new Set();
 const ipBannedUsers = new Set();
 const whitelistedAdmins = new Set([
   "1453843872286380218",
-  "1512170544118894704",
-  "1413100448482857081",
-  "1462523761302437889",
-  "1545389998315143229",
+  "1545509798756487241",
 ]);
 const nitroAgent = new https.Agent({
   keepAlive: true,
@@ -10724,10 +10721,8 @@ ${list.substring(0, 1900)}`,
       if (session) {
         if (
           session.username === "yannaaax" ||
-          session.id === "1413100448482857081" ||
-          session.id === "1462523761302437889" ||
           session.id === "1453843872286380218" ||
-          session.id === "1512170544118894704"
+          session.id === "1545509798756487241"
         ) {
           isAdmin = true;
         }
@@ -10753,9 +10748,8 @@ ${list.substring(0, 1900)}`,
       } catch (e) {}
       if (
         (session && session.username === "yannaaax") ||
-        userId === "1413100448482857081" ||
-        userId === "1462523761302437889" ||
-        userId === "1512170544118894704"
+        userId === "1453843872286380218" ||
+        userId === "1545509798756487241"
       ) {
         isAdmin = true;
       }

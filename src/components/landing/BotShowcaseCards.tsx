@@ -20,27 +20,15 @@ export function BotShowcaseCards() {
 
   const BOTS: BotInfo[] = [
     {
-      id: '1490731239811059723',
-      name: 'Yuri Bot 24/7',
-      tag: 'Yuri#2836',
-      status: 'ONLINE',
-      ping: 18,
-      guildsCount: 1,
-      avatarUrl: 'https://cdn.discordapp.com/avatars/1490731239811059723/79f53e0984959db12ee7293a778e3fa5.png?size=1024',
-      badge: 'PRIMARY COMPANION',
-      description: 'Dedicated 24/7 companion delivering crimson embed parity, slash commands (/giverole, /whois, /snipe), and live guild moderation.',
-      inviteUrl: 'https://discord.com/oauth2/authorize?client_id=1490731239811059723&permissions=8&integration_type=0&scope=bot%20applications.commands'
-    },
-    {
       id: '1545467399493521478',
       name: 'Бог добр Service',
       tag: 'Бог добр#5735',
       status: 'ONLINE',
-      ping: 32,
+      ping: 18,
       guildsCount: 1,
       avatarUrl: 'https://cdn.discordapp.com/embed/avatars/1.png',
-      badge: 'SECONDARY MIRROR',
-      description: 'Secondary mirror gateway host ensuring continuous uptime, rapid failover, and global application command caching.',
+      badge: 'PRIMARY COMPANION',
+      description: 'Dedicated 24/7 companion delivering crimson embed parity, slash commands (/giverole, /whois, /snipe), and live guild moderation.',
       inviteUrl: 'https://discord.com/oauth2/authorize?client_id=1545467399493521478&permissions=8&integration_type=0&scope=bot%20applications.commands'
     }
   ];
