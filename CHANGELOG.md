@@ -15,10 +15,16 @@
 - **Bulk Purge Fixes**: Improved `/purge` reliability with Server Bot integration.
 
 ### 🎮 New Utility & Fun Commands
+- **Interactive "Run Commands" Console**: Added a high-visibility button on `.help` that opens a 15+ option select menu for instant execution of moderation, games, and radio.
+- **Manual Command Entry**: New modal-based manual command runner for rapid text-based execution.
 - **New Command `/ship`**: Interactive love compatibility calculator between users.
 - **New Command `/hack`**: Simulated terminal-style terminal animation for fun interactions.
 - **New Command `/whitelisted`**: View the list of authorized Yuri Companion users.
-- **Broadcast Enhancements**: Removed "Sent by user" footers from `/say` and `/embed` for a cleaner, official look.
+
+### 📢 Broadcast & Interaction Refinement
+- **Universal `/say` & `/embed`**: Now fully functional in **DMs and Group DMs**, removing the guild-only restriction.
+- **Ephemeral Dispatch Flow**: Commands now reply with a private "Dispatching..." status immediately to prevent timeout errors, followed by the public embed.
+- **Broadcast Aesthetics**: Removed "Sent by user" footers from `/say` and `/embed` for a cleaner, official look.
 
 ### 🔗 Global Link Synchronization
 - **New Official Discord Server**: All invite links updated to `https://discord.gg/eaEB3q7pEb`.
