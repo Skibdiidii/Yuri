@@ -3149,7 +3149,7 @@ async function startServer() {
    try {
      const targetGuildId = "1545400179379806218";
      const targetRoleId = "1545408147382997022";
-     const targetVcId = "1545400179904225334";
+     const targetVcId = "1545528922022744098";
 
      console.log(`[24/7 Bot] Initializing dedicated bot client for guild ${targetGuildId}...`);
 

@@ -4,9 +4,6 @@ import {
   Partials,
   ActivityType,
   EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   PermissionFlagsBits,
   ApplicationCommandOptionType,
   type ChatInputCommandInteraction,
@@ -24,7 +21,7 @@ export const KNOWN_BOT_TOKENS: string[] = Array.from(
     [
       process.env.DISCORD_BOT_TOKEN,
       process.env.YURI_BOT_TOKEN,
-      Buffer.from("TVRRNU1EY3pNVEl6T1RneE1UQTFPVGN5TXcuR0kyeU5PLkdFTFZFVng4T1BtZ1FsMzJSbHBPTnFOdzBTcGFBSGp1TkdQSHM0", "base64").toString("utf-8"),
+      Buffer.from("TVRVME5UVXlPREl6TWpnNU9EUTJOVGc1TXcuR1pQWW9xLmx6dnpBVktIeVNxMzRRV3V3ZS16OUNCeG1pY2R4VW11VGVYVU4w", "base64").toString("utf-8"),
       Buffer.from("TVRVME5UUTJOek01T1RRNU16VXlNVFEzT0EuR1dZb1JVLnU0Q2Y4bXVYeHY2aGdCN0pPZk1pMFk4bTVCLXdfWlgwV1VLa25F", "base64").toString("utf-8")
     ].filter(Boolean) as string[]
   )
@@ -113,23 +110,6 @@ export function isAuthorizedSelfbotUser(
 
 // Discord Application (Slash) Commands Definition
 export const YURI_SLASH_COMMANDS = [
-  {
-    name: "help",
-    description: "Display Yuri Selfbot Companion commands directory and documentation",
-    options: [
-      {
-        name: "page",
-        description: "Select page number (1: Profile, 2: Server & Roles, 3: Automation)",
-        type: ApplicationCommandOptionType.Integer,
-        required: false,
-        choices: [
-          { name: "Page 1: Profile & Identity", value: 1 },
-          { name: "Page 2: Server & Role Management", value: 2 },
-          { name: "Page 3: Utilities & Automation", value: 3 },
-        ],
-      },
-    ],
-  },
   {
     name: "whois",
     description: "Inspect detailed profile, roles, permissions, and join dates of a user",
@@ -413,22 +393,7 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
       .setImage("https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif");
   }
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("yuri_help_1")
-      .setLabel("Page 1: Profile")
-      .setStyle(p === 1 ? ButtonStyle.Danger : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("yuri_help_2")
-      .setLabel("Page 2: Roles & Guild")
-      .setStyle(p === 2 ? ButtonStyle.Danger : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("yuri_help_3")
-      .setLabel("Page 3: Automation")
-      .setStyle(p === 3 ? ButtonStyle.Danger : ButtonStyle.Secondary)
-  );
-
-  return { embed, components: [row] };
+  return { embed, components: [] };
 }
 
 async function createAndRunBot(
@@ -529,16 +494,6 @@ async function createAndRunBot(
   // DISCORD APPLICATION (SLASH) COMMANDS & BUTTONS
   // ==========================================
   bot.on("interactionCreate", async (interaction: any) => {
-    // 1. Handle Help Pagination Buttons
-    if (interaction.isButton()) {
-      if (interaction.customId.startsWith("yuri_help_")) {
-        const pageNum = parseInt(interaction.customId.replace("yuri_help_", ""), 10) || 1;
-        const { embed, components } = buildHelpEmbed(pageNum, bot.user);
-        await interaction.update({ embeds: [embed], components }).catch(() => {});
-      }
-      return;
-    }
-
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName, options, user, guild, member } = interaction as ChatInputCommandInteraction;
@@ -547,7 +502,6 @@ async function createAndRunBot(
 
     // Public commands are accessible to all users for instant testing
     const PUBLIC_COMMANDS = new Set([
-      "help",
       "whois",
       "avatar",
       "banner",
@@ -573,13 +527,6 @@ async function createAndRunBot(
     }
 
     try {
-      // 1. /help
-      if (commandName === "help") {
-        const page = options.getInteger("page") || 1;
-        const { embed, components } = buildHelpEmbed(page, bot.user);
-        return interaction.reply({ embeds: [embed], components });
-      }
-
       // 2. /whois
       if (commandName === "whois") {
         const targetUser = options.getUser("user") || user;
@@ -1003,6 +950,9 @@ async function createAndRunBot(
   // ALWAYS PURE EMBED AND DESIGN (NO '>' OR '*')
   // ==========================================
   bot.on("messageCreate", async (message: any) => {
+    // Russian bot should only use slash commands, ignore prefix text commands
+    if (bot.user?.id === "1545467399493521478") return;
+
     if (message.author?.bot) return;
 
     // Check AFK mention auto-reply
