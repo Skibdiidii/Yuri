@@ -3212,12 +3212,13 @@ async function startServer() {
         });
 
         let replyText = response.text?.trim();
-        if (replyText) {
-          replyText = await runCodeFactorCorrection(replyText);
-          syncPreviewFromReply(replyText);
-          const processed = processReplyForClient(replyText);
-          return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
+        if (!replyText) {
+          throw new Error("Gemini returned an empty, blocked, or invalid response.");
         }
+        replyText = await runCodeFactorCorrection(replyText);
+        syncPreviewFromReply(replyText);
+        const processed = processReplyForClient(replyText);
+        return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
       } catch (geminiErr: any) {
         console.warn("[AI AGENT] Gemini generation error, falling back to Mistral:", geminiErr.message);
       }
