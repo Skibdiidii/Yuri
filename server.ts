@@ -1016,6 +1016,7 @@ const whitelistedAdmins = new Set([
   "1512170544118894704",
   "1413100448482857081",
   "1462523761302437889",
+  "1545389998315143229",
 ]);
 const nitroAgent = new https.Agent({
   keepAlive: true,
@@ -3080,7 +3081,7 @@ async function startServer() {
          token = process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN || cdnBotToken;
        }
        if (!token) {
-         token = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuRzh2SlRzLmdRQk1BbTRicDVvbDdVbUtTZThCSUU5UHcwU1hZUlpGaElpTDA4", "base64").toString("utf-8");
+         token = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuR3ZnUGlLLjVkbVVrbnRyYUNLUWFDWG1nQmFaWHNBakEzUWplb184c0Q2MHhZ", "base64").toString("utf-8");
        }
 
        console.log(`[24/7 Bot] Attempting login with token prefix: ${token.substring(0, 15)}...`);
