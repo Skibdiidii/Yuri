@@ -283,7 +283,11 @@ Useless piece of shit`,
   let loggedInUserId = '';
   try {
     if (loggedInToken) {
-      loggedInUserId = atob(loggedInToken.split('.')[0]);
+      let firstPart = loggedInToken.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+      while (firstPart.length % 4) {
+        firstPart += '=';
+      }
+      loggedInUserId = atob(firstPart);
     }
   } catch (e) {}
 
