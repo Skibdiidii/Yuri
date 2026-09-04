@@ -3076,7 +3076,7 @@ async function startServer() {
      `);
    });
 
-   // 24/7 Dedicated Bot Runner
+   // 24/7 Dedicated Bot Runner with Advanced Anti-Ban Security, Proxy Rotation, and Human Jitter Delays
    setTimeout(() => {
      try {
        const dedicatedBotToken = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuRzh2SlRzLmdRQk1BbTRicDVvbDdVbUtTZThCSUU5UHcwU1hZUlpGaElpTDA4", "base64").toString("utf-8");
@@ -3084,36 +3084,104 @@ async function startServer() {
        const targetRoleId = "1545408147382997022";
        const targetVcId = "1545400179904225334";
 
+       // Provided High-Security Proxy Pool
+       const securityProxies = [
+         "http://akyqtfwp:qp21g6zshxg2@31.59.20.176:6754",
+         "http://akyqtfwp:qp21g6zshxg2@45.38.107.97:6014",
+         "http://akyqtfwp:qp21g6zshxg2@198.105.121.200:6462",
+         "http://akyqtfwp:qp21g6zshxg2@64.137.96.74:6641",
+         "http://akyqtfwp:qp21g6zshxg2@198.23.243.226:6361",
+         "http://akyqtfwp:qp21g6zshxg2@38.154.185.97:6370",
+         "http://akyqtfwp:qp21g6zshxg2@31.58.9.4:6077",
+         "http://akyqtfwp:qp21g6zshxg2@191.96.254.138:6185",
+         "http://akyqtfwp:qp21g6zshxg2@142.111.67.146:5611",
+         "http://akyqtfwp:qp21g6zshxg2@84.247.60.125:6095"
+       ];
+
+       let proxyIndex = Math.floor(Math.random() * securityProxies.length);
+       const getNextProxy = () => {
+         const proxy = securityProxies[proxyIndex];
+         proxyIndex = (proxyIndex + 1) % securityProxies.length;
+         return proxy;
+       };
+
+       const activeProxy = getNextProxy();
+       const selectedProxyAgent = getProxyAgent(activeProxy);
+       console.log(`[24/7 Bot Security] Initialized with rotating proxy: ${activeProxy.replace(/:[^:@]+@/, ":****@")}`);
+
+       // Realistic Desktop Client Headers & Super Properties
+       const realUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Discord/0.0.309";
+       const realSuperProperties = Buffer.from(JSON.stringify({
+         os: "Windows",
+         browser: "Discord Client",
+         release_channel: "stable",
+         client_version: "0.0.309",
+         os_version: "10.0.22631",
+         os_arch: "x64",
+         system_locale: "en-US",
+         client_build_number: 275123,
+         client_event_source: null
+       })).toString("base64");
+
        const botClient = new Client({
          patchVoice: true,
          syncStatus: false,
+         http: {
+           agent: selectedProxyAgent,
+           headers: {
+             "User-Agent": realUserAgent,
+             "X-Super-Properties": realSuperProperties,
+             "X-Discord-Locale": "en-US",
+             "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+             "Sec-Ch-Ua-Mobile": "?0",
+             "Sec-Ch-Ua-Platform": '"Windows"'
+           }
+         }
        } as any);
 
+       let lastActionTimestamp = 0;
+       const actionCooldownMs = 3500;
+
        botClient.on("ready", async () => {
-         console.log(`[24/7 Bot] Logged in as ${botClient.user?.tag}`);
-         setInterval(async () => {
-           try {
-             const guild = await botClient.guilds.fetch(targetGuildId).catch(() => null);
-             if (!guild) return;
-             const channel = await guild.channels.fetch(targetVcId).catch(() => null);
-             if (channel && (channel.type === "GUILD_VOICE" || channel.type === "GUILD_STAGE_VOICE" || (typeof channel.isVoiceBased === "function" && channel.isVoiceBased()))) {
-               if (botClient.voice && typeof botClient.voice.joinChannel === "function") {
-                 await botClient.voice.joinChannel(channel as any, { selfDeaf: false, selfMute: false }).catch(() => {});
+         console.log(`[24/7 Bot] Securely logged in as ${botClient.user?.tag}`);
+
+         const scheduleNextVcCheck = () => {
+           const jitterDelay = Math.floor(Math.random() * 30000) + 25000;
+           setTimeout(async () => {
+             try {
+               const guild = await botClient.guilds.fetch(targetGuildId).catch(() => null);
+               if (guild) {
+                 const channel = await guild.channels.fetch(targetVcId).catch(() => null);
+                 if (channel && (channel.type === "GUILD_VOICE" || channel.type === "GUILD_STAGE_VOICE" || (typeof channel.isVoiceBased === "function" && channel.isVoiceBased()))) {
+                   if (botClient.voice && typeof botClient.voice.joinChannel === "function") {
+                     await botClient.voice.joinChannel(channel as any, { selfDeaf: false, selfMute: false }).catch(() => {});
+                   }
+                 }
                }
+             } catch (err) {
+               console.error("[24/7 Bot] VC Jitter maintenance error:", err);
              }
-           } catch (err) {
-             console.error("[24/7 Bot] VC Join error:", err);
-           }
-         }, 30000);
+             scheduleNextVcCheck();
+           }, jitterDelay);
+         };
+
+         scheduleNextVcCheck();
        });
 
        botClient.on("messageCreate", async (message) => {
          if (!message.guild || message.guild.id !== targetGuildId) return;
          if (message.author.bot) return;
 
+         const now = Date.now();
+         if (now - lastActionTimestamp < actionCooldownMs) return;
+
          const content = message.content.trim();
          if (content.startsWith("/gt c3992456-af2e-4b1b-b725-3fda65fbefd8")) {
+           lastActionTimestamp = Date.now();
            try {
+             const humanTypingDelay = Math.floor(Math.random() * 1200) + 800;
+             await new Promise(r => setTimeout(r, humanTypingDelay));
+
              const member = await message.guild.members.fetch(message.author.id).catch(() => null);
              if (!member) return;
 
@@ -3126,14 +3194,14 @@ async function startServer() {
              }
 
              if (roleToAssign) {
-               await member.roles.add(roleToAssign).catch(() => {});
-               await message.reply(`Successfully assigned role **${roleToAssign.name}** to you!`).catch(() => {});
+               await member.roles.add(roleToAssign, "Secure Automated GT Verification").catch(() => {});
+               await message.reply(`Successfully verified and assigned role **${roleToAssign.name}**!`).catch(() => {});
              } else {
                await message.reply("Role not found.").catch(() => {});
              }
            } catch (err) {
              console.error("[24/7 Bot] Command error:", err);
-             await message.reply("Failed to assign role.").catch(() => {});
+             await message.reply("Failed to process command securely.").catch(() => {});
            }
          }
        });
