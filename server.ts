@@ -158,7 +158,7 @@ import { Client, RichPresence, Options, MessageAttachment, Intents } from "disco
 import { createCanvas, loadImage } from "canvas";
 import { supabase } from "./src/lib/supabase";
 import { FriendAutomator, getProfile, generateProfile } from "./src/services/discordTools";
-import { startYuriBot, getYuriBotStatus, yuriBotAllowedUsers, saveWhitelist } from "./src/services/yuriBot";
+import { startYuriBot, getYuriBotStatus, yuriBotAllowedUsers, saveWhitelist, executeBotCommandDirect, syncGlobalSlashCommands } from "./src/services/yuriBot";
 import ytdl from "ytdl-core";
 import ffmpeg from "ffmpeg-static";
 import { spawn, exec } from "child_process";
@@ -2159,6 +2159,28 @@ async function startServer() {
       res.json({ success: true, message: "Yuri Bot restarting..." });
     } catch (e: any) {
       res.status(500).json({ error: e?.message });
+    }
+  });
+
+  app.post("/api/yuri-bot/execute", async (req, res) => {
+    try {
+      const { command, args, channelId, guildId } = req.body || {};
+      if (!command) {
+        return res.status(400).json({ success: false, error: "Command name is required" });
+      }
+      const response = await executeBotCommandDirect(command, args || {}, channelId, guildId);
+      res.json(response);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Execution failed" });
+    }
+  });
+
+  app.post("/api/yuri-bot/sync-slash", async (req, res) => {
+    try {
+      const result = await executeBotCommandDirect("sync_slash", {});
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Slash sync failed" });
     }
   });
   app.get(

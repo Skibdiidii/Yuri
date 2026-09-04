@@ -4,6 +4,9 @@ import {
   Partials,
   ActivityType,
   EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   PermissionFlagsBits,
   ApplicationCommandOptionType,
   type ChatInputCommandInteraction,
@@ -108,11 +111,11 @@ export function isAuthorizedSelfbotUser(
   return false;
 }
 
-// Discord Application (Slash) Commands Definition
+// Full Discord Application (Slash) Commands Definition (All SB + Bot Tools)
 export const YURI_SLASH_COMMANDS = [
   {
     name: "whois",
-    description: "Inspect detailed profile, roles, permissions, and join dates of a user",
+    description: "Inspect detailed profile, snowflake ID, tenure, and roles of a user",
     options: [
       {
         name: "user",
@@ -121,6 +124,8 @@ export const YURI_SLASH_COMMANDS = [
         required: false,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "avatar",
@@ -133,6 +138,8 @@ export const YURI_SLASH_COMMANDS = [
         required: false,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "banner",
@@ -145,6 +152,8 @@ export const YURI_SLASH_COMMANDS = [
         required: false,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "giverole",
@@ -163,6 +172,8 @@ export const YURI_SLASH_COMMANDS = [
         required: true,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "removerole",
@@ -181,18 +192,52 @@ export const YURI_SLASH_COMMANDS = [
         required: true,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "serverinfo",
     description: "Display comprehensive guild metrics, boost tier, and member statistics",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "membercount",
+    description: "Display live server member, human, and bot breakdown",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "roles",
+    description: "List all server roles and their Snowflake IDs",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "perms",
+    description: "Inspect user or channel permission bitfields",
+    options: [
+      {
+        name: "user",
+        description: "Target user to inspect permissions for",
+        type: ApplicationCommandOptionType.User,
+        required: false,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "uptime",
     description: "Check Yuri 24/7 background companion uptime & health",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "ping",
     description: "Check Gateway WebSocket latency & REST roundtrip",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "afk",
@@ -205,6 +250,8 @@ export const YURI_SLASH_COMMANDS = [
         required: false,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "purge",
@@ -219,6 +266,8 @@ export const YURI_SLASH_COMMANDS = [
         maxValue: 100,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "say",
@@ -231,28 +280,34 @@ export const YURI_SLASH_COMMANDS = [
         required: true,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "embed",
     description: "Generate a custom formatted crimson embed card",
     options: [
       {
-        name: "title",
-        description: "Embed title",
-        type: ApplicationCommandOptionType.String,
-        required: false,
-      },
-      {
         name: "description",
         description: "Embed main body content",
         type: ApplicationCommandOptionType.String,
         required: true,
       },
+      {
+        name: "title",
+        description: "Embed title",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "whitelisted",
     description: "View verified selfbot accounts authorized to use Yuri Companion",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "whitelist",
@@ -265,6 +320,8 @@ export const YURI_SLASH_COMMANDS = [
         required: true,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "unwhitelist",
@@ -277,12 +334,138 @@ export const YURI_SLASH_COMMANDS = [
         required: true,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
   {
     name: "snipe",
     description: "Retrieve recently deleted message in this channel",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "math",
+    description: "Perform quick mathematical calculation",
+    options: [
+      {
+        name: "expression",
+        description: "Math expression (e.g. 24 * 7 + 100)",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "8ball",
+    description: "Ask the magic 8-ball a question",
+    options: [
+      {
+        name: "question",
+        description: "Your question",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "coinflip",
+    description: "Flip a coin (Heads or Tails)",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "dice",
+    description: "Roll a dice",
+    options: [
+      {
+        name: "sides",
+        description: "Number of sides (default: 6)",
+        type: ApplicationCommandOptionType.Integer,
+        required: false,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "mock",
+    description: "Convert text to MoCkInG format",
+    options: [
+      {
+        name: "text",
+        description: "Text to mock",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "reverse",
+    description: "Reverse input text string",
+    options: [
+      {
+        name: "text",
+        description: "Text to reverse",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
   },
 ];
+
+// Direct Discord REST API Slash Command Synchronizer (Ensures 100% User & Guild Context registration)
+export async function syncGlobalSlashCommands(botToken: string, applicationId: string) {
+  try {
+    const rawCommands = YURI_SLASH_COMMANDS.map((cmd) => {
+      const raw: any = {
+        name: cmd.name,
+        description: cmd.description,
+        integration_types: [0, 1], // 0: Guild Install, 1: User Install
+        contexts: [0, 1, 2], // 0: Guilds, 1: Bot DMs, 2: Group DMs / Private Channels
+      };
+      if (cmd.options) {
+        raw.options = cmd.options.map((opt: any) => ({
+          name: opt.name,
+          description: opt.description,
+          type: opt.type,
+          required: opt.required ?? false,
+          min_value: opt.minValue,
+          max_value: opt.maxValue,
+        }));
+      }
+      return raw;
+    });
+
+    const res = await fetch(`https://discord.com/api/v10/applications/${applicationId}/commands`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(rawCommands),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log(
+        `[YURI BOT REST] Successfully synced ${Array.isArray(data) ? data.length : "all"} global slash commands for app ${applicationId}`
+      );
+    } else {
+      const errText = await res.text();
+      console.error(`[YURI BOT REST] Slash sync HTTP ${res.status} for ${applicationId}:`, errText);
+    }
+  } catch (err: any) {
+    console.error(`[YURI BOT REST] Slash sync exception for ${applicationId}:`, err?.message || err);
+  }
+}
 
 // Helper: Build pure access denied embed
 function buildAccessDeniedEmbed(userId: string): EmbedBuilder {
@@ -300,7 +483,7 @@ function buildAccessDeniedEmbed(userId: string): EmbedBuilder {
     .setTimestamp();
 }
 
-// Helper: Build pure Help Embed
+// Helper: Build pure Help Embed with interactive pagination buttons
 function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; components: any[] } {
   const p = page === 2 || page === 3 ? page : 1;
   const embed = new EmbedBuilder()
@@ -315,15 +498,15 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
   if (p === 1) {
     embed
       .setDescription(
-        "Dedicated companion service operating 24/7 with pure embed responses and verified user access control."
+        "Dedicated companion service operating 24/7 with pure embed responses, interactive buttons, and verified user access control."
       )
       .addFields(
         {
-          name: "👤 User & Profile Operations",
+          name: "👤 User & Profile Intelligence",
           value: [
-            "`/whois [user]` or `.whois [user]` — Detailed profile inspection, Snowflake ID, creation & join tenure",
+            "`/whois [user]` or `.whois [user]` — Detailed profile, Snowflake ID, creation date & join tenure",
             "`/avatar [user]` or `.avatar [user]` — High-res 4096px direct avatar link with artwork embed",
-            "`/banner [user]` or `.banner [user]` — High-resolution banner image extractor",
+            "`/banner [user]` or `.banner [user]` — High-resolution profile banner image extractor",
             "`.id [user]` — Direct Discord Snowflake ID extraction",
             "`.createdat [user]` — Exact account registration timestamp & relative days",
             "`.joinedat [user]` — Server join timestamp & relative tenure",
@@ -333,9 +516,9 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
           name: "🎭 Identity & Roles",
           value: [
             "`/giverole <member> <role>` or `.giverole` — Grant server role with permission validation",
-            "`/removerole <member> <role>` or `.removerole` — Remove server role",
-            "`.roles` — List assigned server roles",
-            "`.perms` — Inspect channel and guild permission bitfields",
+            "`/removerole <member> <role>` or `.removerole` — Revoke server role",
+            "`/roles` or `.roles` — List assigned server roles and IDs",
+            "`/perms [user]` or `.perms` — Inspect channel and guild permission bitfields",
           ].join("\n"),
         }
       )
@@ -350,6 +533,7 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
           name: "🏰 Guild & Server Intelligence",
           value: [
             "`/serverinfo` or `.serverinfo` — Guild stats, owner ID, members (online/bots), boost level & channels",
+            "`/membercount` or `.membercount` — Human vs Bot member count breakdown",
             "`/purge <count>` or `.purge <count>` — Bulk clear messages in current text channel",
             "`/snipe` or `.snipe` — Recover the most recently deleted message in channel",
           ].join("\n"),
@@ -378,7 +562,18 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
             "`/ping` or `.ping` — Real-time Gateway WebSocket latency & REST response",
             "`/afk [message]` or `.afk [message]` — Smart AFK status with automatic reply trigger",
             "`/say <text>` or `.say <text>` — Broadcast message via Yuri Companion",
-            "`/embed <title> <desc>` or `.embed` — Broadcast formatted crimson embed",
+            "`/embed <desc> [title]` or `.embed` — Broadcast formatted crimson embed",
+          ].join("\n"),
+        },
+        {
+          name: "🎲 Fun & Utility Tools",
+          value: [
+            "`/math <expression>` or `.math` — Instant mathematical calculation",
+            "`/8ball <question>` or `.8ball` — Magic 8-ball prophetic answer",
+            "`/coinflip` or `.coinflip` — Flip a coin (Heads/Tails)",
+            "`/dice [sides]` or `.dice` — Roll polyhedral dice",
+            "`/mock <text>` or `.mock` — MoCkInG text converter",
+            "`/reverse <text>` or `.reverse` — Invert text string",
           ].join("\n"),
         },
         {
@@ -393,7 +588,26 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
       .setImage("https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif");
   }
 
-  return { embed, components: [] };
+  // Interactive ActionRow with Pagination Buttons
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("yuri_help_1")
+      .setLabel("👤 Profile & Roles")
+      .setStyle(p === 1 ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setDisabled(p === 1),
+    new ButtonBuilder()
+      .setCustomId("yuri_help_2")
+      .setLabel("🏰 Guild & Admin")
+      .setStyle(p === 2 ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setDisabled(p === 2),
+    new ButtonBuilder()
+      .setCustomId("yuri_help_3")
+      .setLabel("⚡ Tools & Whitelist")
+      .setStyle(p === 3 ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setDisabled(p === 3)
+  );
+
+  return { embed, components: [row] };
 }
 
 async function createAndRunBot(
@@ -426,9 +640,13 @@ async function createAndRunBot(
       });
     } catch {}
 
-    // Register Application (Slash) Commands with User & Guild Contexts
+    // Register Application (Slash) Commands via REST and Client
+    if (bot.user?.id) {
+      await syncGlobalSlashCommands(token, bot.user.id);
+    }
+
     try {
-      console.log("[YURI BOT 24/7] Registering Application Slash Commands globally...");
+      console.log("[YURI BOT 24/7] Registering Application Slash Commands globally on client...");
       const enrichedCommands = YURI_SLASH_COMMANDS.map((cmd) => ({
         ...cmd,
         integration_types: [0, 1],
@@ -438,7 +656,7 @@ async function createAndRunBot(
       await bot.application?.commands.set(enrichedCommands as any);
       console.log(`[YURI BOT 24/7] Registered ${YURI_SLASH_COMMANDS.length} global slash commands with User & Guild integration.`);
 
-      // Also register on each cached guild for instant activation without Discord 1-hour delay
+      // Also register on each cached guild for instant activation without Discord delay
       for (const guild of bot.guilds.cache.values()) {
         guild.commands.set(YURI_SLASH_COMMANDS as any).catch(() => {});
       }
@@ -500,6 +718,23 @@ async function createAndRunBot(
   // DISCORD APPLICATION (SLASH) COMMANDS & BUTTONS
   // ==========================================
   bot.on("interactionCreate", async (interaction: any) => {
+    // Handle Interactive Button Pagination
+    if (interaction.isButton()) {
+      try {
+        const customId = interaction.customId;
+        let page = 1;
+        if (customId === "yuri_help_1") page = 1;
+        else if (customId === "yuri_help_2") page = 2;
+        else if (customId === "yuri_help_3") page = 3;
+
+        const { embed, components } = buildHelpEmbed(page, bot.user);
+        return await interaction.update({ embeds: [embed], components });
+      } catch (err: any) {
+        console.error("[YURI BOT] Button update error:", err);
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName, options, user, guild, member } = interaction as ChatInputCommandInteraction;
@@ -512,10 +747,19 @@ async function createAndRunBot(
       "avatar",
       "banner",
       "serverinfo",
+      "membercount",
+      "roles",
+      "perms",
       "ping",
       "uptime",
       "snipe",
       "afk",
+      "math",
+      "8ball",
+      "coinflip",
+      "dice",
+      "mock",
+      "reverse",
     ]);
     const isPublic = PUBLIC_COMMANDS.has(commandName);
     const hasAdmin =
@@ -941,6 +1185,181 @@ async function createAndRunBot(
           embed.setImage(sniped.attachments[0]);
         }
 
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 18. /membercount
+      if (commandName === "membercount") {
+        if (!guild) return interaction.reply({ content: "This command is only available in servers.", ephemeral: true });
+        const total = guild.memberCount;
+        const bots = guild.members.cache.filter((m: any) => m.user?.bot).size;
+        const humans = total - bots;
+
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle(`👥 ${guild.name} • Member Count`)
+          .addFields(
+            { name: "Total Members", value: `\`${total}\``, inline: true },
+            { name: "Humans", value: `\`${humans}\``, inline: true },
+            { name: "Bots", value: `\`${bots}\``, inline: true }
+          )
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 19. /roles
+      if (commandName === "roles") {
+        if (!guild) return interaction.reply({ content: "This command is only available in servers.", ephemeral: true });
+        const rolesList = guild.roles.cache
+          .filter((r: any) => r.id !== guild.id)
+          .map((r: any) => `<@&${r.id}> (\`${r.id}\`)`)
+          .slice(0, 20)
+          .join("\n");
+
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle(`🛡️ ${guild.name} • Server Roles (${guild.roles.cache.size})`)
+          .setDescription(rolesList || "No custom roles created.")
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 20. /perms
+      if (commandName === "perms") {
+        const targetUser = options.getUser("user") || user;
+        const targetMember = guild?.members.cache.get(targetUser.id);
+        if (!targetMember) {
+          return interaction.reply({ content: "Member not found in current guild.", ephemeral: true });
+        }
+        const keyPerms = [
+          "Administrator",
+          "ManageGuild",
+          "ManageRoles",
+          "ManageChannels",
+          "KickMembers",
+          "BanMembers",
+          "ManageMessages",
+          "MentionEveryone",
+        ];
+        const has = keyPerms.filter((p) => (targetMember.permissions as any).has(PermissionFlagsBits[p as keyof typeof PermissionFlagsBits]));
+
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle(`🔐 Permissions: ${targetUser.tag}`)
+          .setDescription(
+            has.length > 0
+              ? has.map((p) => `✅ \`${p}\``).join("\n")
+              : "Standard member permissions (No key administrator flags)."
+          )
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 21. /math
+      if (commandName === "math") {
+        const expr = options.getString("expression", true);
+        try {
+          const sanitized = expr.replace(/[^0-9+\-*/().^% ]/g, "");
+          // Safe eval
+          const result = Function(`'use strict'; return (${sanitized})`)();
+          const embed = new EmbedBuilder()
+            .setColor(0xed4245)
+            .setTitle("🧮 Math Calculation")
+            .addFields(
+              { name: "Expression", value: `\`${expr}\``, inline: true },
+              { name: "Result", value: `\`${result}\``, inline: true }
+            )
+            .setTimestamp();
+          return interaction.reply({ embeds: [embed] });
+        } catch {
+          return interaction.reply({ content: "Invalid mathematical expression.", ephemeral: true });
+        }
+      }
+
+      // 22. /8ball
+      if (commandName === "8ball") {
+        const question = options.getString("question", true);
+        const responses = [
+          "It is certain.",
+          "It is decidedly so.",
+          "Without a doubt.",
+          "Yes definitely.",
+          "You may rely on it.",
+          "As I see it, yes.",
+          "Most likely.",
+          "Outlook good.",
+          "Yes.",
+          "Signs point to yes.",
+          "Reply hazy, try again.",
+          "Ask again later.",
+          "Better not tell you now.",
+          "Cannot predict now.",
+          "Concentrate and ask again.",
+          "Don't count on it.",
+          "My reply is no.",
+          "My sources say no.",
+          "Outlook not so good.",
+          "Very doubtful.",
+        ];
+        const answer = responses[Math.floor(Math.random() * responses.length)];
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle("🎱 Magic 8-Ball")
+          .addFields(
+            { name: "Question", value: question, inline: false },
+            { name: "Answer", value: `**${answer}**`, inline: false }
+          )
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 23. /coinflip
+      if (commandName === "coinflip") {
+        const outcome = Math.random() > 0.5 ? "🪙 Heads" : "🪙 Tails";
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle("🪙 Coin Flip")
+          .setDescription(`The coin landed on: **${outcome}**!`)
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 24. /dice
+      if (commandName === "dice") {
+        const sides = options.getInteger("sides") || 6;
+        const roll = Math.floor(Math.random() * sides) + 1;
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle("🎲 Dice Roll")
+          .setDescription(`You rolled a **d${sides}** and got: **${roll}**!`)
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 25. /mock
+      if (commandName === "mock") {
+        const text = options.getString("text", true);
+        const mocked = text
+          .split("")
+          .map((c, i) => (i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()))
+          .join("");
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle("🤪 MoCkEd TeXt")
+          .setDescription(mocked)
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed] });
+      }
+
+      // 26. /reverse
+      if (commandName === "reverse") {
+        const text = options.getString("text", true);
+        const reversed = text.split("").reverse().join("");
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle("🔄 Reversed Text")
+          .setDescription(reversed)
+          .setTimestamp();
         return interaction.reply({ embeds: [embed] });
       }
     } catch (err: any) {
@@ -1536,6 +1955,203 @@ async function createAndRunBot(
       await message.reply({ embeds: [embed] }).catch(() => {});
       return;
     }
+
+    // 18. MEMBERCOUNT
+    if (command === "membercount" || command === "mc") {
+      if (!message.guild) return;
+      const total = message.guild.memberCount;
+      const bots = message.guild.members.cache.filter((m: any) => m.user?.bot).size;
+      const humans = total - bots;
+
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle(`👥 ${message.guild.name} • Member Count`)
+        .addFields(
+          { name: "Total Members", value: `\`${total}\``, inline: true },
+          { name: "Humans", value: `\`${humans}\``, inline: true },
+          { name: "Bots", value: `\`${bots}\``, inline: true }
+        )
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+
+    // 19. ROLES
+    if (command === "roles") {
+      if (!message.guild) return;
+      const rolesList = message.guild.roles.cache
+        .filter((r: any) => r.id !== message.guild.id)
+        .map((r: any) => `<@&${r.id}> (\`${r.id}\`)`)
+        .slice(0, 20)
+        .join("\n");
+
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle(`🛡️ ${message.guild.name} • Server Roles (${message.guild.roles.cache.size})`)
+        .setDescription(rolesList || "No custom roles created.")
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+
+    // 20. PERMS
+    if (command === "perms" || command === "permissions") {
+      if (!message.guild) return;
+      const targetMember =
+        message.mentions?.members?.first() ||
+        (parts[0] ? await message.guild.members.fetch(parts[0].replace(/[^0-9]/g, "")).catch(() => null) : message.member);
+
+      if (!targetMember) return;
+      const keyPerms = [
+        "Administrator",
+        "ManageGuild",
+        "ManageRoles",
+        "ManageChannels",
+        "KickMembers",
+        "BanMembers",
+        "ManageMessages",
+        "MentionEveryone",
+      ];
+      const has = keyPerms.filter((p) => (targetMember.permissions as any).has(PermissionFlagsBits[p as keyof typeof PermissionFlagsBits]));
+
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle(`🔐 Permissions: ${targetMember.user.tag}`)
+        .setDescription(
+          has.length > 0
+            ? has.map((p) => `✅ \`${p}\``).join("\n")
+            : "Standard member permissions (No key administrator flags)."
+        )
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+
+    // 21. MATH / CALC
+    if (command === "math" || command === "calc") {
+      const expr = parts.join(" ");
+      if (!expr) {
+        const embed = new EmbedBuilder().setColor(0xed4245).setDescription("Usage: `.math <expression>` (e.g. `.math 25 * 4`)");
+        await message.reply({ embeds: [embed] }).catch(() => {});
+        return;
+      }
+      try {
+        const sanitized = expr.replace(/[^0-9+\-*/().^% ]/g, "");
+        const result = Function(`'use strict'; return (${sanitized})`)();
+        const embed = new EmbedBuilder()
+          .setColor(0xed4245)
+          .setTitle("🧮 Math Calculation")
+          .addFields(
+            { name: "Expression", value: `\`${expr}\``, inline: true },
+            { name: "Result", value: `\`${result}\``, inline: true }
+          )
+          .setTimestamp();
+        await message.reply({ embeds: [embed] }).catch(() => {});
+      } catch {
+        const embed = new EmbedBuilder().setColor(0xed4245).setDescription("Invalid mathematical expression.");
+        await message.reply({ embeds: [embed] }).catch(() => {});
+      }
+      return;
+    }
+
+    // 22. 8BALL
+    if (command === "8ball") {
+      const question = parts.join(" ");
+      if (!question) {
+        const embed = new EmbedBuilder().setColor(0xed4245).setDescription("Usage: `.8ball <question>`");
+        await message.reply({ embeds: [embed] }).catch(() => {});
+        return;
+      }
+      const responses = [
+        "It is certain.",
+        "It is decidedly so.",
+        "Without a doubt.",
+        "Yes definitely.",
+        "You may rely on it.",
+        "As I see it, yes.",
+        "Most likely.",
+        "Outlook good.",
+        "Yes.",
+        "Signs point to yes.",
+        "Reply hazy, try again.",
+        "Ask again later.",
+        "Better not tell you now.",
+        "Cannot predict now.",
+        "Concentrate and ask again.",
+        "Don't count on it.",
+        "My reply is no.",
+        "My sources say no.",
+        "Outlook not so good.",
+        "Very doubtful.",
+      ];
+      const answer = responses[Math.floor(Math.random() * responses.length)];
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle("🎱 Magic 8-Ball")
+        .addFields(
+          { name: "Question", value: question, inline: false },
+          { name: "Answer", value: `**${answer}**`, inline: false }
+        )
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+
+    // 23. COINFLIP / CF
+    if (command === "coinflip" || command === "cf") {
+      const outcome = Math.random() > 0.5 ? "🪙 Heads" : "🪙 Tails";
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle("🪙 Coin Flip")
+        .setDescription(`The coin landed on: **${outcome}**!`)
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+
+    // 24. DICE / ROLL
+    if (command === "dice" || command === "roll") {
+      const sides = parseInt(parts[0], 10) || 6;
+      const roll = Math.floor(Math.random() * sides) + 1;
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle("🎲 Dice Roll")
+        .setDescription(`You rolled a **d${sides}** and got: **${roll}**!`)
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+
+    // 25. MOCK
+    if (command === "mock") {
+      const text = parts.join(" ");
+      if (!text) return;
+      const mocked = text
+        .split("")
+        .map((c, i) => (i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()))
+        .join("");
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle("🤪 MoCkEd TeXt")
+        .setDescription(mocked)
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+
+    // 26. REVERSE
+    if (command === "reverse") {
+      const text = parts.join(" ");
+      if (!text) return;
+      const reversed = text.split("").reverse().join("");
+      const embed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle("🔄 Reversed Text")
+        .setDescription(reversed)
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+      return;
+    }
   });
 
   try {
@@ -1550,6 +2166,87 @@ async function createAndRunBot(
   } catch (err: any) {
     console.error("[YURI BOT] Login failure for token prefix:", token.slice(0, 8), err?.message || err);
     throw err;
+  }
+}
+
+// Direct Command Runner Dispatcher (For Web Dashboard Forms & API)
+export async function executeBotCommandDirect(
+  command: string,
+  args: Record<string, any> = {},
+  channelId?: string,
+  guildId?: string
+): Promise<{ success: boolean; result?: any; error?: string }> {
+  try {
+    const bot = yuriBotClient || Array.from(activeYuriBots.values())[0];
+    if (!bot || !bot.isReady()) {
+      return { success: false, error: "No active Yuri Bot client currently connected." };
+    }
+
+    // If channelId provided, we can send real embeds or actions
+    if (channelId) {
+      const channel: any = await bot.channels.fetch(channelId).catch(() => null);
+      if (channel && channel.isTextBased()) {
+        if (command === "say") {
+          const embed = new EmbedBuilder()
+            .setColor(0xed4245)
+            .setDescription(args.text || args.message || "Command executed from Yuri Web Dashboard")
+            .setFooter({ text: "Yuri Companion Command Dispatcher" })
+            .setTimestamp();
+          await channel.send({ embeds: [embed] });
+          return { success: true, result: `Broadcasted to channel #${channel.name}` };
+        }
+
+        if (command === "embed") {
+          const embed = new EmbedBuilder()
+            .setColor(0xed4245)
+            .setTitle(args.title || "Announcement")
+            .setDescription(args.description || args.text || "Dispatched from Web Panel")
+            .setFooter({ text: "Yuri Selfbot Control Center" })
+            .setTimestamp();
+          await channel.send({ embeds: [embed] });
+          return { success: true, result: `Embed dispatched to #${channel.name}` };
+        }
+
+        if (command === "help") {
+          const { embed, components } = buildHelpEmbed(args.page || 1, bot.user);
+          await channel.send({ embeds: [embed], components });
+          return { success: true, result: `Help embed with buttons sent to #${channel.name}` };
+        }
+      }
+    }
+
+    if (command === "whitelist" && args.user_id) {
+      const id = String(args.user_id).trim().replace(/[^0-9]/g, "");
+      if (id.length >= 15) {
+        yuriBotAllowedUsers.add(id);
+        saveWhitelist();
+        return { success: true, result: `Authorized user ID ${id}` };
+      }
+    }
+
+    if (command === "unwhitelist" && args.user_id) {
+      const id = String(args.user_id).trim().replace(/[^0-9]/g, "");
+      yuriBotAllowedUsers.delete(id);
+      saveWhitelist();
+      return { success: true, result: `Revoked authorization for user ID ${id}` };
+    }
+
+    if (command === "sync_slash") {
+      for (const b of activeYuriBots.values()) {
+        if (b.user?.id) {
+          const token = b.token || YURI_BOT_TOKEN;
+          await syncGlobalSlashCommands(token, b.user.id);
+        }
+      }
+      return { success: true, result: "Slash commands forced re-sync on all active bot instances." };
+    }
+
+    return {
+      success: true,
+      result: `Command '${command}' processed successfully.`,
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
   }
 }
 

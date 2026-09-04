@@ -33,6 +33,7 @@ interface BotStatus {
   uptime: number;
   guildsCount: number;
   authorizedUsers: string[];
+  bots?: Array<{ id: string; tag: string; avatar: string; ping: number; guildsCount: number; online: boolean }>;
 }
 
 export default function Sb2Tab({ onBack }: Sb2TabProps) {
@@ -77,6 +78,17 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
     bots: []
   });
   const [isRestarting, setIsRestarting] = useState(false);
+  const [isSyncingSlash, setIsSyncingSlash] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState('');
+
+  // Live Command Runner Form State
+  const [formCommand, setFormCommand] = useState('say');
+  const [formChannelId, setFormChannelId] = useState('');
+  const [formText, setFormText] = useState('');
+  const [formTitle, setFormTitle] = useState('');
+  const [formUserId, setFormUserId] = useState('');
+  const [formExecLoading, setFormExecLoading] = useState(false);
+  const [formExecResult, setFormExecResult] = useState<{ success: boolean; msg: string } | null>(null);
 
   const AUTH_URL = 'https://discord.com/oauth2/authorize?client_id=1545467399493521478';
   const GIF_URL = 'https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif';
@@ -119,6 +131,73 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
       }, 1500);
     } catch (e) {
       setIsRestarting(false);
+    }
+  };
+
+  const handleForceSyncSlash = async () => {
+    setIsSyncingSlash(true);
+    setSyncStatusMsg('');
+    try {
+      const res = await fetch('/api/yuri-bot/sync-slash', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setSyncStatusMsg('✅ Slash commands synced directly via Discord REST API!');
+      } else {
+        setSyncStatusMsg(`❌ Error: ${data.error || 'Failed to sync'}`);
+      }
+    } catch (e: any) {
+      setSyncStatusMsg(`❌ Error: ${e?.message || 'Sync failed'}`);
+    } finally {
+      setIsSyncingSlash(false);
+      setTimeout(() => setSyncStatusMsg(''), 5000);
+    }
+  };
+
+  const handleRunFormCommand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormExecLoading(true);
+    setFormExecResult(null);
+
+    try {
+      const payload: any = {
+        command: formCommand,
+        channelId: formChannelId.trim() || undefined,
+        args: {
+          text: formText,
+          description: formText,
+          title: formTitle,
+          user_id: formUserId.trim(),
+        }
+      };
+
+      const res = await fetch('/api/yuri-bot/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setFormExecResult({
+          success: true,
+          msg: typeof data.result === 'string' ? data.result : 'Command executed successfully!'
+        });
+        if (formCommand === 'whitelist' || formCommand === 'unwhitelist') {
+          fetchStatus();
+        }
+      } else {
+        setFormExecResult({
+          success: false,
+          msg: data.error || 'Execution failed'
+        });
+      }
+    } catch (err: any) {
+      setFormExecResult({
+        success: false,
+        msg: err?.message || 'Network error during execution'
+      });
+    } finally {
+      setFormExecLoading(false);
     }
   };
 
@@ -170,7 +249,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
         isBot: true,
       });
       setActivePage(3);
-    } else if (cmd === '.uptime') {
+    } else if (cmd === '.uptime' || cmd === '/uptime') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
@@ -184,25 +263,114 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
         content: `> 🏓 **Pong!** Gateway WebSocket: \`${botStatus.ping || 42}ms\``,
         isBot: true,
       });
-    } else if (cmd.startsWith('.whois') || cmd.startsWith('.ui')) {
+    } else if (cmd.startsWith('.whois') || cmd.startsWith('.ui') || cmd.startsWith('/whois')) {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
         content: `> 👤 **User Information**\n> **Username:** \`You#0000\`\n> **Display Name:** **Yuri Selfbot Master**\n> **User ID:** \`1545389998315143229\`\n> **Account Created:** \`2024-01-15\` (415d ago)\n> **Joined Server:** \`2024-03-10\` (361d ago)\n> **Roles:** \`Master\` \`Developer\`\n> **Avatar:** https://cdn.discordapp.com/embed/avatars/0.png`,
         isBot: true,
       });
-    } else if (cmd.startsWith('.avatar') || cmd.startsWith('.pfp') || cmd.startsWith('.av')) {
+    } else if (cmd.startsWith('.avatar') || cmd.startsWith('.pfp') || cmd.startsWith('.av') || cmd.startsWith('/avatar')) {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
         content: `> 🖼️ **Avatar**\n> **User ID:** \`1545389998315143229\`\n> **Direct Link:** https://cdn.discordapp.com/embed/avatars/0.png`,
         isBot: true,
       });
-    } else if (cmd === '.serverinfo' || cmd === '.si') {
+    } else if (cmd.startsWith('.banner') || cmd.startsWith('/banner')) {
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🎨 **Profile Banner**\n> **Direct Link:** https://cdn.discordapp.com/banners/1545389998315143229/a_banner.gif`,
+        isBot: true,
+      });
+    } else if (cmd === '.serverinfo' || cmd === '.si' || cmd === '/serverinfo') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
         content: `> 🏰 **Server Information**\n> **Server Name:** **Yuri HQ**\n> **Server ID:** \`987654321098765432\`\n> **Owner:** <@1545389998315143229>\n> **Members:** \`128\`\n> **Channels:** \`24\` (Text: \`18\` | Voice: \`6\`)\n> **Created:** \`2023-11-20\` (472d ago)`,
+        isBot: true,
+      });
+    } else if (cmd === '.membercount' || cmd === '.mc' || cmd === '/membercount') {
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 👥 **Member Count**\n> Total: \`128\` (Humans: \`124\` | Bots: \`4\`)`,
+        isBot: true,
+      });
+    } else if (cmd === '.roles' || cmd === '/roles') {
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🛡️ **Server Roles**\n> • <@&112233445566> (\`Admin\`)\n> • <@&223344556677> (\`Moderator\`)\n> • <@&334455667788> (\`Member\`)`,
+        isBot: true,
+      });
+    } else if (cmd.startsWith('.perms') || cmd.startsWith('/perms')) {
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🔐 **Permissions: You#0000**\n> ✅ \`Administrator\`\n> ✅ \`ManageGuild\`\n> ✅ \`ManageRoles\`\n> ✅ \`ManageMessages\``,
+        isBot: true,
+      });
+    } else if (cmd.startsWith('.math') || cmd.startsWith('.calc') || cmd.startsWith('/math')) {
+      const expr = cmd.replace(/^(\.|\/)(math|calc)\s*/, '');
+      try {
+        const res = Function(`'use strict'; return (${expr.replace(/[^0-9+\-*/().^% ]/g, '')})`)();
+        newChat.push({
+          id: String(Date.now() + 1),
+          user: 'Yuri Selfbot Companion',
+          content: `> 🧮 **Calculation:** \`${expr}\` = \`${res}\``,
+          isBot: true,
+        });
+      } catch {
+        newChat.push({
+          id: String(Date.now() + 1),
+          user: 'Yuri Selfbot Companion',
+          content: `> ❌ Invalid math expression`,
+          isBot: true,
+        });
+      }
+    } else if (cmd.startsWith('.8ball') || cmd.startsWith('/8ball')) {
+      const q = cmd.replace(/^(\.|\/)8ball\s*/, '');
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🎱 **Question:** ${q}\n> **Answer:** **It is decidedly so.**`,
+        isBot: true,
+      });
+    } else if (cmd === '.coinflip' || cmd === '.cf' || cmd === '/coinflip') {
+      const outcome = Math.random() > 0.5 ? '🪙 Heads' : '🪙 Tails';
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🪙 **Coin Flip:** The coin landed on **${outcome}**!`,
+        isBot: true,
+      });
+    } else if (cmd.startsWith('.dice') || cmd.startsWith('.roll') || cmd.startsWith('/dice')) {
+      const sides = parseInt(cmd.replace(/^(\.|\/)(dice|roll)\s*/, ''), 10) || 6;
+      const roll = Math.floor(Math.random() * sides) + 1;
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🎲 **Dice Roll:** You rolled a **d${sides}** and got **${roll}**!`,
+        isBot: true,
+      });
+    } else if (cmd.startsWith('.mock ') || cmd.startsWith('/mock ')) {
+      const text = cmd.replace(/^(\.|\/)mock\s+/, '');
+      const mocked = text.split('').map((c, i) => i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()).join('');
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🤪 ${mocked}`,
+        isBot: true,
+      });
+    } else if (cmd.startsWith('.reverse ') || cmd.startsWith('/reverse ')) {
+      const text = cmd.replace(/^(\.|\/)reverse\s+/, '');
+      const rev = text.split('').reverse().join('');
+      newChat.push({
+        id: String(Date.now() + 1),
+        user: 'Yuri Selfbot Companion',
+        content: `> 🔄 ${rev}`,
         isBot: true,
       });
     } else if (cmd.startsWith('.afk')) {
@@ -230,7 +398,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
         embedDesc: text,
         isBot: true,
       });
-    } else if (cmd === '.whitelisted' || cmd === '.selfbots') {
+    } else if (cmd === '.whitelisted' || cmd === '.selfbots' || cmd === '/whitelisted') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
@@ -315,6 +483,15 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
 
         <div className="flex items-center gap-3">
           <button
+            onClick={handleForceSyncSlash}
+            disabled={isSyncingSlash}
+            className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 text-xs rounded-lg border border-red-500/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            title="Force Global Discord Slash Command Sync via Discord REST API"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${isSyncingSlash ? 'animate-spin text-red-400' : ''}`} />
+            <span>{isSyncingSlash ? 'Syncing...' : 'Sync Slash Commands'}</span>
+          </button>
+          <button
             onClick={handleRestartBot}
             disabled={isRestarting}
             className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs rounded-lg border border-white/5 transition-colors flex items-center gap-1.5 disabled:opacity-50"
@@ -342,6 +519,15 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
           </button>
         </div>
       </header>
+
+      {syncStatusMsg && (
+        <div className="max-w-6xl mx-auto px-6 pt-4">
+          <div className="bg-red-950/40 border border-red-500/30 text-red-200 text-xs px-4 py-2.5 rounded-lg flex items-center justify-between">
+            <span>{syncStatusMsg}</span>
+            <button onClick={() => setSyncStatusMsg('')} className="text-zinc-400 hover:text-white">×</button>
+          </div>
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto px-6 pt-8 space-y-10">
@@ -720,6 +906,124 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
               </div>
             </div>
 
+          </div>
+        </section>
+
+        {/* Live Command Execution Form (Direct Dispatcher) */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white font-medium text-lg">
+              <Zap className="w-5 h-5 text-red-400" />
+              <h3>Direct Command Execution Form</h3>
+            </div>
+            <span className="text-xs text-zinc-500 font-mono">Run commands directly through Yuri Bot</span>
+          </div>
+
+          <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-6 space-y-5">
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Execute actions, broadcast custom embeds/messages, manage user authorizations, or trigger re-syncs directly to your connected channels from this web interface.
+            </p>
+
+            <form onSubmit={handleRunFormCommand} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
+                    Select Command Action
+                  </label>
+                  <select
+                    value={formCommand}
+                    onChange={e => setFormCommand(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-red-500"
+                  >
+                    <option value="say">.say / /say (Broadcast text message)</option>
+                    <option value="embed">.embed / /embed (Broadcast crimson embed)</option>
+                    <option value="help">Send Help Embed with Interactive Buttons</option>
+                    <option value="whitelist">Authorize Selfbot Account ID</option>
+                    <option value="unwhitelist">Revoke Selfbot Authorization</option>
+                    <option value="sync_slash">Force Discord Global Slash Command Sync</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
+                    Target Channel ID (Optional for broadcast)
+                  </label>
+                  <input
+                    type="text"
+                    value={formChannelId}
+                    onChange={e => setFormChannelId(e.target.value)}
+                    placeholder="e.g. 123456789012345678 (Discord Channel ID)"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {(formCommand === 'embed') && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
+                    Embed Title
+                  </label>
+                  <input
+                    type="text"
+                    value={formTitle}
+                    onChange={e => setFormTitle(e.target.value)}
+                    placeholder="Announcement Title"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none focus:border-red-500"
+                  />
+                </div>
+              )}
+
+              {(formCommand === 'say' || formCommand === 'embed') && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
+                    Message / Description Content
+                  </label>
+                  <textarea
+                    value={formText}
+                    onChange={e => setFormText(e.target.value)}
+                    rows={3}
+                    placeholder="Enter message text or embed description to dispatch..."
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none focus:border-red-500 resize-none"
+                  />
+                </div>
+              )}
+
+              {(formCommand === 'whitelist' || formCommand === 'unwhitelist') && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
+                    Target Discord User ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formUserId}
+                    onChange={e => setFormUserId(e.target.value)}
+                    placeholder="1545389998315143229"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="submit"
+                  disabled={formExecLoading}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all shadow-md shadow-red-950/40"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${formExecLoading ? 'animate-spin' : ''}`} />
+                  <span>{formExecLoading ? 'Executing Command...' : 'Execute on Yuri Bot'}</span>
+                </button>
+
+                {formExecResult && (
+                  <div className={`text-xs px-3.5 py-1.5 rounded-lg border font-mono ${
+                    formExecResult.success 
+                      ? 'bg-emerald-950/30 text-emerald-400 border-emerald-500/20' 
+                      : 'bg-red-950/30 text-red-400 border-red-500/20'
+                  }`}>
+                    {formExecResult.msg}
+                  </div>
+                )}
+              </div>
+            </form>
           </div>
         </section>
 
