@@ -1192,7 +1192,7 @@ async function createAndRunBot(
               embed.setDescription(interaction.fields.getTextInputValue("embed_desc"));
             }
             await interaction.reply({ content: "Dispatching...", ephemeral: true });
-            return await interaction.channel?.send({ embeds: [embed] });
+            return await interaction.followUp({ embeds: [embed], ephemeral: false });
           }
 
           if (action === "manual") {
@@ -2491,7 +2491,7 @@ async function createAndRunBot(
           }).catch(() => {});
         }
 
-        return await interaction.channel?.send({ embeds: [embed] });
+        return await interaction.followUp({ embeds: [embed], ephemeral: false });
       }
 
       // 28. /embed
@@ -2513,7 +2513,7 @@ async function createAndRunBot(
           }).catch(() => {});
         }
 
-        return await interaction.channel?.send({ embeds: [embed] });
+        return await interaction.followUp({ embeds: [embed], ephemeral: false });
       }
 
       // 29. /whitelist & /unwhitelist
