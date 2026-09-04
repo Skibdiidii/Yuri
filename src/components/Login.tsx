@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
-import { Globe, MapPin, Search, Shield, ShieldAlert, X } from 'lucide-react';
+import { Globe, MapPin, Search, Shield, ShieldAlert, X, Copy, Check, MessageSquare } from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -47,6 +47,29 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [vpnEnabled, setVpnEnabled] = useState(false);
   const [vpnCountry, setVpnCountry] = useState(VPN_COUNTRIES[0]);
   const [vpnSearch, setVpnSearch] = useState('');
+  
+  const [showCommunityModal, setShowCommunityModal] = useState(true);
+  const [communityCopied, setCommunityCopied] = useState(false);
+  const handleCopyCommunityLink = async () => {
+    const inviteLink = 'https://discord.gg/z5BwKZwtVe';
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(inviteLink);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = inviteLink;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCommunityCopied(true);
+      setTimeout(() => setCommunityCopied(false), 2500);
+      window.open(inviteLink, '_blank');
+    } catch (err) {
+      console.error('Failed to copy community link:', err);
+    }
+  };
   
   const [discordUser, setDiscordUser] = useState<any>(() => {
     const saved = localStorage.getItem('discord_user');
@@ -607,6 +630,85 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 >
                   <Shield className="w-5 h-5" />
                   {vpnEnabled ? 'Connected to ' + vpnCountry.name : 'Connect to VPN'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showCommunityModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }} 
+              animate={{ scale: 1, y: 0 }} 
+              exit={{ scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+              className="w-full max-w-md bg-zinc-950 border border-[#5865F2]/20 rounded-3xl shadow-[0_0_50px_rgba(88,101,242,0.15)] overflow-hidden flex flex-col relative"
+            >
+              <button 
+                onClick={() => setShowCommunityModal(false)} 
+                className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full cursor-pointer z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="p-8 text-center flex flex-col items-center">
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-[#5865F2]/20 blur-xl rounded-full" />
+                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-[#5865F2]/30 to-[#5865F2]/10 border border-[#5865F2]/40 flex items-center justify-center text-white shadow-lg shadow-[#5865F2]/15">
+                    <MessageSquare className="w-10 h-10 text-[#5865F2]" />
+                  </div>
+                </div>
+
+                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                  Join our Community Server
+                </h3>
+                
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-[320px] mb-8">
+                  Get the latest updates, premium scripts, live support, and connect with other users in our official server.
+                </p>
+
+                <button
+                  onClick={handleCopyCommunityLink}
+                  className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all active:scale-98 cursor-pointer ${
+                    communityCopied 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                      : 'bg-[#5865F2] text-white hover:bg-[#4752C4] hover:shadow-lg hover:shadow-[#5865F2]/20'
+                  }`}
+                >
+                  {communityCopied ? (
+                    <>
+                      <Check className="w-5 h-5 text-emerald-400 animate-bounce" />
+                      <span>Copied & Opening Server!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-5 h-5 text-white/90" />
+                      <span>Copy Link & Join Now</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="w-full mt-4 bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs font-mono text-zinc-500">
+                  <span className="truncate">discord.gg/z5BwKZwtVe</span>
+                  <button 
+                    onClick={handleCopyCommunityLink}
+                    className="text-[#5865F2] hover:text-[#4752C4] font-bold px-2 py-1 bg-[#5865F2]/5 hover:bg-[#5865F2]/10 rounded transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setShowCommunityModal(false)}
+                  className="mt-6 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-widest cursor-pointer py-1 px-3"
+                >
+                  Continue to Login
                 </button>
               </div>
             </motion.div>
