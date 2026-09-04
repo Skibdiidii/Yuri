@@ -998,6 +998,56 @@ async function createAndRunBot(
     }, 5000);
   });
 
+  // NEW: Voice Sync Feature - Russian Bot triggers Selfbot to join VC
+  bot.on("voiceStateUpdate", async (oldState: any, newState: any) => {
+    try {
+      // Only trigger if user joins or moves to a new voice channel
+      if (!newState.channelId || oldState.channelId === newState.channelId) return;
+      
+      const member = newState.member;
+      if (!member || member.user.bot) return;
+
+      const userId = member.user.id;
+      const activeClients = getActiveClients ? getActiveClients() : undefined;
+      if (!activeClients) return;
+
+      // Find the selfbot client belonging to this specific user
+      let userSelfbot: any = null;
+      for (const client of activeClients.values()) {
+        if (client.user?.id === userId) {
+          userSelfbot = client;
+          break;
+        }
+      }
+
+      if (userSelfbot && userSelfbot.isReady()) {
+        const channelId = newState.channelId;
+        const guildName = newState.guild?.name || "Unknown Server";
+        
+        console.log(`[YURI VOICE SYNC] Detected ${member.user.tag} in ${guildName} VC. Triggering selfbot join...`);
+        
+        // Fetch channel on selfbot client to ensure it's accessible
+        const selfbotChannel = await userSelfbot.channels.fetch(channelId).catch(() => null);
+        if (selfbotChannel) {
+          try {
+            if (typeof userSelfbot.voice?.joinChannel === "function") {
+              await userSelfbot.voice.joinChannel(selfbotChannel);
+            } else if (typeof selfbotChannel.join === "function") {
+              await selfbotChannel.join();
+            } else if (typeof selfbotChannel.connect === "function") {
+              await selfbotChannel.connect();
+            }
+            console.log(`[YURI VOICE SYNC] Successfully synced selfbot for ${member.user.tag} into VC ${channelId}`);
+          } catch (joinErr: any) {
+            console.error(`[YURI VOICE SYNC ERROR] Join failed for ${member.user.tag}:`, joinErr?.message || joinErr);
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error("[YURI VOICE SYNC] Global handler error:", err?.message || err);
+    }
+  });
+
   // Status update task loop (every 10 seconds)
   const BOT_STATUS_LIST = [
     "Corrupt-Ware",

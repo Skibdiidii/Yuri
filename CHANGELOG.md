@@ -4,6 +4,7 @@
 
 ### 🚀 Dual-Bot Infrastructure
 - **Russian Controller Bot (`1545467399493521478`)**: Handles music, fun games, and core automation.
+- **Automatic Voice Channel Sync**: The Russian Bot now monitors your voice state—when you join a VC, it automatically commands your Yuri selfbot account to follow you instantly.
 - **Server Actions Bot (`1545528232898465893`)**: Dedicated for moderation and administrative server actions.
 - **Smart Bot Verification**: Commands requiring the Server Bot now perform a presence check and send ephemeral OAuth2 warnings if the bot is missing.
 
