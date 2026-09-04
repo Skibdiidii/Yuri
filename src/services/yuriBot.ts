@@ -7,9 +7,13 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   PermissionFlagsBits,
   ApplicationCommandOptionType,
   type ChatInputCommandInteraction,
+  type ModalSubmitInteraction,
   type Message,
   type GuildMember,
   type Role,
@@ -29,6 +33,12 @@ export const KNOWN_BOT_TOKENS: string[] = Array.from(
     ].filter(Boolean) as string[]
   )
 );
+
+export const OWNER_IDS = ["1545389998315143229", "1545521054930436167"];
+
+export function isOwner(userId: string): boolean {
+  return OWNER_IDS.includes(String(userId));
+}
 
 export const WHITELIST_FILE = path.join(process.cwd(), "whitelist.json");
 
@@ -90,6 +100,7 @@ export function isAuthorizedSelfbotUser(
   activeClients?: Map<string, any>,
   sessions?: Map<string, any>
 ): boolean {
+  if (isOwner(authorId)) return true;
   if (yuriBotAllowedUsers.has(authorId)) return true;
 
   if (activeClients) {
@@ -109,6 +120,14 @@ export function isAuthorizedSelfbotUser(
   }
 
   return false;
+}
+
+export function isAllowed(
+  authorId: string,
+  activeClients?: Map<string, any>,
+  sessions?: Map<string, any>
+): boolean {
+  return isAuthorizedSelfbotUser(authorId, activeClients, sessions);
 }
 
 // Full Discord Application (Slash) Commands Definition (All SB + Bot Tools)
@@ -270,12 +289,18 @@ export const YURI_SLASH_COMMANDS = [
     contexts: [0, 1, 2],
   },
   {
+    name: "form",
+    description: "Open an interactive Discord Modal Form where you can put anything to send.",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
     name: "say",
-    description: "Broadcast an embed announcement through Yuri Companion",
+    description: "Send a message as the bot.",
     options: [
       {
-        name: "text",
-        description: "The message text to broadcast",
+        name: "message",
+        description: "Message to send",
         type: ApplicationCommandOptionType.String,
         required: true,
       },
@@ -285,38 +310,26 @@ export const YURI_SLASH_COMMANDS = [
   },
   {
     name: "embed",
-    description: "Generate a custom formatted crimson embed card",
+    description: "Send an embed.",
     options: [
       {
-        name: "description",
-        description: "Embed main body content",
+        name: "message",
+        description: "Message to put in the embed",
         type: ApplicationCommandOptionType.String,
         required: true,
-      },
-      {
-        name: "title",
-        description: "Embed title",
-        type: ApplicationCommandOptionType.String,
-        required: false,
       },
     ],
     integration_types: [0, 1],
     contexts: [0, 1, 2],
   },
   {
-    name: "whitelisted",
-    description: "View verified selfbot accounts authorized to use Yuri Companion",
-    integration_types: [0, 1],
-    contexts: [0, 1, 2],
-  },
-  {
     name: "whitelist",
-    description: "Authorize a selfbot user ID",
+    description: "Whitelist a user.",
     options: [
       {
-        name: "user_id",
-        description: "Discord Snowflake User ID",
-        type: ApplicationCommandOptionType.String,
+        name: "user",
+        description: "User to whitelist",
+        type: ApplicationCommandOptionType.User,
         required: true,
       },
     ],
@@ -325,15 +338,21 @@ export const YURI_SLASH_COMMANDS = [
   },
   {
     name: "unwhitelist",
-    description: "Remove an authorized selfbot user ID",
+    description: "Remove a user from the whitelist.",
     options: [
       {
-        name: "user_id",
-        description: "Discord Snowflake User ID",
-        type: ApplicationCommandOptionType.String,
+        name: "user",
+        description: "User to remove",
+        type: ApplicationCommandOptionType.User,
         required: true,
       },
     ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "whitelisted",
+    description: "List whitelisted users.",
     integration_types: [0, 1],
     contexts: [0, 1, 2],
   },
@@ -700,24 +719,72 @@ async function createAndRunBot(
     }, 5000);
   });
 
-  // Keep-alive presence loop
+  // Status update task loop (every 10 seconds)
+  const BOT_STATUS_LIST = [
+    "Corrupt-Ware",
+    "Corrupt-Ware",
+    "Corrupt-Ware",
+  ];
+
   setInterval(() => {
     if (bot.isReady() && bot.user) {
       try {
+        const randomStatus = BOT_STATUS_LIST[Math.floor(Math.random() * BOT_STATUS_LIST.length)];
         bot.user.setPresence({
           activities: [
-            { name: "Yuri Selfbot | .help", type: ActivityType.Playing },
+            { name: randomStatus, type: ActivityType.Playing },
           ],
           status: "online",
         });
       } catch {}
     }
-  }, 60000);
+  }, 10000);
 
   // ==========================================
-  // DISCORD APPLICATION (SLASH) COMMANDS & BUTTONS
+  // DISCORD APPLICATION (SLASH) COMMANDS, MODALS & BUTTONS
   // ==========================================
   bot.on("interactionCreate", async (interaction: any) => {
+    const activeClients = getActiveClients ? getActiveClients() : undefined;
+    const sessions = getSessions ? getSessions() : undefined;
+
+    // Handle Discord UI Modal Form Submissions
+    if (interaction.isModalSubmit()) {
+      try {
+        if (interaction.customId === "yuri_modal_form") {
+          const user = interaction.user;
+          const userAllowed = isAllowed(user.id, activeClients, sessions);
+          if (!userAllowed) {
+            return await interaction.reply({
+              content: "You don't have permission to use this.",
+              ephemeral: true,
+            });
+          }
+
+          const message = interaction.fields.getTextInputValue("form_message") || "";
+          const title = interaction.fields.getTextInputValue("form_title") || "";
+          const sendAsEmbed = (interaction.fields.getTextInputValue("form_embed") || "").toLowerCase();
+
+          await interaction.reply({
+            content: "Notification sent.",
+            ephemeral: true,
+          });
+
+          if (sendAsEmbed === "yes" || sendAsEmbed === "true" || title) {
+            const embed = new EmbedBuilder()
+              .setColor(0xed4245)
+              .setDescription(message);
+            if (title) embed.setTitle(title);
+            return await interaction.followUp({ embeds: [embed] });
+          } else {
+            return await interaction.followUp(message);
+          }
+        }
+      } catch (err: any) {
+        console.error("[YURI BOT] Modal submit error:", err);
+      }
+      return;
+    }
+
     // Handle Interactive Button Pagination
     if (interaction.isButton()) {
       try {
@@ -738,8 +805,6 @@ async function createAndRunBot(
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName, options, user, guild, member } = interaction as ChatInputCommandInteraction;
-    const activeClients = getActiveClients ? getActiveClients() : undefined;
-    const sessions = getSessions ? getSessions() : undefined;
 
     // Public commands are accessible to all users for instant testing
     const PUBLIC_COMMANDS = new Set([
@@ -1091,74 +1156,166 @@ async function createAndRunBot(
         return interaction.reply({ embeds: [embed], ephemeral: true });
       }
 
-      // 12. /say
+      // 12. /form (Discord UI Modal Form)
+      if (commandName === "form") {
+        if (!isAllowed(user.id, activeClients, sessions)) {
+          return interaction.reply({
+            content: "You don't have permission to use this.",
+            ephemeral: true,
+          });
+        }
+
+        const modal = new ModalBuilder()
+          .setCustomId("yuri_modal_form")
+          .setTitle("Yuri Bot Form");
+
+        const messageInput = new TextInputBuilder()
+          .setCustomId("form_message")
+          .setLabel("Message / Content")
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder("Put anything here...")
+          .setRequired(true);
+
+        const titleInput = new TextInputBuilder()
+          .setCustomId("form_title")
+          .setLabel("Title (Optional - for Embed)")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("Optional embed title...")
+          .setRequired(false);
+
+        const embedInput = new TextInputBuilder()
+          .setCustomId("form_embed")
+          .setLabel("Send as Embed? (yes / no)")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("yes / no (default: no)")
+          .setRequired(false);
+
+        const row1 = new ActionRowBuilder<TextInputBuilder>().addComponents(messageInput);
+        const row2 = new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput);
+        const row3 = new ActionRowBuilder<TextInputBuilder>().addComponents(embedInput);
+
+        modal.addComponents(row1, row2, row3);
+        return await interaction.showModal(modal);
+      }
+
+      // 13. /say
       if (commandName === "say") {
-        const text = options.getString("text", true);
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setDescription(text)
-          .setFooter({ text: `Broadcast by ${user.tag}` })
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        if (!isAllowed(user.id, activeClients, sessions)) {
+          return interaction.reply({
+            content: "You don't have permission to use this.",
+            ephemeral: true,
+          });
+        }
+
+        const msgToSend = options.getString("message") || options.getString("text") || "";
+        await interaction.reply({
+          content: "Notification sent.",
+          ephemeral: true,
+        });
+
+        return interaction.followUp(msgToSend);
       }
 
-      // 13. /embed
+      // 14. /embed
       if (commandName === "embed") {
-        const title = options.getString("title") || "Announcement";
-        const description = options.getString("description", true);
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(title)
-          .setDescription(description)
-          .setFooter({ text: `Yuri Selfbot • ${user.tag}` })
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
-      }
+        if (!isAllowed(user.id, activeClients, sessions)) {
+          return interaction.reply({
+            content: "You don't have permission to use this.",
+            ephemeral: true,
+          });
+        }
 
-      // 14. /whitelisted
-      if (commandName === "whitelisted") {
-        const list = Array.from(yuriBotAllowedUsers);
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🛡️ Authorized Yuri Selfbot Accounts")
-          .setDescription(
-            `Total Authorized Accounts: **${list.length}**\n\n` +
-            list.map((id) => `• <@${id}> (\`${id}\`)`).join("\n")
-          )
-          .setFooter({ text: "Yuri Selfbot Access Control" })
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        const msgToSend = options.getString("message") || options.getString("description") || "";
+        const title = options.getString("title");
+
+        const messageEmbed = new EmbedBuilder()
+          .setDescription(msgToSend)
+          .setColor(0xed4245);
+
+        if (title) messageEmbed.setTitle(title);
+
+        await interaction.reply({
+          content: "Notification sent.",
+          ephemeral: true,
+        });
+
+        return interaction.followUp({ embeds: [messageEmbed] });
       }
 
       // 15. /whitelist
       if (commandName === "whitelist") {
-        const targetId = options.getString("user_id", true).trim().replace(/[^0-9]/g, "");
-        if (!targetId || targetId.length < 15) {
-          return interaction.reply({ content: "Invalid Discord Snowflake ID provided.", ephemeral: true });
+        if (!isOwner(user.id)) {
+          return interaction.reply({
+            content: "You don't have permission to use this.",
+            ephemeral: true,
+          });
         }
+
+        const targetUser = options.getUser("user");
+        const targetId = targetUser?.id || (options.getString("user_id") || options.getString("user") || "").trim().replace(/[^0-9]/g, "");
+        if (!targetId) {
+          return interaction.reply({ content: "Invalid user provided.", ephemeral: true });
+        }
+
         yuriBotAllowedUsers.add(targetId);
         saveWhitelist();
 
-        const embed = new EmbedBuilder()
-          .setColor(0x2ecc71)
-          .setTitle("✅ Selfbot Account Authorized")
-          .setDescription(`Discord ID <@${targetId}> (\`${targetId}\`) is now authorized to use Yuri Companion.`)
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply({
+          content: `<@${targetId}> has been whitelisted.`,
+        });
       }
 
       // 16. /unwhitelist
       if (commandName === "unwhitelist") {
-        const targetId = options.getString("user_id", true).trim().replace(/[^0-9]/g, "");
+        if (!isOwner(user.id)) {
+          return interaction.reply({
+            content: "You don't have permission to use this.",
+            ephemeral: true,
+          });
+        }
+
+        const targetUser = options.getUser("user");
+        const targetId = targetUser?.id || (options.getString("user_id") || options.getString("user") || "").trim().replace(/[^0-9]/g, "");
+        if (isOwner(targetId)) {
+          return interaction.reply({
+            content: "You can't remove the owner.",
+            ephemeral: true,
+          });
+        }
+
         yuriBotAllowedUsers.delete(targetId);
         saveWhitelist();
 
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle("🗑️ Authorization Revoked")
-          .setDescription(`Discord ID \`${targetId}\` has been removed from the companion authorization list.`)
-          .setTimestamp();
-        return interaction.reply({ embeds: [embed] });
+        return interaction.reply({
+          content: `<@${targetId}> has been removed from the whitelist.`,
+        });
+      }
+
+      // 17. /whitelisted
+      if (commandName === "whitelisted") {
+        if (!isOwner(user.id)) {
+          return interaction.reply({
+            content: "You don't have permission to use this.",
+            ephemeral: true,
+          });
+        }
+
+        if (yuriBotAllowedUsers.size === 0) {
+          return interaction.reply({
+            content: "The whitelist is empty.",
+            ephemeral: true,
+          });
+        }
+
+        const usersList = Array.from(yuriBotAllowedUsers)
+          .sort()
+          .map((userId) => `<@${userId}> (\`${userId}\`)`)
+          .join("\n");
+
+        return interaction.reply({
+          content: usersList,
+          ephemeral: true,
+        });
       }
 
       // 17. /snipe
