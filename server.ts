@@ -4785,7 +4785,7 @@ If they applied to your guild **${sc.guildId}**, check your pending tab to easil
             const dashboardUrl =
               process.env.ORIGIN_URL ||
               process.env.RENDER_EXTERNAL_URL ||
-              "https://yuri-390410338984.asia-east1.run.app";
+              "https://yuri-bfwg.onrender.com";
             const response = `> Hey ${targetUser} You Have been successfully Hosted In yuri.sb,
 > Say these
 > \`${prefix}help\` to show the menu
@@ -5661,7 +5661,7 @@ Nitro Sniper: \`${isNitro ? "ON" : "OFF"}\``;
           const appUrl =
             process.env.ORIGIN_URL ||
             process.env.RENDER_EXTERNAL_URL ||
-            "https://yuri-390410338984.asia-east1.run.app";
+            "https://yuri-bfwg.onrender.com";
           await message.channel
             .send(
               `> \u2699\uFE0F **Configure RPC on your dashboard:** ${appUrl}`,
