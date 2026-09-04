@@ -1070,6 +1070,18 @@ async function createAndRunBot(
     const activeClients = getActiveClients ? getActiveClients() : undefined;
     const sessions = getSessions ? getSessions() : undefined;
 
+    // GLOBAL PERMISSION CHECK: Only authorized Yuri users can use the Russian Bot
+    if (interaction.applicationId === RUSSIAN_CONTROLLER_BOT_ID) {
+      const user = interaction.user;
+      const userAllowed = isAllowed(user.id, activeClients, sessions);
+      if (!userAllowed) {
+        return await interaction.reply({
+          content: "⚠️ **Access Denied:** The Yuri Controller is restricted to authorized selfbot users only. Connect your account via the Yuri panel to gain access.",
+          ephemeral: true,
+        }).catch(() => {});
+      }
+    }
+
     // 1. Handle Discord UI Modal Form Submissions
     if (interaction.isModalSubmit()) {
       try {

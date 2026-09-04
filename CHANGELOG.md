@@ -2,7 +2,8 @@
 
 ## Version Update - Stability & Reliability Patch (Latest)
 
-### 🛠️ Bug Fixes & System Stability
+### 🛡️ Security & Access Control Hardening
+- **Russian Bot Lockdown**: Implemented a global permission firewall for the **Russian Controller Bot**. Only authorized Yuri selfbot users can now execute commands, use interactive buttons, or submit modals. Unauthorized users attempting to use the bot will receive an immediate access denial message.
 - **Slash Command Registry Fix**: Resolved a critical `APPLICATION_COMMANDS_DUPLICATE_NAME` error that was preventing the Russian Bot from registering new commands. Pruned duplicate entries in the global command array.
 - **Improved Music Error Messaging**: Updated `/playmusic` and `/radio` with clearer error feedback. If the bot is used in a server where it hasn't been invited yet, it now explicitly requests a server invite rather than showing a generic voice error.
 - **Interaction Flow Optimization**: Implemented `deferReply` for all music and radio commands to prevent **"Interaction Failed"** and **"Unknown Interaction"** errors during search and connection phases.
