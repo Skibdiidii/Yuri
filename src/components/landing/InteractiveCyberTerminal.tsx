@@ -27,7 +27,7 @@ export function InteractiveCyberTerminal() {
       author: { name: 'Yuri Companion 24/7' },
       color: '#ef4444',
       fields: [
-        { name: 'User ID', value: '1545521054930436167', inline: true },
+        { name: 'User ID', value: '1545389998315143229', inline: true },
         { name: 'Global Tag', value: 'harumi#0001', inline: true },
         { name: 'Badges', value: '💎 Nitro Booster • 🛡️ Yuri Developer', inline: false },
         { name: 'Created', value: '2 years ago', inline: true },
@@ -58,7 +58,7 @@ export function InteractiveCyberTerminal() {
     const timeStr = new Date().toTimeString().split(' ')[0];
     const lower = cleanCmd.toLowerCase();
 
-    if (lower.startsWith('.help') || lower === '/help') {
+    if (lower.startsWith('.help')) {
       setLogs((prev) => [
         ...prev,
         {

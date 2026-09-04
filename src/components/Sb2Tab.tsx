@@ -63,22 +63,22 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
     }
   ]);
 
-  const [whitelistUsers, setWhitelistUsers] = useState<string[]>(['1545521054930436167', '1545509798756487241']);
+  const [whitelistUsers, setWhitelistUsers] = useState<string[]>(['1545389998315143229']);
   const [newWhitelistId, setNewWhitelistId] = useState('');
   const [botStatus, setBotStatus] = useState<BotStatus>({
     online: true,
-    tag: 'Yuri Companion#0000',
-    id: '1545528232898465893',
+    tag: 'Бог добр#5735',
+    id: '1545467399493521478',
     avatar: '',
     ping: 38,
     uptime: 120,
     guildsCount: 1,
-    authorizedUsers: ['1545521054930436167', '1545509798756487241'],
+    authorizedUsers: ['1545521054930436167', '1545389998315143229'],
     bots: []
   });
   const [isRestarting, setIsRestarting] = useState(false);
 
-  const AUTH_URL = `https://discord.com/oauth2/authorize?client_id=${botStatus.id || '1545528232898465893'}&permissions=8&integration_type=1&scope=applications.commands`;
+  const AUTH_URL = 'https://discord.com/oauth2/authorize?client_id=1545467399493521478';
   const GIF_URL = 'https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif';
 
   // Fetch live Yuri Bot status from backend
@@ -143,7 +143,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
 
     const newChat = [...simulatedChat, userEntry];
 
-    if (cmd === '.help' || cmd === '/help' || cmd === 'help') {
+    if (cmd === '.help' || cmd === 'help') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
@@ -152,7 +152,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
         isBot: true,
       });
       setActivePage(1);
-    } else if (cmd === '.help 2' || cmd === '/help 2') {
+    } else if (cmd === '.help 2') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
@@ -161,7 +161,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
         isBot: true,
       });
       setActivePage(2);
-    } else if (cmd === '.help 3' || cmd === '/help 3') {
+    } else if (cmd === '.help 3') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
@@ -170,7 +170,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
         isBot: true,
       });
       setActivePage(3);
-    } else if (cmd === '.uptime' || cmd === '/uptime') {
+    } else if (cmd === '.uptime') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
@@ -188,21 +188,21 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
-        content: `> 👤 **User Information**\n> **Username:** \`You#0000\`\n> **Display Name:** **Yuri Selfbot Master**\n> **User ID:** \`1545521054930436167\`\n> **Account Created:** \`2024-01-15\` (415d ago)\n> **Joined Server:** \`2024-03-10\` (361d ago)\n> **Roles:** \`Master\` \`Developer\`\n> **Avatar:** https://cdn.discordapp.com/embed/avatars/0.png`,
+        content: `> 👤 **User Information**\n> **Username:** \`You#0000\`\n> **Display Name:** **Yuri Selfbot Master**\n> **User ID:** \`1545389998315143229\`\n> **Account Created:** \`2024-01-15\` (415d ago)\n> **Joined Server:** \`2024-03-10\` (361d ago)\n> **Roles:** \`Master\` \`Developer\`\n> **Avatar:** https://cdn.discordapp.com/embed/avatars/0.png`,
         isBot: true,
       });
     } else if (cmd.startsWith('.avatar') || cmd.startsWith('.pfp') || cmd.startsWith('.av')) {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
-        content: `> 🖼️ **Avatar**\n> **User ID:** \`1545521054930436167\`\n> **Direct Link:** https://cdn.discordapp.com/embed/avatars/0.png`,
+        content: `> 🖼️ **Avatar**\n> **User ID:** \`1545389998315143229\`\n> **Direct Link:** https://cdn.discordapp.com/embed/avatars/0.png`,
         isBot: true,
       });
     } else if (cmd === '.serverinfo' || cmd === '.si') {
       newChat.push({
         id: String(Date.now() + 1),
         user: 'Yuri Selfbot Companion',
-        content: `> 🏰 **Server Information**\n> **Server Name:** **Yuri HQ**\n> **Server ID:** \`987654321098765432\`\n> **Owner:** <@1545521054930436167>\n> **Members:** \`128\`\n> **Channels:** \`24\` (Text: \`18\` | Voice: \`6\`)\n> **Created:** \`2023-11-20\` (472d ago)`,
+        content: `> 🏰 **Server Information**\n> **Server Name:** **Yuri HQ**\n> **Server ID:** \`987654321098765432\`\n> **Owner:** <@1545389998315143229>\n> **Members:** \`128\`\n> **Channels:** \`24\` (Text: \`18\` | Voice: \`6\`)\n> **Created:** \`2023-11-20\` (472d ago)`,
         isBot: true,
       });
     } else if (cmd.startsWith('.afk')) {
@@ -437,7 +437,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
                 </p>
               </div>
               <div className="pt-4 mt-4 border-t border-white/5">
-                <span className="text-[10px] font-mono text-zinc-500">ID: 1545528232898465893</span>
+                <span className="text-[10px] font-mono text-zinc-500">ID: 1545467399493521478</span>
               </div>
             </div>
 

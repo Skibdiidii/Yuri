@@ -420,17 +420,23 @@ async function createAndRunBot(
     try {
       bot.user?.setPresence({
         activities: [
-          { name: "Yuri Selfbot | /help", type: ActivityType.Playing },
+          { name: "Yuri Selfbot | .help", type: ActivityType.Playing },
         ],
         status: "online",
       });
     } catch {}
 
-    // Register Application (Slash) Commands
+    // Register Application (Slash) Commands with User & Guild Contexts
     try {
       console.log("[YURI BOT 24/7] Registering Application Slash Commands globally...");
-      await bot.application?.commands.set(YURI_SLASH_COMMANDS as any);
-      console.log(`[YURI BOT 24/7] Registered ${YURI_SLASH_COMMANDS.length} global slash commands.`);
+      const enrichedCommands = YURI_SLASH_COMMANDS.map((cmd) => ({
+        ...cmd,
+        integration_types: [0, 1],
+        integrationTypes: [0, 1],
+        contexts: [0, 1, 2],
+      }));
+      await bot.application?.commands.set(enrichedCommands as any);
+      console.log(`[YURI BOT 24/7] Registered ${YURI_SLASH_COMMANDS.length} global slash commands with User & Guild integration.`);
 
       // Also register on each cached guild for instant activation without Discord 1-hour delay
       for (const guild of bot.guilds.cache.values()) {
@@ -482,7 +488,7 @@ async function createAndRunBot(
       try {
         bot.user.setPresence({
           activities: [
-            { name: "Yuri Selfbot | /help", type: ActivityType.Playing },
+            { name: "Yuri Selfbot | .help", type: ActivityType.Playing },
           ],
           status: "online",
         });
@@ -1582,16 +1588,16 @@ export function getYuriBotStatus(getActiveClients?: () => Map<string, any>) {
     ping: b.ws?.ping || 0,
     guildsCount: b.guilds?.cache?.size || 0,
     online: b.isReady(),
-    inviteUrl: `https://discord.com/oauth2/authorize?client_id=${b.user?.id}&permissions=8&integration_type=1&scope=applications.commands`,
+    inviteUrl: `https://discord.com/oauth2/authorize?client_id=${b.user?.id || '1545467399493521478'}`,
   }));
 
-  const mainBot = botsList.find((b) => b.id === "1545528232898465893") || botsList.find((b) => b.online) || botsList[0];
+  const mainBot = botsList.find((b) => b.id === "1545467399493521478") || botsList.find((b) => b.online) || botsList[0];
   const isOnline = !!(mainBot && mainBot.online);
   const uptimeSec = isOnline ? Math.floor((Date.now() - yuriBotStartTime) / 1000) : 0;
   return {
     online: isOnline,
     tag: mainBot?.tag || "Offline",
-    id: "1545528232898465893",
+    id: "1545467399493521478",
     avatar: mainBot?.avatar || "",
     ping: mainBot?.ping || 0,
     uptime: uptimeSec,
