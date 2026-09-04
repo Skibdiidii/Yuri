@@ -458,6 +458,147 @@ export const YURI_SLASH_COMMANDS = [
     contexts: [0, 1, 2],
   },
   {
+    name: "kick",
+    description: "Kick a member from the server (Server Bot Action)",
+    options: [
+      {
+        name: "user",
+        description: "Target user to kick",
+        type: ApplicationCommandOptionType.User,
+        required: true,
+      },
+      {
+        name: "reason",
+        description: "Reason for the kick",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "ban",
+    description: "Ban a member from the server (Server Bot Action)",
+    options: [
+      {
+        name: "user",
+        description: "Target user to ban",
+        type: ApplicationCommandOptionType.User,
+        required: true,
+      },
+      {
+        name: "reason",
+        description: "Reason for the ban",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+      {
+        name: "delete_messages",
+        description: "Delete message history (days)",
+        type: ApplicationCommandOptionType.Integer,
+        required: false,
+        choices: [
+          { name: "None", value: 0 },
+          { name: "Previous 24 Hours", value: 1 },
+          { name: "Previous 7 Days", value: 7 },
+        ],
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "timeout",
+    description: "Timeout a member (Server Bot Action)",
+    options: [
+      {
+        name: "user",
+        description: "Target user",
+        type: ApplicationCommandOptionType.User,
+        required: true,
+      },
+      {
+        name: "duration",
+        description: "Duration of the timeout",
+        type: ApplicationCommandOptionType.String,
+        required: true,
+        choices: [
+          { name: "60 Seconds", value: "60" },
+          { name: "5 Minutes", value: "300" },
+          { name: "10 Minutes", value: "600" },
+          { name: "1 Hour", value: "3600" },
+          { name: "1 Day", value: "86400" },
+          { name: "1 Week", value: "604800" },
+        ],
+      },
+      {
+        name: "reason",
+        description: "Reason for the timeout",
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "slowmode",
+    description: "Set channel slowmode (Server Bot Action)",
+    options: [
+      {
+        name: "seconds",
+        description: "Slowmode duration in seconds (0 to disable)",
+        type: ApplicationCommandOptionType.Integer,
+        required: true,
+        min_value: 0,
+        max_value: 21600,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "ship",
+    description: "Calculate love compatibility between two users",
+    options: [
+      {
+        name: "user1",
+        description: "First user",
+        type: ApplicationCommandOptionType.User,
+        required: true,
+      },
+      {
+        name: "user2",
+        description: "Second user (defaults to you)",
+        type: ApplicationCommandOptionType.User,
+        required: false,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "hack",
+    description: "Perform a simulated terminal-style hack on a target",
+    options: [
+      {
+        name: "user",
+        description: "Target user to hack",
+        type: ApplicationCommandOptionType.User,
+        required: true,
+      },
+    ],
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
+    name: "whitelisted",
+    description: "List all authorized Yuri Companion users",
+    integration_types: [0, 1],
+    contexts: [0, 1, 2],
+  },
+  {
     name: "say",
     description: "Broadcast an announcement message via Yuri Bot embed",
     options: [
@@ -1977,6 +2118,116 @@ async function createAndRunBot(
           });
         }
         return await interaction.reply({ content: "Cannot bulk delete in this channel.", ephemeral: true });
+      }
+
+      // New: /kick
+      if (commandName === "kick") {
+        if (!guild) return await interaction.reply({ content: buildServerBotWarningMessage("kick members"), ephemeral: true });
+        if (!isServerBotInGuild(guild)) return await interaction.reply({ content: buildServerBotWarningMessage("kick members (Server Bot required)"), ephemeral: true });
+        
+        const target = options.getMember("user") as GuildMember;
+        const reason = options.getString("reason") || "No reason provided";
+        
+        if (!target) return await interaction.reply({ content: "Target member not found.", ephemeral: true });
+        if (!target.kickable) return await interaction.reply({ content: "I cannot kick this member (Hierarchy/Permissions issue).", ephemeral: true });
+
+        await target.kick(reason);
+        return await interaction.reply({ content: `👞 Successfully kicked **${target.user.tag}** | Reason: ${reason}` });
+      }
+
+      // New: /ban
+      if (commandName === "ban") {
+        if (!guild) return await interaction.reply({ content: buildServerBotWarningMessage("ban members"), ephemeral: true });
+        if (!isServerBotInGuild(guild)) return await interaction.reply({ content: buildServerBotWarningMessage("ban members (Server Bot required)"), ephemeral: true });
+        
+        const target = options.getUser("user", true);
+        const reason = options.getString("reason") || "No reason provided";
+        const deleteDays = options.getInteger("delete_messages") || 0;
+
+        try {
+          await guild.members.ban(target, { reason, deleteMessageSeconds: deleteDays * 24 * 60 * 60 });
+          return await interaction.reply({ content: `🔨 Successfully banned **${target.tag}** | Reason: ${reason}` });
+        } catch (e: any) {
+          return await interaction.reply({ content: `Failed to ban: ${e.message}`, ephemeral: true });
+        }
+      }
+
+      // New: /timeout
+      if (commandName === "timeout") {
+        if (!guild) return await interaction.reply({ content: buildServerBotWarningMessage("timeout members"), ephemeral: true });
+        if (!isServerBotInGuild(guild)) return await interaction.reply({ content: buildServerBotWarningMessage("timeout members (Server Bot required)"), ephemeral: true });
+
+        const target = options.getMember("user") as GuildMember;
+        const duration = parseInt(options.getString("duration", true));
+        const reason = options.getString("reason") || "No reason provided";
+
+        if (!target) return await interaction.reply({ content: "Target member not found.", ephemeral: true });
+        
+        try {
+          await target.timeout(duration * 1000, reason);
+          return await interaction.reply({ content: `⏳ Successfully timed out **${target.user.tag}** for \`${duration}\` seconds | Reason: ${reason}` });
+        } catch (e: any) {
+          return await interaction.reply({ content: `Failed to timeout: ${e.message}`, ephemeral: true });
+        }
+      }
+
+      // New: /slowmode
+      if (commandName === "slowmode") {
+        if (!guild) return await interaction.reply({ content: buildServerBotWarningMessage("set slowmode"), ephemeral: true });
+        if (!isServerBotInGuild(guild)) return await interaction.reply({ content: buildServerBotWarningMessage("set slowmode (Server Bot required)"), ephemeral: true });
+
+        const seconds = options.getInteger("seconds", true);
+        const channel = interaction.channel as any;
+
+        if (channel?.setRateLimitPerUser) {
+          await channel.setRateLimitPerUser(seconds);
+          return await interaction.reply({ content: `🐢 Slowmode set to **${seconds}** seconds for this channel.` });
+        }
+        return await interaction.reply({ content: "Cannot set slowmode in this channel.", ephemeral: true });
+      }
+
+      // New: /ship
+      if (commandName === "ship") {
+        const u1 = options.getUser("user1", true);
+        const u2 = options.getUser("user2") || user;
+        const percent = Math.floor(Math.random() * 101);
+        
+        let msg = "";
+        if (percent > 90) msg = "💞 Soulmates! Get married already!";
+        else if (percent > 70) msg = "💖 Great match! There's definitely something there.";
+        else if (percent > 50) msg = "💛 Decent chance. Keep trying!";
+        else if (percent > 20) msg = "💔 Better stay as friends.";
+        else msg = "🌑 Total disaster. Stay away!";
+
+        const embed = new EmbedBuilder()
+          .setColor(0xff69b4)
+          .setTitle("💘 Yuri Love Calculator")
+          .setDescription(`**${u1.username}** ❤️ **${u2.username}**\n\nCompatibility: **${percent}%**\n\n${msg}`)
+          .setTimestamp();
+        return await interaction.reply({ embeds: [embed] });
+      }
+
+      // New: /hack
+      if (commandName === "hack") {
+        const target = options.getUser("user", true);
+        await interaction.reply({ content: `💻 Initializing exploit on **${target.username}**...` });
+        
+        const steps = [
+          "🔍 Scanning Discord session tokens...",
+          "🔓 Bypassing 2FA via zero-day proxy...",
+          "📁 Accessing private DMs and media history...",
+          "💉 Injecting Yuri.sb malicious gateway payload...",
+          "💸 Stealing billing info and nitro credits...",
+          "✅ Hack complete. Target data exfiltrated to Yuri mainframes."
+        ];
+
+        for (const step of steps) {
+          await new Promise(r => setTimeout(r, 1500));
+          await interaction.editReply({ content: step });
+        }
+        
+        await new Promise(r => setTimeout(r, 2000));
+        return await interaction.editReply({ content: `✅ **Successfully "hacked" ${target.username}** (Simulated / Fun command).` });
       }
 
       // 27. /say
