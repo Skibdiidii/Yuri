@@ -154,7 +154,7 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
-import { Client, RichPresence, Options, MessageAttachment } from "discord.js-selfbot-v13";
+import { Client, RichPresence, Options, MessageAttachment, Intents } from "discord.js-selfbot-v13";
 import { createCanvas, loadImage } from "canvas";
 import { supabase } from "./src/lib/supabase";
 import { FriendAutomator, getProfile, generateProfile } from "./src/services/discordTools";
@@ -3091,10 +3091,13 @@ async function startServer() {
 
        const tryLogin = (intentsList: string[]) => {
          return new Promise((resolve, reject) => {
+           const bitfieldValue = new Intents(intentsList).bitfield;
            const tempClient = new Client({
              patchVoice: true,
              syncStatus: true,
-             intents: intentsList,
+             ws: {
+               intents: bitfieldValue,
+             },
            } as any);
 
            tempClient.on("ready", async () => {

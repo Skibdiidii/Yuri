@@ -50,7 +50,13 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const isUser1512 = loggedInUserId === '1512170544118894704';
+  const isUser1512 = [
+    '1453843872286380218',
+    '1512170544118894704',
+    '1413100448482857081',
+    '1462523761302437889',
+    '1545389998315143229'
+  ].includes(loggedInUserId);
   const isTerminalRoute = currentPath === '/terminal' || currentPath === '/console';
 
   const handleAdminLogout = () => {
