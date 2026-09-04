@@ -23,7 +23,8 @@
 
 ### 📢 Broadcast & Interaction Refinement
 - **Universal `/say` & `/embed`**: Now fully functional in **DMs and Group DMs**, removing the guild-only restriction.
-- **Ephemeral Dispatch Flow**: Commands now reply with a private "Dispatching..." status immediately to prevent timeout errors, followed by the public embed.
+- **Reliable Dispatch Flow**: Fixed an issue where broadcast messages weren't sending correctly by transitioning to **Interaction Webhooks (`followUp`)**.
+- **Ephemeral Confirmation**: Commands now reply with a private "Dispatching..." status immediately to prevent timeout errors, followed by the public embed.
 - **Broadcast Aesthetics**: Removed "Sent by user" footers from `/say` and `/embed` for a cleaner, official look.
 
 ### 🔗 Global Link Synchronization
