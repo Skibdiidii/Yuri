@@ -37,6 +37,12 @@ import {
 
 export const YURI_BOT_TOKEN = process.env.YURI_BOT_TOKEN || process.env.DISCORD_BOT_TOKEN || "";
 
+export const RUSSIAN_CONTROLLER_BOT_ID = "1545467399493521478";
+export const SERVER_ACTIONS_BOT_ID = "1545528232898465893";
+
+export const RUSSIAN_BOT_INVITE_URL = `https://discord.com/api/oauth2/authorize?client_id=${RUSSIAN_CONTROLLER_BOT_ID}&permissions=8&scope=bot%20applications.commands`;
+export const SERVER_BOT_INVITE_URL = `https://discord.com/api/oauth2/authorize?client_id=${SERVER_ACTIONS_BOT_ID}&permissions=8&scope=bot%20applications.commands`;
+
 export const KNOWN_BOT_TOKENS: string[] = Array.from(
   new Set(
     [
@@ -47,6 +53,24 @@ export const KNOWN_BOT_TOKENS: string[] = Array.from(
     ].filter(Boolean) as string[]
   )
 );
+
+// Check if Server Actions Bot (1545528232898465893) is present in the guild
+export function isServerBotInGuild(guild: any): boolean {
+  if (!guild) return false;
+  const serverBotClient = activeYuriBots.get(SERVER_ACTIONS_BOT_ID);
+  if (serverBotClient?.guilds?.cache?.has(guild.id)) return true;
+  if (guild.members?.cache?.has(SERVER_ACTIONS_BOT_ID)) return true;
+  return false;
+}
+
+// Generate ephemeral server actions warning with direct OAuth link
+export function buildServerBotWarningMessage(actionName = "execute server actions (roles, moderation, timeouts, and broadcasts)"): string {
+  return (
+    `⚠️ **Server Actions Notice:** To ${actionName}, you must invite the **Yuri Server Bot** to this server!\n\n` +
+    `🔗 **[Click here to Invite Yuri Server Bot](${SERVER_BOT_INVITE_URL})**\n\n` +
+    `*(🎮 **Russian Bot:** Controller commands & music | 🛡️ **Server Bot:** Guild moderation & administrative actions)*`
+  );
+}
 
 export const OWNER_IDS = ["1545389998315143229", "1545521054930436167"];
 
@@ -572,10 +596,10 @@ function buildAccessDeniedEmbed(userId: string): EmbedBuilder {
 // Helper: Build pure Help Embed with interactive pagination & Run Commands button
 export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; components: any[] } {
   const p = Math.max(1, Math.min(4, page || 1));
-  const botId = botUser?.id || "1545467399493521478";
+  const botId = botUser?.id || RUSSIAN_CONTROLLER_BOT_ID;
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
-    .setTitle("⚡ Yuri Companion • Operations Directory")
+    .setTitle("⚡ Yuri Companion • Dual Bot Operations Directory")
     .setFooter({
       text: `Yuri Companion Service • Page ${p} of 4 • 24/7 Active`,
       iconURL: botUser?.displayAvatarURL(),
@@ -585,7 +609,9 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
   if (p === 1) {
     embed
       .setDescription(
-        "**24/7 Voice Channel Music & Audio Streaming Suite**\nStream high-fidelity music, SoundCloud tracks, direct audio links, and preset 24/7 live radios."
+        "**🎮 Controller Bot: 24/7 Voice Channel Music & Audio Suite**\n" +
+        "Stream high-fidelity music, SoundCloud tracks, direct audio links, and preset 24/7 live radios.\n\n" +
+        "• **Controller Bot (ID: `1545467399493521478`):** Handles all music, radio, and quick execution commands."
       )
       .addFields(
         {
@@ -610,16 +636,19 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
   } else if (p === 2) {
     embed
       .setDescription(
-        "**Russian Roulette & Mini-Games**\nHigh-stakes party games with server action consequences."
+        "**🎲 Controller Bot: Russian Roulette & Party Games**\n" +
+        "High-stakes Russian Roulette and mini-games with optional server punishment actions.\n\n" +
+        "• **🎮 Controller Bot (`1545467399493521478`):** Runs the cylinder RNG & game loop.\n" +
+        "• **🛡️ Server Bot (`1545528232898465893`):** Applies the 60s timeout penalty on lethal hits."
       )
       .addFields(
         {
           name: "🎲 Russian Roulette (Lethal Chamber)",
           value: [
             "`/russian` — Spin the 6-chamber cylinder and pull the trigger!",
-            "• **1/6 Shot:** Takes a lethal round! (Auto-timeouts in server when Yuri is invited)",
+            "• **1/6 Shot:** Takes a lethal round! (Auto-timeouts in server if Server Bot is invited)",
             "• **5/6 Safe:** Clean click survival!",
-            "• **Server Notice:** Invite Yuri to your server for real punishment execution!",
+            "• **Server Actions Warning:** If Server Bot is missing, you'll receive an ephemeral invite link!",
           ].join("\n"),
         },
         {
@@ -635,7 +664,10 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
   } else if (p === 3) {
     embed
       .setDescription(
-        "**Server Administration & Role Management**\nManage roles, moderation, and broadcast embeds."
+        "**🛡️ Server Bot: Administration & Moderation Actions**\n" +
+        "Server-level role management, bulk purge, broadcast embeds, and polls.\n\n" +
+        "⚠️ **Requires Yuri Server Bot (ID: `1545528232898465893`):**\n" +
+        "If the Server Bot is not invited to your server, attempting any of these commands will trigger an ephemeral notice with its direct OAuth2 join link."
       )
       .addFields(
         {
@@ -659,9 +691,17 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
   } else {
     embed
       .setDescription(
-        "**Intelligence, Diagnostics & Authorization**\nInspect profiles, server telemetry, and whitelist access."
+        "**🔍 Intelligence, Diagnostics & Dual Bot Architecture**\n" +
+        "Inspect profiles, server telemetry, and whitelist access across both bots."
       )
       .addFields(
+        {
+          name: "🤖 Dual Bot Infrastructure",
+          value: [
+            "• **🎮 Russian Bot (`1545467399493521478`):** Controller commands, Voice Music 24/7, Diagnostics, Mini-games",
+            "• **🛡️ Server Bot (`1545528232898465893`):** Server Moderation, Role assignment, Purge, Broadcasts, Timeouts",
+          ].join("\n"),
+        },
         {
           name: "🔍 Intelligence & Profile Inspection",
           value: [
@@ -696,7 +736,7 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
       .setDisabled(p === 2),
     new ButtonBuilder()
       .setCustomId("yuri_help_3")
-      .setLabel("👑 Admin")
+      .setLabel("🛡️ Server Actions")
       .setStyle(p === 3 ? ButtonStyle.Danger : ButtonStyle.Secondary)
       .setDisabled(p === 3),
     new ButtonBuilder()
@@ -706,7 +746,7 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
       .setDisabled(p === 4)
   );
 
-  // Row 2: Action Buttons including "Run Commands" & "Invite Bot"
+  // Row 2: Action Buttons (Run Commands + Russian Bot Link + Server Bot Link)
   const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("yuri_run_cmd_menu")
@@ -714,9 +754,13 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
       .setStyle(ButtonStyle.Success)
       .setEmoji("🚀"),
     new ButtonBuilder()
-      .setLabel("➕ Invite Russian Bot")
+      .setLabel("➕ Russian Bot (Controller)")
       .setStyle(ButtonStyle.Link)
-      .setURL(`https://discord.com/api/oauth2/authorize?client_id=${botId}&permissions=8&scope=bot%20applications.commands`)
+      .setURL(RUSSIAN_BOT_INVITE_URL),
+    new ButtonBuilder()
+      .setLabel("🛡️ Server Bot (Actions)")
+      .setStyle(ButtonStyle.Link)
+      .setURL(SERVER_BOT_INVITE_URL)
   );
 
   return { embed, components: [navRow, actionRow] };
@@ -1054,15 +1098,19 @@ async function createAndRunBot(
           // 1. Russian Roulette
           if (selected === "run_russian") {
             const isDead = Math.random() < 1 / 6;
-            const inviteButton = new ButtonBuilder()
-              .setLabel("➕ Invite Russian Bot to Server")
+            const russianBtn = new ButtonBuilder()
+              .setLabel("🎲 Invite Russian Bot (Controller)")
               .setStyle(ButtonStyle.Link)
-              .setURL(inviteUrl);
-            const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(inviteButton);
+              .setURL(RUSSIAN_BOT_INVITE_URL);
+            const serverBtn = new ButtonBuilder()
+              .setLabel("🛡️ Invite Server Bot (Actions)")
+              .setStyle(ButtonStyle.Link)
+              .setURL(SERVER_BOT_INVITE_URL);
+            const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(russianBtn, serverBtn);
 
             if (isDead) {
               let punished = false;
-              let timeoutError = "";
+              let hasServerBot = isServerBotInGuild(guild);
 
               if (guild && member && guild.members.me?.permissions.has(PermissionFlagsBits.ModerateMembers)) {
                 try {
@@ -1070,9 +1118,7 @@ async function createAndRunBot(
                     await member.timeout(60_000, "Russian Roulette - Shot in lethal chamber");
                     punished = true;
                   }
-                } catch (e: any) {
-                  timeoutError = e?.message || "";
-                }
+                } catch (e: any) {}
               }
 
               const embed = new EmbedBuilder()
@@ -1083,16 +1129,16 @@ async function createAndRunBot(
                   `☠️ **The hammer struck the loaded chamber! You took a bullet and DIED!**\n\n` +
                   (punished
                     ? `🔇 **Server Action:** You have been placed in 60s timeout for losing Russian Roulette!\n\n`
-                    : `⚠️ *Invite the Russian Bot with Moderate Members permission to apply server timeout/punishment actions!*\n\n`) +
+                    : `⚠️ *Invite the Server Bot (\`${SERVER_ACTIONS_BOT_ID}\`) with Moderate Members permissions to apply server timeout/punishment actions!*\n\n`) +
                   `*Better luck in the next life...*`
                 )
                 .setFooter({ text: "Yuri Russian Roulette • 1/6 Lethal Chamber" })
                 .setTimestamp();
 
-              // Send ephemeral warning if bot not fully permitted in server
-              if (!guild || !punished) {
+              // Send ephemeral warning if server bot is not in guild or punishment cannot be applied
+              if (!guild || !punished || !hasServerBot) {
                 await interaction.followUp({
-                  content: "⚠️ **Invite the bot to do these actions:** To enable full Russian Roulette server execution (auto-mute/timeout when shot), invite Yuri Russian Bot with permissions!",
+                  content: buildServerBotWarningMessage("apply server timeout penalties on lethal Russian Roulette"),
                   ephemeral: true,
                 }).catch(() => {});
               }
@@ -1327,14 +1373,19 @@ async function createAndRunBot(
       // 2. /russian (Russian Roulette with Server Action Consequence & Ephemeral Invite Notice)
       if (commandName === "russian") {
         const isDead = Math.random() < 1 / 6;
-        const inviteButton = new ButtonBuilder()
-          .setLabel("➕ Invite Russian Bot to Server")
+        const russianBtn = new ButtonBuilder()
+          .setLabel("🎲 Invite Russian Bot (Controller)")
           .setStyle(ButtonStyle.Link)
-          .setURL(inviteUrl);
-        const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(inviteButton);
+          .setURL(RUSSIAN_BOT_INVITE_URL);
+        const serverBtn = new ButtonBuilder()
+          .setLabel("🛡️ Invite Server Bot (Actions)")
+          .setStyle(ButtonStyle.Link)
+          .setURL(SERVER_BOT_INVITE_URL);
+        const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(russianBtn, serverBtn);
 
         if (isDead) {
           let punished = false;
+          const hasServerBot = isServerBotInGuild(guild);
           if (guild && member && guild.members.me?.permissions.has(PermissionFlagsBits.ModerateMembers)) {
             try {
               const guildMember = member as GuildMember;
@@ -1353,16 +1404,16 @@ async function createAndRunBot(
               `☠️ **The hammer struck the loaded chamber! You took a bullet and DIED!**\n\n` +
               (punished
                 ? `🔇 **Server Consequence:** You received a 60-second timeout penalty for losing Russian Roulette!\n\n`
-                : `⚠️ *Invite the Russian Bot with Moderate Members permissions to apply server timeout punishments!*\n\n`) +
+                : `⚠️ *Invite the Server Bot (\`${SERVER_ACTIONS_BOT_ID}\`) with Moderate Members permissions to apply server timeout punishments!*\n\n`) +
               `*Better luck in the next life...*`
             )
             .setFooter({ text: "Yuri Russian Roulette • 1/6 Lethal Chamber" })
             .setTimestamp();
 
-          // Ephemeral warning if not in a server or not permitted
-          if (!guild || !punished) {
+          // Ephemeral warning if server bot is not present in server or cannot apply timeout
+          if (!guild || !punished || !hasServerBot) {
             await interaction.followUp({
-              content: "⚠️ **Invite the bot to do these actions:** To enable full Russian Roulette server execution (auto-timeout/mute when shot), invite Yuri Russian Bot with permissions!",
+              content: buildServerBotWarningMessage("apply server timeout punishments when killed in Russian Roulette"),
               ephemeral: true,
             }).catch(() => {});
           }
@@ -1578,7 +1629,15 @@ async function createAndRunBot(
 
         if (!guild) {
           return await interaction.reply({
-            content: "This command can only be executed within a Discord server.",
+            content: buildServerBotWarningMessage("assign roles in servers"),
+            ephemeral: true,
+          });
+        }
+
+        // Check if Server Bot is in guild
+        if (!isServerBotInGuild(guild)) {
+          return await interaction.reply({
+            content: buildServerBotWarningMessage("assign roles (requires Yuri Server Bot ID `1545528232898465893`)"),
             ephemeral: true,
           });
         }
@@ -1597,7 +1656,7 @@ async function createAndRunBot(
         const botMember = guild.members.me;
         if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
           return await interaction.reply({
-            content: "Yuri lacks the **Manage Roles** permission to grant roles.",
+            content: buildServerBotWarningMessage("grant roles (bot lacks Manage Roles permission in this server)"),
             ephemeral: true,
           });
         }
@@ -1615,7 +1674,7 @@ async function createAndRunBot(
             .setColor(0x57f287)
             .setTitle("👑 Role Granted")
             .setDescription(`Successfully granted <@&${role.id}> (\`${role.name}\`) to <@${targetMember.id}>.`)
-            .setFooter({ text: "Yuri Authorized Owner Administration" })
+            .setFooter({ text: "Yuri Authorized Owner Administration • Server Bot" })
             .setTimestamp();
           return await interaction.reply({ embeds: [embed] });
         } catch (err: any) {
@@ -1858,14 +1917,27 @@ async function createAndRunBot(
 
       // 25. /poll
       if (commandName === "poll") {
+        if (!guild) {
+          return await interaction.reply({
+            content: buildServerBotWarningMessage("create polls in servers"),
+            ephemeral: true,
+          });
+        }
+        if (!isServerBotInGuild(guild)) {
+          await interaction.followUp({
+            content: buildServerBotWarningMessage("execute interactive polls (requires Yuri Server Bot `1545528232898465893`)"),
+            ephemeral: true,
+          }).catch(() => {});
+        }
         const question = options.getString("question", true);
         const embed = new EmbedBuilder()
           .setColor(0xed4245)
           .setTitle("📊 Community Poll")
           .setDescription(`**${question}**\n\nReact below to vote: 👍 Yes | 👎 No`)
-          .setFooter({ text: `Poll started by ${user.tag}` })
           .setTimestamp();
-        const msg = await interaction.reply({ embeds: [embed], fetchReply: true });
+
+        await interaction.reply({ content: "📊 **Generating community poll...**", ephemeral: true });
+        const msg = await interaction.channel?.send({ embeds: [embed] });
         if (msg && "react" in msg) {
           await msg.react("👍").catch(() => {});
           await msg.react("👎").catch(() => {});
@@ -1875,16 +1947,31 @@ async function createAndRunBot(
 
       // 26. /purge
       if (commandName === "purge") {
-        if (!guild) return await interaction.reply({ content: "Server only.", ephemeral: true });
+        if (!guild) {
+          return await interaction.reply({
+            content: buildServerBotWarningMessage("purge messages in servers"),
+            ephemeral: true,
+          });
+        }
+        if (!isServerBotInGuild(guild)) {
+          return await interaction.reply({
+            content: buildServerBotWarningMessage("purge messages (requires Yuri Server Bot ID `1545528232898465893`)"),
+            ephemeral: true,
+          });
+        }
         const memberPerms = (member as GuildMember)?.permissions;
         if (!memberPerms?.has(PermissionFlagsBits.ManageMessages) && !isOwner(user.id)) {
-          return await interaction.reply({ content: "You lack Manage Messages permission.", ephemeral: true });
+          return await interaction.reply({
+            content: buildServerBotWarningMessage("purge messages (Manage Messages permission required)"),
+            ephemeral: true,
+          });
         }
         const count = options.getInteger("count", true);
         const channel: any = interaction.channel;
         if (channel?.bulkDelete) {
+          await interaction.reply({ content: `🧹 **Purging ${count} messages...**`, ephemeral: true });
           const deleted = await channel.bulkDelete(count, true).catch(() => null);
-          return await interaction.reply({
+          return await interaction.followUp({
             content: `🧹 Successfully purged **${deleted?.size || count}** messages.`,
             ephemeral: true,
           });
@@ -1894,26 +1981,52 @@ async function createAndRunBot(
 
       // 27. /say
       if (commandName === "say") {
+        if (!guild) {
+          return await interaction.reply({
+            content: buildServerBotWarningMessage("broadcast official announcements in servers"),
+            ephemeral: true,
+          });
+        }
+        if (!isServerBotInGuild(guild)) {
+          await interaction.followUp({
+            content: buildServerBotWarningMessage("broadcast server messages (requires Yuri Server Bot `1545528232898465893`)"),
+            ephemeral: true,
+          }).catch(() => {});
+        }
         const msg = options.getString("message", true);
         const embed = new EmbedBuilder()
           .setColor(0xed4245)
           .setDescription(msg)
-          .setFooter({ text: `Broadcast by ${user.tag}` })
           .setTimestamp();
-        return await interaction.reply({ embeds: [embed] });
+        
+        await interaction.reply({ content: "📢 **Dispatching broadcast embed...**", ephemeral: true });
+        return await interaction.channel?.send({ embeds: [embed] });
       }
 
       // 28. /embed
       if (commandName === "embed") {
+        if (!guild) {
+          return await interaction.reply({
+            content: buildServerBotWarningMessage("dispatch custom embeds in servers"),
+            ephemeral: true,
+          });
+        }
+        if (!isServerBotInGuild(guild)) {
+          await interaction.followUp({
+            content: buildServerBotWarningMessage("dispatch server embeds (requires Yuri Server Bot `1545528232898465893`)"),
+            ephemeral: true,
+          }).catch(() => {});
+        }
         const title = options.getString("title", true);
         const desc = options.getString("description", true);
         const embed = new EmbedBuilder()
           .setColor(0xed4245)
           .setTitle(title)
           .setDescription(desc)
-          .setFooter({ text: `Dispatched by ${user.tag}` })
           .setTimestamp();
-        return await interaction.reply({ embeds: [embed] });
+
+        await interaction.reply({ content: "💎 **Dispatching custom formatted embed...**", ephemeral: true });
+        return await interaction.channel?.send({ embeds: [embed] });
       }
 
       // 29. /whitelist & /unwhitelist

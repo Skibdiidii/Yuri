@@ -549,57 +549,92 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
               Operating 24/7 in the background with full Slash Command parity (`/giverole`, `/whois`, `/avatar`, `/banner`, `/serverinfo`, `/afk`, etc.). While selfbot commands output straight-line text, this companion delivers pure crimson Discord embed presentations and is strictly restricted to verified Yuri Selfbot users.
             </p>
 
-            {/* Live Stats Pill Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Status</span>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-medium text-emerald-400">Online (24/7)</span>
+            {/* Live Stats Pill Grid - Dual Bot View */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+              {/* Russian Bot Status Card */}
+              <div className="bg-black/40 border border-red-500/10 rounded-xl p-4 flex items-center gap-4 hover:border-red-500/30 transition-all">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-500/20 bg-zinc-800 flex items-center justify-center">
+                    {botStatus.bots?.find(b => b.id === '1545467399493521478')?.avatar ? (
+                      <img src={botStatus.bots?.find(b => b.id === '1545467399493521478')?.avatar} alt="Russian Bot" className="w-full h-full object-cover" />
+                    ) : (
+                      <Bot className="w-6 h-6 text-red-400" />
+                    )}
+                  </div>
+                  <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1E1F22] ${botStatus.bots?.find(b => b.id === '1545467399493521478')?.online ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white truncate">Russian Bot</span>
+                    <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 text-[10px] font-mono border border-red-500/20 uppercase">Controller</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="flex items-center gap-1">
+                      <Radio className="w-3 h-3 text-red-500/60" />
+                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545467399493521478')?.ping || 0}ms</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Server className="w-3 h-3 text-red-500/60" />
+                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545467399493521478')?.guildsCount || 0} Guilds</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Bot Tag</span>
-                <span className="text-xs font-mono font-medium text-zinc-200 mt-1 truncate">
-                  {botStatus.tag || 'Бог добр#5735'}
-                </span>
-              </div>
-
-              <div className="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">WebSocket Ping</span>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <Radio className="w-3 h-3 text-red-400" />
-                  <span className="text-xs font-mono font-medium text-zinc-200">{botStatus.ping || 42}ms</span>
+              {/* Server Bot Status Card */}
+              <div className="bg-black/40 border border-blue-500/10 rounded-xl p-4 flex items-center gap-4 hover:border-blue-500/30 transition-all">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-500/20 bg-zinc-800 flex items-center justify-center">
+                    {botStatus.bots?.find(b => b.id === '1545528232898465893')?.avatar ? (
+                      <img src={botStatus.bots?.find(b => b.id === '1545528232898465893')?.avatar} alt="Server Bot" className="w-full h-full object-cover" />
+                    ) : (
+                      <ShieldCheck className="w-6 h-6 text-blue-400" />
+                    )}
+                  </div>
+                  <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1E1F22] ${botStatus.bots?.find(b => b.id === '1545528232898465893')?.online ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
                 </div>
-              </div>
-
-              <div className="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Uptime</span>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <Clock className="w-3 h-3 text-red-400" />
-                  <span className="text-xs font-mono font-medium text-zinc-200">{formatUptime(botStatus.uptime)}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white truncate">Server Bot</span>
+                    <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-mono border border-blue-500/20 uppercase">Actions</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="flex items-center gap-1">
+                      <Radio className="w-3 h-3 text-blue-500/60" />
+                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545528232898465893')?.ping || 0}ms</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Server className="w-3 h-3 text-blue-500/60" />
+                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545528232898465893')?.guildsCount || 0} Guilds</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 border border-white/5 rounded-lg">
+                <Clock className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-xs font-mono text-zinc-300">Uptime: {formatUptime(botStatus.uptime)}</span>
+              </div>
               <a 
-                href={AUTH_URL} 
+                href={`https://discord.com/api/oauth2/authorize?client_id=1545467399493521478&permissions=8&scope=bot%20applications.commands`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Invite Yuri Bot to Servers / DMs</span>
+                <Bot className="w-3.5 h-3.5" />
+                <span>Invite Controller</span>
               </a>
-              <button 
-                onClick={handleCopyAuth}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg border border-white/5 flex items-center gap-2 transition-all"
+              <a 
+                href={`https://discord.com/api/oauth2/authorize?client_id=1545528232898465893&permissions=8&scope=bot%20applications.commands`} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all"
               >
-                {copiedAuth ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedAuth ? 'OAuth2 Link Copied!' : 'Copy OAuth2 Link'}</span>
-              </button>
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Invite Server Actions Bot</span>
+              </a>
             </div>
           </div>
         </div>
