@@ -168,7 +168,13 @@ import * as cheerio from "cheerio";
 
 // WebSocketShard prototype hook for Bot tokens compatibility
 import { createRequire } from "module";
-const requireLocal = createRequire(import.meta.url);
+const requireLocal = (() => {
+  if (typeof require !== "undefined") {
+    return require;
+  }
+  const fallbackUrl = (typeof import.meta !== "undefined" && import.meta.url) || `file://${process.cwd()}/server.ts`;
+  return createRequire(fallbackUrl);
+})();
 const WebSocketShard = requireLocal("discord.js-selfbot-v13/src/client/websocket/WebSocketShard");
 
 const original_send = WebSocketShard.prototype._send;
