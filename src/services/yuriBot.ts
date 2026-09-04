@@ -1059,8 +1059,11 @@ async function createAndRunBot(
 
         if (interaction.customId === "yuri_modal_music") {
           const user = interaction.user;
-          const guild = interaction.guild;
-          const member = interaction.member as GuildMember;
+          const guild = interaction.guild || (interaction.guildId ? bot.guilds.cache.get(interaction.guildId) : null);
+          let member = interaction.member as any;
+          if (!member && guild) {
+            member = await guild.members.fetch(user.id).catch(() => null);
+          }
           const voiceChannel = member?.voice?.channel;
 
           if (!guild || !voiceChannel) {
@@ -1107,7 +1110,7 @@ async function createAndRunBot(
         // NEW: Action Modal Handlers
         if (interaction.customId.startsWith("yuri_modal_action_")) {
           const action = interaction.customId.replace("yuri_modal_action_run_", "").replace("_modal", "");
-          const guild = interaction.guild;
+          const guild = interaction.guild || (interaction.guildId ? bot.guilds.cache.get(interaction.guildId) : null);
 
           if (action === "kick" || action === "ban" || action === "timeout") {
             if (!guild) return await interaction.reply({ content: "Server only action.", ephemeral: true });
@@ -1379,8 +1382,11 @@ async function createAndRunBot(
         if (interaction.customId === "yuri_select_command_run") {
           const selected = interaction.values[0];
           const user = interaction.user;
-          const guild = interaction.guild;
-          const member = interaction.member as GuildMember;
+          const guild = interaction.guild || (interaction.guildId ? bot.guilds.cache.get(interaction.guildId) : null);
+          let member = interaction.member as any;
+          if (!member && guild) {
+            member = await guild.members.fetch(user.id).catch(() => null);
+          }
           const botId = bot.user?.id || "1545467399493521478";
           const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${botId}&permissions=8&scope=bot%20applications.commands`;
 
@@ -1744,7 +1750,15 @@ async function createAndRunBot(
 
     if (!interaction.isChatInputCommand()) return;
 
-    const { commandName, options, user, guild, member } = interaction as ChatInputCommandInteraction;
+    const { commandName, options, user, guildId } = interaction as ChatInputCommandInteraction;
+    
+    // Improved Guild & Member resolution (Fixes User Apps context when bot is in the guild)
+    const guild = interaction.guild || (guildId ? bot.guilds.cache.get(guildId) : null);
+    let member = interaction.member;
+    if (!member && guild) {
+      member = await guild.members.fetch(user.id).catch(() => null);
+    }
+
     const botId = bot.user?.id || "1545467399493521478";
     const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${botId}&permissions=8&scope=bot%20applications.commands`;
 
