@@ -307,7 +307,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
               24/7 ACTIVE
             </span>
             <h1 className="text-sm font-semibold text-white tracking-wide">
-              Yuri Selfbot Dedicated Bot Console
+              Yuri Companion Service
             </h1>
           </div>
         </div>
@@ -317,10 +317,10 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
             onClick={handleRestartBot}
             disabled={isRestarting}
             className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs rounded-lg border border-white/5 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-            title="Restart 24/7 Bot Runner"
+            title="Restart 24/7 Companion Service"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRestarting ? 'animate-spin text-red-400' : ''}`} />
-            <span className="hidden md:inline">{isRestarting ? 'Restarting...' : 'Restart Bot'}</span>
+            <span className="hidden md:inline">{isRestarting ? 'Restarting...' : 'Restart Companion'}</span>
           </button>
           <a
             href={AUTH_URL}
@@ -329,7 +329,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
             className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-medium text-xs rounded-lg transition-all flex items-center gap-2 shadow-sm shadow-red-900/30"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span>Authorize Bot</span>
+            <span>Authorize Companion</span>
           </a>
           <button
             onClick={handleCopyAuth}
@@ -356,10 +356,10 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
               <span>Dedicated 24/7 Online Automation Service</span>
             </div>
             <h2 className="text-3xl font-semibold tracking-tight text-white">
-              Yuri Selfbot 24/7 Bot Runner
+              Yuri Companion Service
             </h2>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Running continuously around the clock in the background. Exclusively restricted to authorized selfbot user accounts with zero owner bias. Responds to your selfbot commands in servers and direct messages with straight-line formatting and active automation.
+              Operating 24/7 in the background with full Slash Command parity (`/giverole`, `/whois`, `/avatar`, `/banner`, `/serverinfo`, `/afk`, etc.). While selfbot commands output straight-line text, this companion delivers pure crimson Discord embed presentations and is strictly restricted to verified Yuri Selfbot users.
             </p>
 
             {/* Live Stats Pill Grid */}

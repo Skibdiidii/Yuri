@@ -64,7 +64,22 @@ export default function App() {
   ].includes(loggedInUserId);
   const isTerminalRoute = currentPath === '/terminal' || currentPath === '/console';
 
-  const handleAdminLogout = () => {
+  const handleAdminLogout = async () => {
+    const token = localStorage.getItem('token') || loggedInToken;
+    if (token) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ wipeAll: true }),
+        });
+      } catch (err) {
+        console.warn('Logout cleanup request failed:', err);
+      }
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('catalystcord_user_token');
     localStorage.removeItem('token_user');
@@ -164,10 +179,10 @@ export default function App() {
                     <button 
                       onClick={() => setView('sb2')} 
                       className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 border border-white/5 rounded-md transition-colors flex items-center gap-1.5"
-                      title="Yuri Bot 24/7 Console"
+                      title="Yuri 24/7 Companion Service"
                     >
                       <Bot className="w-3.5 h-3.5 text-red-400" />
-                      <span>Bot Console</span>
+                      <span>Companion Service</span>
                     </button>
                     <button 
                       onClick={handleAdminLogout} 
@@ -178,7 +193,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className={`grid grid-cols-1 ${isUser1512 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <motion.div 
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
@@ -206,6 +221,27 @@ export default function App() {
                     <h2 className="text-base font-medium text-white mb-2">Gateway Client</h2>
                     <p className="text-sm text-zinc-500 leading-relaxed font-normal">
                       Connect directly to the socket to interoperate across guild and private channels dynamically.
+                    </p>
+                  </motion.div>
+
+                  {/* Companion Service moved below Automation Console */}
+                  <motion.div 
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setView('sb2')}
+                    className="bg-[#111] border border-white/10 hover:border-red-500/30 rounded-xl p-8 cursor-pointer transition-colors group relative overflow-hidden"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
+                      <Bot className="w-5 h-5 text-red-400 group-hover:text-red-300 transition-colors" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className="text-base font-medium text-white">Companion Service</h2>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                        24/7 ONLINE
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-500 leading-relaxed font-normal">
+                      Dedicated background service with full Slash Command parity, pure crimson embed responses, and verified selfbot access.
                     </p>
                   </motion.div>
 

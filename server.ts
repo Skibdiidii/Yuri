@@ -10805,6 +10805,64 @@ ${list.substring(0, 1900)}`,
       res.status(401).json({ error: "Unauthorized" });
     }
   });
+
+  app.post("/api/auth/logout", async (req, res) => {
+    const token = req.headers.authorization;
+    const { wipeAll } = req.body || {};
+    try {
+      console.log(`[LOGOUT] User triggered logout. Halting operations (wipeAll=${!!wipeAll})...`);
+      // Stop stream, timers, and client for requesting token
+      if (token) {
+        intentionalDisconnects.add(token);
+        cleanupStream(token);
+        sessions.delete(token);
+        deleteSessionLocalBackup(token);
+        const client = activeClients.get(token);
+        if (client) {
+          try { client.destroy(); } catch {}
+          activeClients.delete(token);
+        }
+        const alts = altClients.get(token);
+        if (alts) {
+          alts.forEach((c) => {
+            if (c.token) intentionalDisconnects.add(c.token);
+            try { c.destroy(); } catch {}
+          });
+          altClients.delete(token);
+        }
+      }
+
+      // If wipeAll is requested (matching .clearselfbot command behavior)
+      if (wipeAll) {
+        rpcSettings.clear();
+        await supabase.from("rpc_settings").delete().neq("id", "0").catch(() => {});
+        rotationTimers.forEach((timer) => clearInterval(timer));
+        rotationTimers.clear();
+        autoReactRules.clear();
+        await supabase.from("auto_react_rules").delete().neq("id", "0").catch(() => {});
+        sessions.clear();
+        await supabase.from("sessions").delete().neq("id", "0").catch(() => {});
+        for (const [t, client] of activeClients.entries()) {
+          intentionalDisconnects.add(t);
+          cleanupStream(t);
+          try { client.destroy(); } catch {}
+        }
+        activeClients.clear();
+        for (const alts of altClients.values()) {
+          alts.forEach((c) => {
+            if (c?.token) intentionalDisconnects.add(c.token);
+            try { c.destroy(); } catch {}
+          });
+        }
+        altClients.clear();
+      }
+
+      return res.json({ success: true, message: "Logged out and all operations halted." });
+    } catch (err: any) {
+      console.error("[LOGOUT] Error during logout halt:", err);
+      res.status(500).json({ error: err?.message || "Failed to process logout" });
+    }
+  });
   app.post("/api/actions/join-vc", async (req, res) => {
     const token = req.headers.authorization;
     if (!token) return res.status(401).json({ error: "Unauthorized" });

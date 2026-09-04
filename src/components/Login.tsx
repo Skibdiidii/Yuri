@@ -1,7 +1,28 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
-import { Globe, MapPin, Search, Shield, ShieldAlert, X, Copy, Check, MessageSquare } from 'lucide-react';
+import { 
+  Globe, 
+  MapPin, 
+  Search, 
+  Shield, 
+  ShieldAlert, 
+  X, 
+  Copy, 
+  Check, 
+  MessageSquare,
+  Zap,
+  Bot,
+  Radio,
+  Sliders,
+  Terminal,
+  ChevronRight,
+  ExternalLink,
+  Sparkles,
+  Lock,
+  ArrowRight,
+  Play
+} from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -25,13 +46,13 @@ const VPN_COUNTRIES = [
 ];
 
 export default function Login({ onLoginSuccess }: LoginProps) {
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [token, setToken] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'login' | 'email' | 'getToken' | 'oauth'>('login');
-  
   
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -42,13 +63,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     else localStorage.removeItem('yuri_tos_accepted');
   };
   
-  
   const [showVpnModal, setShowVpnModal] = useState(false);
   const [vpnEnabled, setVpnEnabled] = useState(false);
   const [vpnCountry, setVpnCountry] = useState(VPN_COUNTRIES[0]);
   const [vpnSearch, setVpnSearch] = useState('');
   
-  const [showCommunityModal, setShowCommunityModal] = useState(true);
+  const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [communityCopied, setCommunityCopied] = useState(false);
   const handleCopyCommunityLink = async () => {
     const inviteLink = 'https://discord.gg/z5BwKZwtVe';
@@ -148,505 +168,766 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       const res = await fetch('/api/auth/extract-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to extract token');
+      
+      if (!res.ok || !data.success || !data.token) {
+        throw new Error(data.error || 'Failed to extract token from Discord.');
       }
       
+      const extractedToken = data.token;
+      setCopiedToken(extractedToken);
+      setCopySuccess(true);
       
-      if (data.token) {
-        setCopiedToken(data.token);
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(data.token);
-          } else {
-            const textarea = document.createElement('textarea');
-            textarea.value = data.token;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-          }
-          setCopySuccess(true);
-        } catch (err) {
-          console.error('Failed to copy token:', err);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(extractedToken);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = extractedToken;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
         }
+      } catch (copyErr) {
+        console.warn('Clipboard write failed:', copyErr);
       }
-
       
-      const loginRes = await api.login(data.token);
+      const loginRes = await api.login(extractedToken);
       localStorage.setItem('token', loginRes.session.token);
       localStorage.setItem('catalystcord_user_token', loginRes.session.token);
       localStorage.setItem('token_user', JSON.stringify(loginRes.session));
       
-      
       setTimeout(() => {
         onLoginSuccess();
       }, 1200);
+      
     } catch (err: any) {
-      setError(err.message || 'Invalid credentials.');
+      setError(err.message || 'Authentication error.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col items-center justify-start md:justify-center font-sans overflow-y-auto py-8 px-4 custom-scrollbar">
-      <div className="absolute inset-0 z-0 bg-black/80 backdrop-blur-2xl fixed" />
-      <div className="absolute inset-0 z-0 bg-gradient-to-tr from-indigo-900/20 via-black to-blue-900/10 fixed" />
+    <div className="min-h-screen w-full bg-[#070709] text-zinc-100 font-sans relative overflow-x-hidden selection:bg-red-500/30">
+      {/* Dynamic Background Media & Subtle Ambient Mesh */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-red-600/10 rounded-full blur-[140px]" />
+        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[140px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
+      </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-[460px] p-6 sm:p-8 md:p-10 bg-zinc-900/50 backdrop-blur-xl border border-white/5 rounded-[2rem] shadow-2xl z-10 relative my-auto max-h-[88vh] overflow-y-auto custom-scrollbar"
-      >
-        <div className="mb-8 text-center">
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#5865F2]/20 border border-[#5865F2]/50 mb-6 shadow-inner cursor-pointer"
-            onClick={() => window.open('https://discord.com/login', '_blank')}
-          >
-            <svg className="w-8 h-8 text-[#5865F2]" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-          </motion.div>
-          
-          <h1 className="text-3xl font-medium tracking-tight text-white mb-2">Welcome to Yuri</h1>
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="flex items-center gap-2 relative">
-              <span className="text-zinc-400 font-medium tracking-wide">Yuri Dashboard</span>
+      {/* Top Navigation */}
+      <header className="relative z-20 border-b border-white/5 backdrop-blur-xl bg-black/40 sticky top-0">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setShowAuthModal(false)}>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-red-600 to-red-400 p-[1px] shadow-lg shadow-red-500/20">
+                <div className="w-full h-full bg-black rounded-[7px] flex items-center justify-center">
+                  <span className="text-red-400 font-black text-xs tracking-tighter">YURI</span>
+                </div>
+              </div>
+              <span className="font-semibold text-white tracking-tight text-base">Yuri Selfbot</span>
             </div>
-            
-            <div className="w-px h-6 bg-white/10" />
-            
-            <button
-              onClick={() => setShowVpnModal(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${
-                vpnEnabled 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-                  : 'bg-zinc-800/50 border-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-              }`}
-            >
-              <Shield className={`w-4 h-4 ${vpnEnabled ? 'text-emerald-400' : 'text-zinc-500'}`} />
-              <span className="text-xs font-semibold uppercase tracking-wider">
-                {vpnEnabled ? vpnCountry.id : 'VPN'}
-              </span>
-            </button>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              24/7 NETWORK OPERATIONAL
+            </span>
           </div>
-          
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-6 mt-6 border-b border-white/5 pb-4">
-            <button 
-              onClick={() => setActiveTab('login')}
-              className={`text-sm font-medium transition-all duration-300 relative ${activeTab === 'login' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowCommunityModal(true)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/5 transition-colors hidden md:flex items-center gap-1.5"
             >
-              Token Login
-              {activeTab === 'login' && <motion.div layoutId="indicator" className="absolute -bottom-2 left-0 right-0 h-0.5 bg-white rounded-full" />}
+              <MessageSquare className="w-3.5 h-3.5 text-[#5865F2]" />
+              <span>Community</span>
             </button>
-            <button 
-              onClick={() => setActiveTab('email')}
-              className={`text-sm font-medium transition-all duration-300 relative ${activeTab === 'email' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              Email Login
-              {activeTab === 'email' && <motion.div layoutId="indicator" className="absolute -bottom-2 left-0 right-0 h-0.5 bg-white rounded-full" />}
-            </button>
-            <button 
-              onClick={() => setActiveTab('oauth')}
-              className={`text-sm font-medium transition-all duration-300 relative ${activeTab === 'oauth' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              OAuth
-              {activeTab === 'oauth' && <motion.div layoutId="indicator" className="absolute -bottom-2 left-0 right-0 h-0.5 bg-white rounded-full" />}
-            </button>
-            <button 
-              onClick={() => setActiveTab('getToken')}
-              className={`text-sm font-medium transition-all duration-300 relative ${activeTab === 'getToken' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              Guide
-              {activeTab === 'getToken' && <motion.div layoutId="indicator" className="absolute -bottom-2 left-0 right-0 h-0.5 bg-white rounded-full" />}
-            </button>
-            <button 
-              type="button"
+
+            <button
               onClick={() => {
                 window.history.pushState({}, '', '/console');
                 window.dispatchEvent(new Event('popstate'));
               }}
-              className={`text-sm font-medium transition-all duration-300 relative text-zinc-500 hover:text-zinc-300`}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/5 transition-colors hidden sm:flex items-center gap-1.5"
             >
-              Terminal
+              <Terminal className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Terminal</span>
+            </button>
+
+            <button
+              onClick={() => setShowVpnModal(true)}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                vpnEnabled 
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                  : 'bg-white/5 border-white/5 text-zinc-300 hover:text-white'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span className="uppercase font-mono">{vpnEnabled ? vpnCountry.id : 'VPN'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="text-xs font-semibold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-950/40 transition-all flex items-center gap-1.5"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
+      </header>
 
-        {activeTab === 'oauth' ? (
-          <div className="space-y-6">
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed">
-              <p className="font-semibold text-amber-400 mb-1">⚠️ Important Note on OAuth:</p>
-              <p>
-                OAuth authentication is ONLY for accessing the web dashboard interface. Full Discord client automation, RPC customization, voice channel tools, and gateway operations require providing an account user Token.
+      {/* Main Landing Page Content */}
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-12 md:py-20 space-y-24">
+        
+        {/* Hero Section: "Yuri Selfbot: Why Should You Use This?" */}
+        <section className="text-center space-y-8 max-w-4xl mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono tracking-wide"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>UNCOMPROMISING PRECISION & 24/7 DEDICATED COMPANION</span>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.1 }}
+            className="space-y-4"
+          >
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
+              Yuri Selfbot <br />
+              <span className="bg-gradient-to-r from-red-400 via-rose-300 to-zinc-400 bg-clip-text text-transparent">
+                Why Should You Use This?
+              </span>
+            </h1>
+            <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
+              Built from the ground up for enthusiasts who demand zero-lag responsiveness, stealth spoofing, and a dedicated 24/7 companion bot that operates seamlessly in every server and direct message.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.2 }}
+            className="flex flex-wrap items-center justify-center gap-4 pt-2"
+          >
+            <button
+              onClick={() => {
+                setActiveTab('login');
+                setShowAuthModal(true);
+              }}
+              className="px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-sm shadow-xl shadow-red-900/30 transition-all flex items-center gap-2.5 active:scale-95 cursor-pointer"
+            >
+              <span>Get Started with Yuri</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowCommunityModal(true)}
+              className="px-6 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 font-medium text-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4 text-[#5865F2]" />
+              <span>Join Official Discord</span>
+            </button>
+          </motion.div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 max-w-3xl mx-auto">
+            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
+              <div className="text-2xl font-bold font-mono text-white">99.9%</div>
+              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">24/7 Uptime</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
+              <div className="text-2xl font-bold font-mono text-emerald-400">&lt; 38ms</div>
+              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Gateway Ping</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
+              <div className="text-2xl font-bold font-mono text-red-400">Pure Embed</div>
+              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Companion Output</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
+              <div className="text-2xl font-bold font-mono text-white">Slash &amp; Prefix</div>
+              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Full Command Parity</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Media & Interactive Feature Demonstration */}
+        <section className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-black/80 p-8 sm:p-12 overflow-hidden shadow-2xl">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-[100px] pointer-events-none" />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+            <div className="lg:col-span-5 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-mono">
+                <Bot className="w-3.5 h-3.5" />
+                <span>24/7 DEDICATED COMPANION</span>
+              </div>
+              <h2 className="text-3xl font-bold text-white tracking-tight">
+                Designed For Speed, Crafted for Longevity
+              </h2>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Why settle for standard Discord limitations? Yuri combines a high-speed local selfbot engine with an independent 24/7 companion bot.
+              </p>
+
+              <ul className="space-y-3.5 text-sm text-zinc-300">
+                <li className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <strong className="text-white">Pure Embed Companion Output:</strong> The 24/7 Companion formats every profile, server stat, and role command in styled crimson Discord embeds.
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <strong className="text-white">Active Slash Command Integration:</strong> Full Discord application commands (`/giverole`, `/whois`, `/avatar`, `/banner`, `/serverinfo`).
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <strong className="text-white">Anti-Detection &amp; Rate-Limit Cloak:</strong> Spoofed headers and client heartbeats protect your active accounts.
+                  </div>
+                </li>
+              </ul>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="px-5 py-3 rounded-xl bg-white text-zinc-900 font-semibold text-xs hover:bg-zinc-200 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Launch Yuri Now</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Visual Media Showcase: Video Loop / Interactive Embed Card */}
+            <div className="lg:col-span-7">
+              <div className="rounded-2xl border border-white/10 bg-black/80 shadow-2xl p-4 sm:p-6 space-y-4">
+                {/* Simulated Discord Window Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-white/5 text-xs text-zinc-400">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                    <span className="ml-2 font-mono text-zinc-400">#yuri-companion-preview</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-zinc-500">Gateway Active (38ms)</span>
+                </div>
+
+                {/* Simulated Discord Embed */}
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-start gap-3">
+                    <img 
+                      src="https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif" 
+                      alt="Yuri Avatar" 
+                      className="w-10 h-10 rounded-full border border-red-500/30 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-white">Yuri Selfbot Companion</span>
+                        <span className="text-[10px] font-bold bg-[#5865F2] text-white px-1.5 py-0.2 rounded">BOT</span>
+                        <span className="text-[10px] text-zinc-500">Today at 12:00</span>
+                      </div>
+
+                      {/* Discord Embed preview */}
+                      <div className="border-l-4 border-red-500 bg-zinc-900/90 rounded-r-xl p-4 space-y-3 shadow-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs font-bold text-white">🛡️ Role Granted Successfully</div>
+                          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">EXECUTED</span>
+                        </div>
+                        <p className="text-xs text-zinc-300">
+                          Assigned role <span className="text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded font-mono">@VIP Elite</span> to <span className="text-white font-medium">@harumi</span> in guild <strong className="text-zinc-200">Yuri HQ</strong>.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] bg-black/40 p-2.5 rounded-lg border border-white/5">
+                          <div>
+                            <span className="text-zinc-500 block">Command</span>
+                            <span className="font-mono text-zinc-300">/giverole</span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500 block">Status</span>
+                            <span className="font-mono text-emerald-400">Verified Selfbot User</span>
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-zinc-500 pt-1 border-t border-white/5 flex items-center justify-between font-mono">
+                          <span>Yuri Selfbot Companion • Role Administration</span>
+                          <span>Pure Embed Architecture</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Animated Graphic Media Strip */}
+                <div className="relative rounded-xl overflow-hidden border border-white/5 mt-4 group">
+                  <img 
+                    src="https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif" 
+                    alt="Yuri Showcase" 
+                    className="w-full h-32 object-cover object-center opacity-40 group-hover:opacity-60 transition-opacity"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex items-end p-3">
+                    <div className="text-xs font-mono text-zinc-300 flex items-center justify-between w-full">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                        24/7 Companion Service Online
+                      </span>
+                      <span className="text-zinc-500">Live Telemetry</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Feature Pillar Cards */}
+        <section className="space-y-8">
+          <div className="text-center space-y-2 max-w-xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Everything You Need in One Unified Suite
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-400">
+              High-performance automation tailored for Discord power users.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-[#111114] border border-white/5 hover:border-red-500/30 rounded-2xl p-6 transition-all space-y-4 group">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
+                <Shield className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">Stealth Handshake &amp; VPN</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Spoofed client identifiers, dynamic WebSocket pacing, and built-in multi-region VPN routing hide your true footprint.
               </p>
             </div>
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <p className="text-sm text-zinc-300">Dashboard UI & Monitoring Access</p>
+
+            <div className="bg-[#111114] border border-white/5 hover:border-red-500/30 rounded-2xl p-6 transition-all space-y-4 group">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
+                <Sliders className="w-5 h-5" />
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <p className="text-sm text-zinc-300">Secure OAuth Identity Verification</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <p className="text-sm text-zinc-300">Requires Token for Active Features</p>
-              </div>
+              <h3 className="text-base font-semibold text-white">Full Command Parity</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Selfbot commands run with clean straight-line syntax, while the 24/7 companion answers in rich Discord embeds.
+              </p>
             </div>
 
-            <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 bg-zinc-900/80 px-3.5 py-2.5 rounded-lg border border-white/5">
-              <span>OAuth Client ID:</span>
-              <span className="text-indigo-400 select-all font-bold tracking-wider">1545409686164086834</span>
+            <div className="bg-[#111114] border border-white/5 hover:border-red-500/30 rounded-2xl p-6 transition-all space-y-4 group">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
+                <Radio className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">Voice &amp; RPC Soundboard</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Stream camera, screenshare, soundboard sounds, and customize multi-presence status directly to voice channels.
+              </p>
             </div>
-
-            <button
-              onClick={handleDiscordLogin}
-              className="w-full py-4 bg-indigo-600/90 hover:bg-indigo-500 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-3 group relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-white/10 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300" />
-              <svg className="w-5 h-5 relative z-10" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-              <span className="relative z-10">Continue with Discord OAuth</span>
-            </button>
-            {error && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm text-center font-medium bg-red-400/10 py-2 rounded-lg border border-red-400/20">{error}</motion.div>
-            )}
           </div>
-        ) : activeTab === 'login' ? (
-          <motion.form 
-            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}
-            onSubmit={handleTokenSubmit} className="space-y-5"
-          >
-            <div>
-              <input
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Authentication Token"
-                className="w-full px-5 py-4 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all placeholder:text-zinc-600 text-white text-sm"
-                required
-              />
-            </div>
+        </section>
 
-            {error && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm text-center font-medium bg-red-400/10 py-2 rounded-lg border border-red-400/20">{error}</motion.div>
-            )}
-
+        {/* CTA Footer Card */}
+        <section className="rounded-3xl border border-red-500/20 bg-gradient-to-r from-red-950/30 via-zinc-900 to-black p-8 sm:p-12 text-center space-y-6 shadow-xl">
+          <h2 className="text-3xl font-bold text-white">Ready to Elevate Your Discord Experience?</h2>
+          <p className="text-sm text-zinc-400 max-w-xl mx-auto">
+            Click Get Started to connect your token, extract credentials, or link via Discord OAuth.
+          </p>
+          <div className="pt-2">
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-white text-zinc-900 font-semibold rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:hover:bg-white"
+              onClick={() => {
+                setActiveTab('login');
+                setShowAuthModal(true);
+              }}
+              className="px-8 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-sm shadow-xl shadow-red-900/40 transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
             >
-              {loading ? 'Authenticating...' : 'Enter Dashboard'}
+              <span>Get Started Immediately</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
-          </motion.form>
-        ) : activeTab === 'email' ? (
-          <motion.form 
-            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}
-            onSubmit={handleEmailSubmit} className="space-y-5"
-          >
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex gap-3 text-red-200">
-              <ShieldAlert className="w-5 h-5 shrink-0 text-red-400" />
-              <div className="text-sm">
-                <p className="font-semibold text-red-400 mb-1">Warning:</p>
-                <p>You must enable VPN to prevent discord from disabling your account and before using this.</p>
-              </div>
-            </div>
+          </div>
+        </section>
 
-            <div className="space-y-4">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Discord Email"
-                className="w-full px-5 py-4 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all placeholder:text-zinc-600 text-white text-sm"
-                required
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="w-full px-5 py-4 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all placeholder:text-zinc-600 text-white text-sm"
-                required
-              />
-            </div>
+        <footer className="pt-8 pb-4 text-center text-xs text-zinc-600 font-mono border-t border-white/5 space-y-2">
+          <div>©️ {new Date().getFullYear()} Yuri Selfbot. All rights reserved. Registered architecture.</div>
+          <div className="text-[9px] text-zinc-700 select-none opacity-40 hover:opacity-100 transition-opacity">
+            crafted by harumi (@myeyesaregoingdownx)
+          </div>
+        </footer>
 
-            {copySuccess && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="text-emerald-400 text-xs text-center font-medium bg-emerald-500/10 py-2.5 px-3 rounded-lg border border-emerald-500/20 flex items-center justify-center gap-2">
-                <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                <span>Token automatically extracted & copied to clipboard! Logging in...</span>
-              </motion.div>
-            )}
+      </main>
 
-            {error && (
-              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="text-red-400 text-sm text-center font-medium bg-red-400/10 py-2 rounded-lg border border-red-400/20">{error}</motion.div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-white text-zinc-900 font-semibold rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:hover:bg-white flex items-center justify-center gap-2"
-            >
-              {loading && <span className="w-4 h-4 border-2 border-zinc-900/20 border-t-zinc-900 rounded-full animate-spin"/>}
-              {loading ? 'Processing...' : 'Secure Login'}
-            </button>
-          </motion.form>
-        ) : (
+      {/* ========================================================= */}
+      {/* AUTHENTICATION MODAL (Triggered by "Get Started")          */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {showAuthModal && (
           <motion.div 
-            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}
-            className="space-y-5 text-sm text-zinc-400 bg-black/20 p-6 rounded-xl border border-white/5"
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl overflow-y-auto"
           >
-            <p className="font-medium text-white mb-2 text-base">How to get your token:</p>
-            <ol className="list-decimal list-outside ml-4 space-y-3">
-              <li>Open Discord in your browser.</li>
-              <li>Press <code className="bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded font-mono text-xs">Ctrl + Shift + I</code> to open Developer Tools.</li>
-              <li>Navigate to the <span className="text-zinc-200 font-medium">Network</span> tab.</li>
-              <li>Refresh the page (<code className="bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded font-mono text-xs">F5</code>).</li>
-              <li>Filter by <code className="bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded font-mono text-xs text-blue-300">/api/v9/users/@me</code>.</li>
-              <li>Select the request and find <span className="text-zinc-200 font-medium whitespace-nowrap">Authorization</span> in Headers.</li>
-            </ol>
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }} 
+              animate={{ scale: 1, y: 0 }} 
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-[460px] p-6 sm:p-8 bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl z-10 relative my-auto max-h-[92vh] overflow-y-auto custom-scrollbar"
+            >
+              <button 
+                onClick={() => setShowAuthModal(false)}
+                className="absolute top-5 right-5 p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="mb-6 text-center">
+                <div 
+                  className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-red-600/20 border border-red-500/40 mb-4 shadow-inner cursor-pointer"
+                  onClick={() => window.open('https://discord.com/login', '_blank')}
+                >
+                  <svg className="w-7 h-7 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                  </svg>
+                </div>
+                
+                <h2 className="text-2xl font-bold tracking-tight text-white mb-1">Sign In to Yuri</h2>
+                <p className="text-xs text-zinc-400">Choose your authentication method to proceed</p>
+
+                <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-5 border-b border-white/5 pb-3">
+                  <button 
+                    onClick={() => setActiveTab('login')}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'login' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    Token Login
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('email')}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'email' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    Email Login
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('oauth')}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'oauth' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    OAuth
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('getToken')}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'getToken' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    Guide
+                  </button>
+                </div>
+              </div>
+
+              {activeTab === 'oauth' ? (
+                <div className="space-y-5">
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed">
+                    <p className="font-semibold text-amber-400 mb-1">⚠️ Note on OAuth:</p>
+                    <p>
+                      OAuth provides dashboard viewing access. Full Discord client automation, RPC customization, and gateway voice operations require an account Token.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleDiscordLogin}
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-950/40"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+                    <span>Authorize with Discord OAuth</span>
+                  </button>
+                  {error && (
+                    <div className="text-red-400 text-xs text-center font-medium bg-red-400/10 py-2 rounded-lg border border-red-400/20">{error}</div>
+                  )}
+                </div>
+              ) : activeTab === 'login' ? (
+                <form onSubmit={handleTokenSubmit} className="space-y-4">
+                  <div>
+                    <input
+                      type="password"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      placeholder="Discord Account Token"
+                      className="w-full px-4 py-3.5 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-red-500/50 transition-all placeholder:text-zinc-600 text-white text-sm"
+                      required
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="text-red-400 text-xs text-center font-medium bg-red-400/10 py-2 rounded-lg border border-red-400/20">{error}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-red-950/40"
+                  >
+                    {loading ? 'Authenticating...' : 'Enter Yuri Dashboard'}
+                  </button>
+                </form>
+              ) : activeTab === 'email' ? (
+                <form onSubmit={handleEmailSubmit} className="space-y-4">
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex gap-2.5 text-red-200">
+                    <ShieldAlert className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-red-400">VPN Recommended:</p>
+                      <p>Enable VPN before logging in with email/password to prevent Discord verification lock.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Discord Email"
+                      className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-red-500/50 transition-all placeholder:text-zinc-600 text-white text-sm"
+                      required
+                    />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Discord Password"
+                      className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-red-500/50 transition-all placeholder:text-zinc-600 text-white text-sm"
+                      required
+                    />
+                  </div>
+
+                  {copySuccess && (
+                    <div className="text-emerald-400 text-xs text-center font-medium bg-emerald-500/10 py-2 px-3 rounded-lg border border-emerald-500/20 flex items-center justify-center gap-2">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Token extracted &amp; copied! Logging in...</span>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="text-red-400 text-xs text-center font-medium bg-red-400/10 py-2 rounded-lg border border-red-400/20">{error}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-red-950/40 flex items-center justify-center gap-2"
+                  >
+                    {loading && <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"/>}
+                    <span>{loading ? 'Extracting & Logging in...' : 'Extract Token & Login'}</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-4 text-xs text-zinc-400 bg-black/40 p-4 rounded-xl border border-white/5">
+                  <p className="font-semibold text-white text-sm">How to get your Discord token:</p>
+                  <ol className="list-decimal list-outside ml-4 space-y-2">
+                    <li>Open Discord in your browser and sign in.</li>
+                    <li>Press <code className="bg-zinc-800 text-zinc-200 px-1 py-0.5 rounded font-mono">Ctrl + Shift + I</code> to open DevTools.</li>
+                    <li>Click the <span className="text-zinc-200 font-medium">Network</span> tab.</li>
+                    <li>Press <code className="bg-zinc-800 text-zinc-200 px-1 py-0.5 rounded font-mono">F5</code> to reload.</li>
+                    <li>Filter by <code className="bg-zinc-800 text-red-300 px-1 py-0.5 rounded font-mono">/api/v9/users/@me</code>.</li>
+                    <li>Select the request and find <span className="text-zinc-200 font-medium">Authorization</span> under Request Headers.</li>
+                  </ol>
+                </div>
+              )}
+
+              {/* TOS Checkbox */}
+              <div className="mt-6 pt-4 border-t border-white/5">
+                <label className="flex items-center gap-2.5 cursor-pointer group">
+                  <div className="relative flex items-center justify-center">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only" 
+                      checked={termsAccepted}
+                      onChange={(e) => handleAcceptTerms(e.target.checked)}
+                    />
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${termsAccepted ? 'bg-red-600 border-red-600' : 'bg-black/40 border-white/20 group-hover:border-white/40'}`}>
+                      {termsAccepted && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 select-none">
+                    I agree to Yuri's <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }} className="text-zinc-300 hover:text-white underline transition-colors">Terms of Service</button> and <button type="button" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }} className="text-zinc-300 hover:text-white underline transition-colors">Privacy Policy</button>.
+                  </p>
+                </label>
+              </div>
+
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(false)}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  ← Return to Overview
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
-        
-                <div className="mt-8 pt-6 border-t border-white/5">
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <div className="relative flex items-center justify-center">
-              <input 
-                type="checkbox" 
-                className="sr-only" 
-                checked={termsAccepted}
-                onChange={(e) => handleAcceptTerms(e.target.checked)}
-              />
-              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${termsAccepted ? 'bg-indigo-500 border-indigo-500' : 'bg-black/40 border-white/20 group-hover:border-white/40'}`}>
-                {termsAccepted && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-              </div>
-            </div>
-            <p className="text-[11px] text-zinc-400 select-none">
-              I have read and agree to Yuri's <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }} className="text-zinc-300 hover:text-white underline underline-offset-2 transition-colors">Terms of Service</button> and <button type="button" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }} className="text-zinc-300 hover:text-white underline underline-offset-2 transition-colors">Privacy Policy</button>.
-            </p>
-          </label>
-        </div>
+      </AnimatePresence>
 
-        <div className="mt-6 text-center text-xs text-zinc-500 font-mono flex items-center justify-center gap-1">
-          <span>©️ {new Date().getFullYear()} Yuri. All rights reserved. Proprietary design & architecture.</span>
-        </div>
-      </motion.div>
-
+      {/* Terms Modal */}
       <AnimatePresence>
         {showTermsModal && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               className="w-full max-w-lg bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
             >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-white">Terms of Service</h3>
-                <button onClick={() => setShowTermsModal(false)} className="p-2 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg">
-                  <X className="w-5 h-5" />
+              <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Terms of Service</h3>
+                <button onClick={() => setShowTermsModal(false)} className="p-1.5 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto text-sm text-zinc-300 leading-relaxed custom-scrollbar space-y-4">
+              <div className="p-6 overflow-y-auto text-xs text-zinc-300 leading-relaxed custom-scrollbar space-y-3">
                 <p>
-                  <strong>1. Acceptance of Terms:</strong> By accessing or using Yuri, you confirm that you have read, understood, and agreed to be bound by these Terms of Service. These terms apply to all visitors, users, and others who access the service. If you disagree with any part of the terms, you may not access the service. Usage of this software implies you fully understand the consequences and the risks associated with third-party Discord clients. <strong>You agree that you will not use Yuri to engage in harassment, abuse, spam, or malicious acts toward Discord users, communities, or infrastructure. You must respect the Discord platform and its users at all times.</strong>
+                  <strong>1. Acceptance of Terms:</strong> By accessing or using Yuri, you confirm that you have read, understood, and agreed to be bound by these Terms of Service.
                 </p>
                 <p>
-                  <strong>2. Use of Service:</strong> Yuri is provided as a third-party application dashboard. You agree to use the service responsibly and in compliance with all applicable local, national, and international laws and regulations. You represent that your account credential usage is authorized by you for the purposes intended by Yuri. This software is geared towards advanced users who wish to automate, manage, or expand their Discord experience without adhering entirely to the constraints of the standard web or desktop client. <strong>Any abusive use of Yuri, including unauthorized token access or large-scale disruption (e.g. nuking, raiding, or automated harassment), constitutes a strict violation of these Terms.</strong>
+                  <strong>2. Use of Service:</strong> Yuri is provided as a third-party application dashboard. You agree to use the service responsibly and in compliance with all applicable local, national, and international laws.
                 </p>
                 <p>
-                  <strong>3. Interaction with Discord API and Potential Risks:</strong> Our service utilizes methods to authenticate and interact with your Discord account via the official REST API and WebSocket gateway. Although we incorporate anti-detection spoofing features to minimize risks, using third-party clients and automation functionalities is strictly against Discord's Terms of Service. By utilizing this software, you intentionally override standard permissions and engage with the API in an unapproved manner. Discord actively monitors anomalous behaviors. You acknowledge that you use Yuri at your entirely own personal risk. We are not responsible for any account suspensions, bans, terminations, shadowbans, or other punitive actions taken by Discord as a result of using this service. If your account is flagged by Discord's automated Trust and Safety systems, no liability falls upon the creators or maintainers of Yuri.
+                  <strong>3. Interaction with Discord API and Potential Risks:</strong> Third-party clients and automation functionalities are strictly against Discord's Terms of Service. You acknowledge that you use Yuri at your entirely own personal risk.
                 </p>
                 <p>
-                  <strong>4. IP Masking and Virtual Private Networks (VPN):</strong> Yuri offers built-in routing mechanisms designed to spoof metadata or tunnel traffic to mitigate tracking. However, no system is perfectly secure. Users relying on our email/password automated login flow heavily increase the risk of Discord's security verification triggering, particularly if connecting from anomalous datacenter IP ranges instead of residential ones. We strongly advise using the built-in spoofing or providing your own residential proxy routes when available. The VPN feature exists as an architectural layer, but its efficacy depends entirely on the routing infrastructure backing it.
+                  <strong>4. Local Processing:</strong> Tokens are processed locally in your session and never stored or broadcast to remote third-party servers.
                 </p>
-                <p>
-                  <strong>5. Intellectual Property and Licensing:</strong> The Yuri client interface, original dashboard designs, bespoke code features, and branding assets are exclusive intellectual properties of the Yuri developers. Reverse engineering the client or attempting to strip safeguards out of the dashboard is prohibited. We do not claim ownership of the Discord platform, trademark, or its proprietary API wrappers.
-                </p>
-                <p>
-                  <strong>6. Disclaimer of Warranty:</strong> The service is provided on an "AS IS" and "AS AVAILABLE" basis. We make no warranties, either express or implied, regarding the reliability, security, or availability of the service. We disclaim all warranties of merchantability, fitness for a particular purpose, non-infringement, and any warranties arising out of course of dealing or usage of trade.
-                </p>
-                <p>
-                  <strong>7. Limitation of Liability:</strong> In no event shall Yuri, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the service; (ii) any conduct or content of any third party on the service; (iii) any content obtained from the service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage, and even if a remedy set forth herein is found to have failed of its essential purpose.
-                </p>
-                <p>
-                  <strong>8. User Responsibilities and Conduct:</strong> You are solely responsible for your conduct and any data, text, files, information, usernames, images, graphics, photos, profiles, audio and video clips, sounds, musical works, works of authorship, applications, links and other content or materials that you submit, post or display on or via the service. You must not interfere or disrupt the service or servers or networks connected to the service, including by transmitting any worms, viruses, spyware, malware or any other code of a destructive or disruptive nature. You may not inject content or code or otherwise alter or interfere with the way any Yuri page is rendered or displayed in a user's browser or device. You agree not to use the service for illegal purposes, harassment, spam, unsolicited promotional materials, or to distribute malicious payloads through the Discord API via our client interfaces. We do not police user behavior on Discord; your ethics and actions remain completely your burden.
-                </p>
-                <p>
-                  <strong>9. Support and Maintenance:</strong> Yuri is provided as a hobbyist tool. There is no guaranteed Service Level Agreement (SLA) for uptime, nor any obligation on the part of the developers to provide customer support, bug fixes, or functionality updates. The platform relies on undocumented API endpoints that can change without warning, potentially breaking functionality instantly. If such an event occurs, you accept that Yuri may cease to function entirely, with no scheduled timeline for recovery.
-                </p>
-                <p>
-                  <strong>10. Modification of Terms:</strong> We reserve the right, at our sole discretion, to modify or replace these Terms at any time. What constitutes a material change will be determined at our sole discretion. By continuing to access or use our service after those revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, in whole or in part, please stop using the website and the service.
-                </p>
-                <p>
-                  <strong>11. Service Interruption and Termination:</strong> We may terminate or suspend access to our service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms. Upon termination, your right to use the service will immediately cease. We do not guarantee that our service, or any content on it, will always be available or be uninterrupted. We may suspend or withdraw or restrict the availability of all or any part of our service for business and operational reasons. Repeated abuse of our servers (such as attempting rate-limit bypasses) will result in permanent hardware ID and IP bans from the dashboard.
-                </p>
-                <p>
-                  <strong>12. Governing Law:</strong> These Terms shall be governed and construed in accordance with the laws of the applicable jurisdiction, without regard to its conflict of law provisions. Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights. If any provision of these Terms is held to be invalid or unenforceable by a court, the remaining provisions of these Terms will remain in effect. These Terms constitute the entire agreement between us regarding our service, and supersede and replace any prior agreements we might have between us regarding the service. By clicking below, interacting with the application, or passing authentication credentials into our system, you mathematically and legally signify your agreement with these entire constraints.
-                </p>
-
-                <div className="mt-6 pt-6 border-t border-indigo-500/30 bg-indigo-500/10 p-4 rounded-xl border">
-                  <h4 className="font-semibold text-indigo-300 text-base mb-3 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-indigo-400" />
-                    6 Core Rules of TOS (Updated Guidelines)
-                  </h4>
-                  <ul className="space-y-2 text-xs text-zinc-300 list-disc list-inside">
-                    <li><strong>Rule 1 - Platform Rate Limits:</strong> All automated commands must strictly observe rate limits to protect server infrastructure.</li>
-                    <li><strong>Rule 2 - Account Accountability:</strong> You maintain sole responsibility for all actions performed using your authentication token.</li>
-                    <li><strong>Rule 3 - Anti-Exploitation:</strong> Using script execution endpoints for reverse engineering or malicious payloads is strictly prohibited.</li>
-                    <li><strong>Rule 4 - Anti-Spam Policy:</strong> Mass DM, automated channel spamming, or harassment is strictly forbidden and results in an immediate ban.</li>
-                    <li><strong>Rule 5 - Local Token Processing:</strong> Tokens are processed locally in your browser session and never stored on third-party remote databases.</li>
-                    <li><strong>Rule 6 - Key Termination:</strong> Any detected abuse or attempts to bypass security controls will result in permanent hardware and IP key termination.</li>
-                  </ul>
-                </div>
               </div>
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
 
+      {/* Privacy Policy Modal */}
+      <AnimatePresence>
         {showPrivacyModal && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               className="w-full max-w-lg bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
             >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-white">Privacy Policy</h3>
-                <button onClick={() => setShowPrivacyModal(false)} className="p-2 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg">
-                  <X className="w-5 h-5" />
+              <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Privacy Policy</h3>
+                <button onClick={() => setShowPrivacyModal(false)} className="p-1.5 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto text-sm text-zinc-300 leading-relaxed custom-scrollbar space-y-4">
+              <div className="p-6 overflow-y-auto text-xs text-zinc-300 leading-relaxed custom-scrollbar space-y-3">
                 <p>
-                  <strong>1. Data Collection:</strong> We respect your privacy and are committed to protecting it. When you use Yuri and log in using your Discord credentials (whether via token or email), we handle your authentication data securely. Your Discord token is stored entirely locally on your device within your browser's local storage or memory. We do not transmit your Discord token to any external databases or remote third-party servers.
+                  <strong>1. Data Collection:</strong> When you use Yuri and authenticate, your Discord token is stored entirely locally on your device within your browser's local storage or memory. We do not transmit tokens to any third-party databases.
                 </p>
                 <p>
-                  <strong>2. Data Usage:</strong> Your tokens are strictly used to authenticate your session directly with the Discord API to enable the features within the Yuri dashboard. Local storage ensures your session persists without needing to log in constantly, but you maintain full control.
-                </p>
-                <p>
-                  <strong>3. Third-Party Access:</strong> We do not sell, trade, or rent your personal identification information to others. The only communications made are directly between your client (the browser) and Discord's active endpoints. The internal VPN function routes requests safely to hide your original IP from Discord's telemetry.
-                </p>
-                <p>
-                  <strong>4. User Rights:</strong> You have the right to clear your local storage at any time to remove your tokens or simply use the "Logout" button provided within the dashboard, which immediately wipes stored authentication data from your device.
+                  <strong>2. Data Usage:</strong> Your tokens are strictly used to authenticate your session directly with the Discord API to enable the features within the Yuri dashboard.
                 </p>
               </div>
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
 
+      {/* VPN Modal */}
+      <AnimatePresence>
         {showVpnModal && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               className="w-full max-w-md bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
             >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                    <Globe className="w-5 h-5 text-indigo-400" />
+              <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400">
+                    <Globe className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Yuri VPN</h3>
-                    <p className="text-xs text-zinc-400">Secure your connection</p>
+                    <h3 className="text-sm font-semibold text-white">Yuri Routing Shield</h3>
+                    <p className="text-[11px] text-zinc-400">Spoof geolocation &amp; connection node</p>
                   </div>
                 </div>
-                <button onClick={() => setShowVpnModal(false)} className="p-2 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg">
-                  <X className="w-5 h-5" />
+                <button onClick={() => setShowVpnModal(false)} className="p-1.5 text-zinc-400 hover:text-white bg-white/5 rounded-lg">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex gap-3 text-amber-200">
-                  <ShieldAlert className="w-5 h-5 shrink-0 text-amber-400" />
-                  <div className="text-xs leading-relaxed space-y-2">
-                    <p>
-                      Use this to prevent discord from harming your account, this is useful for the email login when you don't know how to get your token and when you login discord detects you simply enable this VPN and choose a country then login via email if you don't have your token.
-                    </p>
-                    <p className="text-emerald-400 font-medium pt-1 border-t border-amber-500/20 mt-2">
-                      🛡️ All VPN nodes provided are built into Yuri. This serves to protect your client connection and hide your IP from malicious actors.
-                    </p>
-                  </div>
-                </div>
-
+              <div className="p-5 space-y-3 overflow-y-auto custom-scrollbar">
                 <div className="relative">
-                  <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={vpnSearch}
                     onChange={(e) => setVpnSearch(e.target.value)}
                     placeholder="Search locations..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-xs text-zinc-200 focus:outline-none focus:border-red-500/50"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase text-zinc-500 tracking-wider mb-2">Available Locations</h4>
+                <div className="space-y-1.5">
                   {VPN_COUNTRIES.filter(c => c.name.toLowerCase().includes(vpnSearch.toLowerCase()) || c.id.toLowerCase().includes(vpnSearch.toLowerCase())).map((country) => (
                     <button
                       key={country.id}
                       onClick={() => setVpnCountry(country)}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all ${
                         vpnCountry.id === country.id 
-                          ? 'bg-indigo-500/10 border-indigo-500/30' 
-                          : 'bg-zinc-900 border-transparent hover:bg-zinc-800'
+                          ? 'bg-red-500/10 border-red-500/30' 
+                          : 'bg-zinc-900/60 border-transparent hover:bg-zinc-800'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{country.flag}</span>
-                        <span className="text-sm font-medium text-zinc-200">{country.name}</span>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-lg">{country.flag}</span>
+                        <span className="text-xs font-medium text-zinc-200">{country.name}</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-zinc-500">{country.latency}</span>
-                        <div className={`w-3 h-3 rounded-full border-2 ${vpnCountry.id === country.id ? 'border-indigo-500 bg-indigo-500' : 'border-zinc-700'}`} />
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[11px] text-zinc-500 font-mono">{country.latency}</span>
+                        <div className={`w-2.5 h-2.5 rounded-full border-2 ${vpnCountry.id === country.id ? 'border-red-500 bg-red-500' : 'border-zinc-700'}`} />
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="p-6 border-t border-white/5 bg-zinc-900/50">
+              <div className="p-4 border-t border-white/5 bg-zinc-900/50">
                 <button
                   onClick={() => {
                     setVpnEnabled(!vpnEnabled);
-                    if (!vpnEnabled) {
-                      setTimeout(() => setShowVpnModal(false), 500);
-                    }
+                    if (!vpnEnabled) setTimeout(() => setShowVpnModal(false), 500);
                   }}
-                  className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                  className={`w-full py-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all ${
                     vpnEnabled 
-                      ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30' 
-                      : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                      : 'bg-red-600 text-white hover:bg-red-500'
                   }`}
                 >
-                  <Shield className="w-5 h-5" />
-                  {vpnEnabled ? 'Connected to ' + vpnCountry.name : 'Connect to VPN'}
+                  <Shield className="w-4 h-4" />
+                  {vpnEnabled ? 'Connected via ' + vpnCountry.name : 'Activate Node Shield'}
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
 
+      {/* Community Server Modal */}
+      <AnimatePresence>
         {showCommunityModal && (
           <motion.div 
             initial={{ opacity: 0 }} 
@@ -658,77 +939,52 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               initial={{ scale: 0.95, y: 20 }} 
               animate={{ scale: 1, y: 0 }} 
               exit={{ scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-              className="w-full max-w-md bg-zinc-950 border border-[#5865F2]/20 rounded-3xl shadow-[0_0_50px_rgba(88,101,242,0.15)] overflow-hidden flex flex-col relative"
+              className="w-full max-w-md bg-zinc-950 border border-[#5865F2]/20 rounded-3xl shadow-2xl overflow-hidden flex flex-col relative p-6 text-center"
             >
               <button 
                 onClick={() => setShowCommunityModal(false)} 
-                className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full cursor-pointer z-10"
+                className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white bg-white/5 rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              <div className="p-8 text-center flex flex-col items-center">
-                <div className="relative mb-6">
-                  <div className="absolute inset-0 bg-[#5865F2]/20 blur-xl rounded-full" />
-                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-[#5865F2]/30 to-[#5865F2]/10 border border-[#5865F2]/40 flex items-center justify-center text-white shadow-lg shadow-[#5865F2]/15">
-                    <MessageSquare className="w-10 h-10 text-[#5865F2]" />
-                  </div>
-                </div>
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-[#5865F2]/20 border border-[#5865F2]/40 flex items-center justify-center text-[#5865F2] mb-4">
+                <MessageSquare className="w-8 h-8" />
+              </div>
 
-                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">
-                  Join our Community Server
-                </h3>
-                
-                <p className="text-sm text-zinc-400 leading-relaxed max-w-[320px] mb-8">
-                  Get the latest updates, premium scripts, live support, and connect with other users in our official server.
-                </p>
+              <h3 className="text-xl font-bold text-white mb-1">Official Yuri Community</h3>
+              <p className="text-xs text-zinc-400 mb-6 max-w-xs mx-auto">
+                Join our private community for Lua script drops, fast-track whitelisting, and real-time announcements.
+              </p>
 
-                <button
-                  onClick={handleCopyCommunityLink}
-                  className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all active:scale-98 cursor-pointer ${
-                    communityCopied 
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                      : 'bg-[#5865F2] text-white hover:bg-[#4752C4] hover:shadow-lg hover:shadow-[#5865F2]/20'
-                  }`}
-                >
-                  {communityCopied ? (
-                    <>
-                      <Check className="w-5 h-5 text-emerald-400 animate-bounce" />
-                      <span>Copied & Opening Server!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-5 h-5 text-white/90" />
-                      <span>Copy Link & Join Now</span>
-                    </>
-                  )}
-                </button>
+              <button
+                onClick={handleCopyCommunityLink}
+                className={`w-full py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all ${
+                  communityCopied 
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                    : 'bg-[#5865F2] text-white hover:bg-[#4752C4]'
+                }`}
+              >
+                {communityCopied ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Copied &amp; Opening Server!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copy Link &amp; Join Discord</span>
+                  </>
+                )}
+              </button>
 
-                <div className="w-full mt-4 bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs font-mono text-zinc-500">
-                  <span className="truncate">discord.gg/z5BwKZwtVe</span>
-                  <button 
-                    onClick={handleCopyCommunityLink}
-                    className="text-[#5865F2] hover:text-[#4752C4] font-bold px-2 py-1 bg-[#5865F2]/5 hover:bg-[#5865F2]/10 rounded transition-colors"
-                  >
-                    Copy
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setShowCommunityModal(false)}
-                  className="mt-6 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-widest cursor-pointer py-1 px-3"
-                >
-                  Continue to Login
-                </button>
+              <div className="mt-4 text-[11px] font-mono text-zinc-500">
+                discord.gg/z5BwKZwtVe
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="absolute bottom-2 left-0 right-0 text-center text-[8px] text-zinc-800/20 select-none tracking-widest opacity-20 hover:opacity-100 transition-opacity z-10 pointer-events-auto">
-        crafted by harumi (@myeyesaregoingdownx)
-      </div>
     </div>
   );
 }
