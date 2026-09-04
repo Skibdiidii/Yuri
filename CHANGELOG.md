@@ -22,6 +22,7 @@
 - **New Command `/whitelisted`**: View the list of authorized Yuri Companion users.
 
 ### 📢 Broadcast & Interaction Refinement
+- **Reliable Guild Resolution**: Fixed a critical issue where the **Russian Controller Bot** would fail music playback in servers when used as a User App. The bot now intelligently resolves guild context and member voice states from its local cache.
 - **Universal `/say` & `/embed`**: Now fully functional in **DMs and Group DMs**, removing the guild-only restriction.
 - **Reliable Dispatch Flow**: Fixed an issue where broadcast messages weren't sending correctly by transitioning to **Interaction Webhooks (`followUp`)**.
 - **Ephemeral Confirmation**: Commands now reply with a private "Dispatching..." status immediately to prevent timeout errors, followed by the public embed.
