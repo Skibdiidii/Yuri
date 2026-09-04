@@ -1,5 +1,5 @@
 {
-  "name": "Yuri",
+  "name": "Yuri Selfbot",
   "description": "An elegant and formal Discord automation and status customizer dashboard with RPC settings, custom voice presence, connection tools, and automated utilities.",
   "requestFramePermissions": [
     "camera",

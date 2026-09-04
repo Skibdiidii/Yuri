@@ -27,6 +27,7 @@
     "clsx": "^2.1.1",
     "cors": "^2.8.6",
     "d3": "^7.9.0",
+    "discord.js": "^14.27.0",
     "discord.js-selfbot-v13": "^3.7.1",
     "dotenv": "^17.2.3",
     "duckduckgo-images-api": "^1.0.5",

@@ -158,6 +158,7 @@ import { Client, RichPresence, Options, MessageAttachment, Intents } from "disco
 import { createCanvas, loadImage } from "canvas";
 import { supabase } from "./src/lib/supabase";
 import { FriendAutomator, getProfile, generateProfile } from "./src/services/discordTools";
+import { startYuriBot, getYuriBotStatus, yuriBotAllowedUsers, saveWhitelist } from "./src/services/yuriBot";
 import ytdl from "ytdl-core";
 import ffmpeg from "ffmpeg-static";
 import { spawn, exec } from "child_process";
@@ -2117,6 +2118,50 @@ async function startServer() {
       timestamp: new Date().toISOString(),
       stateLoaded: true,
     });
+  });
+
+  app.get("/api/yuri-bot/status", (req, res) => {
+    try {
+      const status = getYuriBotStatus(() => activeClients);
+      res.json(status);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Failed to fetch bot status" });
+    }
+  });
+
+  app.post("/api/yuri-bot/whitelist", (req, res) => {
+    try {
+      const { userId } = req.body || {};
+      const cleanId = String(userId || "").trim().replace(/[^0-9]/g, "");
+      if (!cleanId || cleanId.length < 15) {
+        return res.status(400).json({ error: "Invalid Discord user ID" });
+      }
+      yuriBotAllowedUsers.add(cleanId);
+      saveWhitelist();
+      res.json({ success: true, authorizedUsers: Array.from(yuriBotAllowedUsers) });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message });
+    }
+  });
+
+  app.delete("/api/yuri-bot/whitelist/:id", (req, res) => {
+    try {
+      const cleanId = String(req.params.id || "").trim().replace(/[^0-9]/g, "");
+      yuriBotAllowedUsers.delete(cleanId);
+      saveWhitelist();
+      res.json({ success: true, authorizedUsers: Array.from(yuriBotAllowedUsers) });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message });
+    }
+  });
+
+  app.post("/api/yuri-bot/restart", async (req, res) => {
+    try {
+      startYuriBot(() => activeClients, () => sessions).catch(() => {});
+      res.json({ success: true, message: "Yuri Bot restarting..." });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message });
+    }
   });
   app.get(
     ["/nexusos.lua", "/raw/nexusos.lua", "/api/nexusos.lua"],
@@ -13884,6 +13929,9 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
     console.log(`[Keep-Alive] Heartbeat active.`);
+    startYuriBot(() => activeClients, () => sessions).catch((err) => {
+      console.error("[YURI BOT] Failed auto-starting Yuri Bot:", err?.message || err);
+    });
     setInterval(() => {
       console.log(`[Keep-Alive] Bot active at ${new Date().toISOString()}`);
     }, 60 * 1e3);

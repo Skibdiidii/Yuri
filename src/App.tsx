@@ -164,10 +164,10 @@ export default function App() {
                     <button 
                       onClick={() => setView('sb2')} 
                       className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 border border-white/5 rounded-md transition-colors flex items-center gap-1.5"
-                      title="Corrupt-Ware Setup Guide"
+                      title="Yuri Bot 24/7 Console"
                     >
                       <Bot className="w-3.5 h-3.5 text-red-400" />
-                      <span>Setup Guide</span>
+                      <span>Bot Console</span>
                     </button>
                     <button 
                       onClick={handleAdminLogout} 
