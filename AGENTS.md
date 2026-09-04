@@ -87,5 +87,5 @@
 - **Response**: `{ "data": { "link": "https://i.imgur.com/..." }, "success": true }`
 
 ## Important Usage Note
-When using these endpoints from external scripts (e.g. Roblox, Lua), you **MUST** use the **Shared App URL** (the one starting with `ais-pre-`) instead of the Development URL. The Development URL is protected by Google Authentication and will return an HTML sign-in page instead of JSON.
+When using these endpoints from external scripts (e.g. Roblox, Lua), you **MUST** use the official website URL (`https://yuri-bfwg.onrender.com`).
 

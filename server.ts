@@ -3049,7 +3049,7 @@ async function startServer() {
 
      // OAuth2 Endpoint & Redirection Link for Client ID 1545409686164086834
    const oauthClientId = "1545409686164086834";
-   const oauthRedirectUri = "https://ais-pre-5szi2bfkjili3yj72vxjum-54018553911.asia-east1.run.app/api/auth/discord/callback";
+   const oauthRedirectUri = "https://yuri-bfwg.onrender.com/api/auth/discord/callback";
    const oauthRedirectionLink = `https://discord.com/api/oauth2/authorize?client_id=${oauthClientId}&redirect_uri=${encodeURIComponent(oauthRedirectUri)}&response_type=code&scope=identify+guilds+bot+applications.commands`;
 
    app.get("/api/oauth2/details", (req, res) => {
@@ -3086,7 +3086,7 @@ async function startServer() {
 
        const botClient = new Client({
          patchVoice: true,
-         intents: 3276799,
+         syncStatus: false,
        } as any);
 
        botClient.on("ready", async () => {
