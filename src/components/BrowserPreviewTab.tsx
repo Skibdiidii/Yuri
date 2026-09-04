@@ -175,7 +175,7 @@ export const BrowserPreviewTab: React.FC<BrowserPreviewTabProps> = ({
         setViewMode('preview');
       }
     } catch (e) {
-      console.error('Error generating AI website:', e);
+      console.error('Error generating website:', e);
     } finally {
       setGenerating(false);
       setAiPrompt('');
@@ -315,12 +315,12 @@ export const BrowserPreviewTab: React.FC<BrowserPreviewTabProps> = ({
         </div>
       </div>
 
-      {/* AI Website Generator Quick Action Bar */}
+      {/* Cyber Web Generator Quick Action Bar */}
       <div className="bg-[#15151c] border-b border-white/5 px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-1 text-amber-400 font-semibold text-xs whitespace-nowrap">
             <Sparkles size={14} />
-            <span>AI Web Builder:</span>
+            <span>Cyber Web Builder:</span>
           </div>
           <div className="flex items-center gap-1 overflow-x-auto py-0.5 no-scrollbar">
             {presetTopics.map((preset, idx) => (

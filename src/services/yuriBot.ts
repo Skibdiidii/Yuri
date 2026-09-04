@@ -17,13 +17,16 @@ import {
 import path from "path";
 import fs from "fs";
 
-export const YURI_BOT_TOKEN =
-  process.env.YURI_BOT_TOKEN ||
-  process.env.DISCORD_BOT_TOKEN ||
-  Buffer.from(
-    "TVRVME5UUTJOek01T1RRNU16VXlNVFEzT0EuR1dZb1JVLnU0Q2Y4bXVYeHY2aGdCN0pPZk1pMFk4bTVCLXdfWlgwV1VLa25F",
-    "base64"
-  ).toString("utf-8");
+export const YURI_BOT_TOKEN = process.env.YURI_BOT_TOKEN || process.env.DISCORD_BOT_TOKEN || "";
+
+export const KNOWN_BOT_TOKENS: string[] = Array.from(
+  new Set(
+    [
+      process.env.DISCORD_BOT_TOKEN,
+      process.env.YURI_BOT_TOKEN,
+    ].filter(Boolean) as string[]
+  )
+);
 
 export const WHITELIST_FILE = path.join(process.cwd(), "whitelist.json");
 
@@ -60,6 +63,7 @@ export function saveWhitelist(): void {
 // Initial load
 loadWhitelist();
 
+export const activeYuriBots = new Map<string, DiscordBotClient>();
 export let yuriBotClient: DiscordBotClient | null = null;
 export let yuriBotStartTime = Date.now();
 let reconnectTimer: any = null;
@@ -419,19 +423,11 @@ function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilder; comp
   return { embed, components: [row] };
 }
 
-export async function startYuriBot(
+async function createAndRunBot(
+  token: string,
   getActiveClients?: () => Map<string, any>,
   getSessions?: () => Map<string, any>
-): Promise<void> {
-  if (yuriBotClient) {
-    try {
-      yuriBotClient.destroy();
-    } catch {}
-    yuriBotClient = null;
-  }
-
-  clearTimeout(reconnectTimer);
-
+): Promise<DiscordBotClient> {
   const bot = new DiscordBotClient({
     intents: [
       GatewayIntentBits.Guilds,
@@ -469,6 +465,17 @@ export async function startYuriBot(
       }
     } catch (e: any) {
       console.error("[YURI BOT 24/7] Failed registering slash commands:", e?.message || e);
+    }
+  });
+
+  // Automatically register slash commands whenever invited to a new guild
+  bot.on("guildCreate", async (guild: any) => {
+    console.log(`[YURI BOT 24/7] Joined server: ${guild.name} (${guild.id}) - syncing slash commands`);
+    try {
+      await guild.commands.set(YURI_SLASH_COMMANDS as any);
+      console.log(`[YURI BOT 24/7] Successfully registered slash commands in ${guild.name}`);
+    } catch (err: any) {
+      console.warn(`[YURI BOT 24/7] Guild slash sync notice:`, err?.message || err);
     }
   });
 
@@ -530,8 +537,27 @@ export async function startYuriBot(
     const activeClients = getActiveClients ? getActiveClients() : undefined;
     const sessions = getSessions ? getSessions() : undefined;
 
-    // Strict Access Control: only verified Yuri Selfbot users
-    if (!isAuthorizedSelfbotUser(user.id, activeClients, sessions)) {
+    // Public commands are accessible to all users for instant testing
+    const PUBLIC_COMMANDS = new Set([
+      "help",
+      "whois",
+      "avatar",
+      "banner",
+      "serverinfo",
+      "ping",
+      "uptime",
+      "snipe",
+      "afk",
+    ]);
+    const isPublic = PUBLIC_COMMANDS.has(commandName);
+    const hasAdmin =
+      (member as any)?.permissions?.has?.(PermissionFlagsBits.ManageRoles) ||
+      (member as any)?.permissions?.has?.(PermissionFlagsBits.Administrator);
+    const isAuth =
+      isAuthorizedSelfbotUser(user.id, activeClients, sessions) || hasAdmin;
+
+    // Strict Access Control for privileged commands only
+    if (!isPublic && !isAuth) {
       return interaction.reply({
         embeds: [buildAccessDeniedEmbed(user.id)],
         ephemeral: true,
@@ -1029,9 +1055,45 @@ export async function startYuriBot(
     const activeClients = getActiveClients ? getActiveClients() : undefined;
     const sessions = getSessions ? getSessions() : undefined;
 
-    // Strict access control: only authorized Yuri Selfbot accounts
-    if (!isAuthorizedSelfbotUser(message.author.id, activeClients, sessions)) {
-      await message.reply({ embeds: [buildAccessDeniedEmbed(message.author.id)] }).catch(() => {});
+    // Public prefix commands are accessible to all users for instant testing
+    const PUBLIC_PREFIX_COMMANDS = new Set([
+      "help",
+      "h",
+      "whois",
+      "ui",
+      "userinfo",
+      "avatar",
+      "av",
+      "banner",
+      "serverinfo",
+      "si",
+      "server",
+      "ping",
+      "uptime",
+      "status",
+      "snipe",
+      "afk",
+      "calculate",
+      "calc",
+      "math",
+      "coinflip",
+      "cf",
+      "dice",
+      "roll",
+      "8ball",
+    ]);
+    const isPublic = PUBLIC_PREFIX_COMMANDS.has(command);
+    const hasAdmin =
+      message.member?.permissions?.has?.(PermissionFlagsBits.ManageRoles) ||
+      message.member?.permissions?.has?.(PermissionFlagsBits.Administrator);
+    const isAuth =
+      isAuthorizedSelfbotUser(message.author.id, activeClients, sessions) ||
+      hasAdmin;
+
+    if (!isPublic && !isAuth) {
+      await message
+        .reply({ embeds: [buildAccessDeniedEmbed(message.author.id)] })
+        .catch(() => {});
       return;
     }
 
@@ -1513,25 +1575,70 @@ export async function startYuriBot(
   });
 
   try {
-    await bot.login(YURI_BOT_TOKEN);
-    yuriBotClient = bot;
+    await bot.login(token);
+    if (bot.user) {
+      activeYuriBots.set(bot.user.id, bot);
+      if (!yuriBotClient || !yuriBotClient.isReady()) {
+        yuriBotClient = bot;
+      }
+    }
+    return bot;
   } catch (err: any) {
-    console.error("[YURI BOT] Login failure:", err?.message || err);
+    console.error("[YURI BOT] Login failure for token prefix:", token.slice(0, 8), err?.message || err);
     throw err;
   }
 }
 
+export async function startYuriBot(
+  getActiveClients?: () => Map<string, any>,
+  getSessions?: () => Map<string, any>
+): Promise<void> {
+  clearTimeout(reconnectTimer);
+  for (const bot of activeYuriBots.values()) {
+    try {
+      bot.destroy();
+    } catch {}
+  }
+  activeYuriBots.clear();
+  yuriBotClient = null;
+
+  const tokens = KNOWN_BOT_TOKENS;
+  let successful = 0;
+  for (const token of tokens) {
+    try {
+      await createAndRunBot(token, getActiveClients, getSessions);
+      successful++;
+    } catch (e: any) {
+      console.warn("[YURI BOT] Secondary bot connection notice:", e?.message || e);
+    }
+  }
+
+  console.log(`[YURI BOT 24/7] System active with ${successful} active bot instances connected.`);
+}
+
 export function getYuriBotStatus(getActiveClients?: () => Map<string, any>) {
-  const isOnline = !!(yuriBotClient && yuriBotClient.isReady());
+  const botsList = Array.from(activeYuriBots.values()).map((b) => ({
+    id: b.user?.id || "unknown",
+    tag: b.user?.tag || "Offline",
+    avatar: b.user?.displayAvatarURL() || "",
+    ping: b.ws?.ping || 0,
+    guildsCount: b.guilds?.cache?.size || 0,
+    online: b.isReady(),
+    inviteUrl: `https://discord.com/oauth2/authorize?client_id=${b.user?.id}&permissions=8&integration_type=0&scope=bot%20applications.commands`,
+  }));
+
+  const mainBot = botsList.find((b) => b.online) || botsList[0];
+  const isOnline = !!(mainBot && mainBot.online);
   const uptimeSec = isOnline ? Math.floor((Date.now() - yuriBotStartTime) / 1000) : 0;
   return {
     online: isOnline,
-    tag: yuriBotClient?.user?.tag || "Offline",
-    id: yuriBotClient?.user?.id || "1545467399493521478",
-    avatar: yuriBotClient?.user?.displayAvatarURL() || "",
-    ping: yuriBotClient?.ws?.ping || 0,
+    tag: mainBot?.tag || "Offline",
+    id: mainBot?.id || "1490731239811059723",
+    avatar: mainBot?.avatar || "",
+    ping: mainBot?.ping || 0,
     uptime: uptimeSec,
-    guildsCount: yuriBotClient?.guilds?.cache?.size || 0,
+    guildsCount: botsList.reduce((acc, b) => acc + b.guildsCount, 0),
     authorizedUsers: Array.from(yuriBotAllowedUsers),
+    bots: botsList,
   };
 }

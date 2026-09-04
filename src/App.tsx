@@ -260,7 +260,7 @@ export default function App() {
                       </div>
                       <h2 className="text-base font-medium text-white mb-2">Admin Dashboard</h2>
                       <p className="text-sm text-zinc-500 leading-relaxed font-normal">
-                        Access control logs, telemetry sessions, and system parameters across daemon hosts.
+                        Access control logs, active network sessions, and system parameters across daemon hosts.
                       </p>
                     </motion.div>
                   )}

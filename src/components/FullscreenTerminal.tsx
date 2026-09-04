@@ -291,7 +291,7 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
       const nextHistory = [...currentHistory, assistantMsg];
       setChatHistory(nextHistory);
 
-      // Check if there is an executable command in the AI response
+      // Check if there is an executable command in the engine response
       const blocks = parseAiResponse(data.reply);
       const commandBlock = blocks.find(b => b.type === 'command');
 
@@ -708,7 +708,7 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
           }`}
         >
           <Brain className="w-3.5 h-3.5" />
-          AI_AGENT
+          CYBER_ENGINE
         </button>
         <button 
           onClick={() => setActiveTab('system')}
@@ -844,7 +844,7 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
                           <div className="bg-[#1c1c26] px-3 py-2 flex items-center justify-between border-b border-white/5 text-xs">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                              <span className="font-bold text-zinc-200">AI Studio File Edits & Operations</span>
+                              <span className="font-bold text-zinc-200">Automated File Edits & Operations</span>
                             </div>
                             <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-zinc-400 font-mono">{msg.fileEdits.length} file(s) updated</span>
                           </div>
@@ -962,7 +962,7 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
               <input 
                 type="text"
                 autoFocus
-                placeholder="PROMPT_AI_AGENT..."
+                placeholder="DISPATCH_COMMAND..."
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAiAsk()}

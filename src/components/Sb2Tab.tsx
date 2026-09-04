@@ -73,11 +73,12 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
     ping: 38,
     uptime: 120,
     guildsCount: 1,
-    authorizedUsers: ['1545389998315143229']
+    authorizedUsers: ['1545389998315143229'],
+    bots: []
   });
   const [isRestarting, setIsRestarting] = useState(false);
 
-  const AUTH_URL = 'https://discord.com/oauth2/authorize?client_id=1545467399493521478';
+  const AUTH_URL = `https://discord.com/oauth2/authorize?client_id=${botStatus.id || '1490731239811059723'}&permissions=8&integration_type=0&scope=bot%20applications.commands`;
   const GIF_URL = 'https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif';
 
   // Fetch live Yuri Bot status from backend

@@ -673,7 +673,7 @@ Useless piece of shit`,
               onClick={() => setActiveTab('browser')} 
               icon={Globe} 
               label="Website Preview" 
-              badge="AI"
+              badge="WEB"
             />
             <SidebarItem 
               active={activeTab === 'platforms'} 

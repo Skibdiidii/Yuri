@@ -1322,7 +1322,7 @@ export default function WindowManager({ onBack, onLogout }: WindowManagerProps) 
     return (
       <div className="flex-1 overflow-auto p-4 font-mono text-xs text-zinc-300 bg-[#050508]">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-4">
-          <span className="font-bold text-zinc-200 uppercase tracking-wider text-[11px]">Telemetry Overview</span>
+          <span className="font-bold text-zinc-200 uppercase tracking-wider text-[11px]">System Metrics Overview</span>
           <span className="text-[10px] text-emerald-400 font-bold">Harumi Secure OS v2.0-STABLE</span>
         </div>
 

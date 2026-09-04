@@ -26,7 +26,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Added SoundBoard feature on VC with spam toggle and interval control",
       "Added .spamsb <count> [interval] command for mass soundboard spamming",
       "Added SoundBoard test audio functionality in the dashboard",
-      "Integrated Advanced AI TTS (Text-to-Speech) for Voice Channels",
+      "Integrated Advanced Neural TTS (Text-to-Speech) for Voice Channels",
       "Fixed camera/video functionality on VC for better stability",
       "Added Voice category to the .help menu (Category 7)",
       "Added .leavevc command to quickly disconnect from all voice channels",

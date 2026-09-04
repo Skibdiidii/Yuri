@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
 import { 
@@ -21,8 +21,27 @@ import {
   Sparkles,
   Lock,
   ArrowRight,
-  Play
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Tv,
+  Layers,
+  Cpu,
+  Activity,
+  Crosshair
 } from 'lucide-react';
+import {
+  CyberParticleCanvas,
+  CyberRadarScope,
+  CyberEqualizerWaveform,
+  CyberDataStreamTicker,
+  CyberGyroReticle,
+  CRTScanlineOverlay,
+  cyberSound
+} from './landing/FuturisticEffects';
+import { InteractiveCyberTerminal } from './landing/InteractiveCyberTerminal';
+import { BotShowcaseCards } from './landing/BotShowcaseCards';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -45,6 +64,24 @@ const VPN_COUNTRIES = [
   { id: 'ch', name: 'Switzerland', flag: '🇨🇭', latency: '19ms' },
 ];
 
+const VIDEO_FEEDS = [
+  {
+    id: 'data-core',
+    title: 'STREAM 01 // DATA MATRIX',
+    url: 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-screens-with-data-31911-large.mp4',
+  },
+  {
+    id: 'cyber-city',
+    title: 'STREAM 02 // NEON METROPOLIS',
+    url: 'https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-with-flying-cars-at-night-41541-large.mp4',
+  },
+  {
+    id: 'circuit',
+    title: 'STREAM 03 // CORE ENGINE',
+    url: 'https://assets.mixkit.co/videos/preview/mixkit-circuit-board-microchip-animation-43093-large.mp4',
+  }
+];
+
 export default function Login({ onLoginSuccess }: LoginProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [token, setToken] = useState('');
@@ -53,6 +90,36 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'login' | 'email' | 'getToken' | 'oauth'>('login');
+  
+  // Futuristic Video & Audio Controls
+  const [currentVideoIdx, setCurrentVideoIdx] = useState(0);
+  const [videoPlaying, setVideoPlaying] = useState(true);
+  const [crtEnabled, setCrtEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    cyberSound.enabled = next;
+    if (next) cyberSound.playBlip();
+  };
+
+  const toggleVideo = () => {
+    if (!videoRef.current) return;
+    if (videoPlaying) {
+      videoRef.current.pause();
+      setVideoPlaying(false);
+    } else {
+      videoRef.current.play().catch(() => {});
+      setVideoPlaying(true);
+    }
+  };
+
+  const cycleVideo = () => {
+    cyberSound.playClick();
+    setCurrentVideoIdx((prev) => (prev + 1) % VIDEO_FEEDS.length);
+  };
   
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -71,6 +138,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [showCommunityModal, setShowCommunityModal] = useState(false);
   const [communityCopied, setCommunityCopied] = useState(false);
   const handleCopyCommunityLink = async () => {
+    cyberSound.playClick();
     const inviteLink = 'https://discord.gg/z5BwKZwtVe';
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -96,7 +164,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     return saved ? JSON.parse(saved) : null;
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.user) {
         const user = event.data.user;
@@ -109,6 +177,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   }, []);
 
   const handleDiscordLogin = async () => {
+    cyberSound.playBlip();
     if (!termsAccepted) {
       setError('You must accept the Terms of Service and Privacy Policy to continue.');
       return;
@@ -131,6 +200,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   const handleTokenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    cyberSound.playScan();
     if (!termsAccepted) {
       setError('You must accept the Terms of Service and Privacy Policy to continue.');
       return;
@@ -156,6 +226,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    cyberSound.playScan();
     if (!termsAccepted) {
       setError('You must accept the Terms of Service and Privacy Policy to continue.');
       return;
@@ -199,80 +270,178 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       localStorage.setItem('token', loginRes.session.token);
       localStorage.setItem('catalystcord_user_token', loginRes.session.token);
       localStorage.setItem('token_user', JSON.stringify(loginRes.session));
-      
-      setTimeout(() => {
-        onLoginSuccess();
-      }, 1200);
-      
+      onLoginSuccess();
     } catch (err: any) {
-      setError(err.message || 'Authentication error.');
+      setError(err.message || 'Failed to extract token. Check credentials or VPN.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#070709] text-zinc-100 font-sans relative overflow-x-hidden selection:bg-red-500/30">
-      {/* Dynamic Background Media & Subtle Ambient Mesh */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-red-600/10 rounded-full blur-[140px]" />
-        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[140px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
+    <div className="min-h-screen bg-[#030305] text-white flex flex-col font-sans selection:bg-red-600 selection:text-white relative overflow-x-hidden">
+      
+      {/* ========================================================= */}
+      {/* REAL FUTURISTIC VIDEO BACKGROUND (HIGH DEFINITION LOOP)    */}
+      {/* ========================================================= */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
+        <video
+          ref={videoRef}
+          key={VIDEO_FEEDS[currentVideoIdx].url}
+          src={VIDEO_FEEDS[currentVideoIdx].url}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-25 filter contrast-125 brightness-90 saturate-150 transition-opacity duration-1000"
+        />
+
+        {/* Cyberpunk perspective grid gradient */}
+        <div 
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(to right, rgba(239, 68, 68, 0.15) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(239, 68, 68, 0.15) 1px, transparent 1px)`,
+            backgroundSize: '40px 40px',
+            transform: 'perspective(500px) rotateX(25deg) translateY(-20px)',
+            transformOrigin: 'top center'
+          }}
+        />
+
+        {/* Radial dark vignette to preserve contrast */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#030305] via-[#030305]/80 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-[#030305]/70 to-[#030305]" />
       </div>
 
-      {/* Top Navigation */}
-      <header className="relative z-20 border-b border-white/5 backdrop-blur-xl bg-black/40 sticky top-0">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setShowAuthModal(false)}>
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-red-600 to-red-400 p-[1px] shadow-lg shadow-red-500/20">
-                <div className="w-full h-full bg-black rounded-[7px] flex items-center justify-center">
-                  <span className="text-red-400 font-black text-xs tracking-tighter">YURI</span>
-                </div>
+      {/* CRT Scanline Shader Overlay */}
+      {crtEnabled && <CRTScanlineOverlay />}
+
+      {/* Interactive Particle Constellation Canvas */}
+      <CyberParticleCanvas />
+
+      {/* ========================================================= */}
+      {/* TOP SCI-FI COCKPIT HUD & NAVIGATION                       */}
+      {/* ========================================================= */}
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-black/60 border-b border-white/10 px-4 sm:px-8 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          
+          {/* Logo & Status Beacon */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-500/50 flex items-center justify-center text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                <Crosshair className="w-5 h-5 animate-[spin_10s_linear_infinite]" />
               </div>
-              <span className="font-semibold text-white tracking-tight text-base">Yuri Selfbot</span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-black animate-ping" />
             </div>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-              24/7 NETWORK OPERATIONAL
-            </span>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-extrabold tracking-wider text-white font-mono">
+                  YURI<span className="text-red-500">.SELFBOT</span>
+                </span>
+                <span className="text-[9px] font-mono font-bold bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded">
+                  v2.0-FUTURISTIC
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-400 font-mono hidden sm:block">
+                STEALTH DAEMON // 24/7 COMPANION PARITY
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Live Audio / Video Controls & Action HUD */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            
+            {/* Real Video HUD Controls */}
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 border border-white/10 text-[11px] font-mono text-zinc-400">
+              <Tv className="w-3.5 h-3.5 text-red-400" />
+              <button 
+                onClick={cycleVideo}
+                className="hover:text-white transition-colors underline decoration-dotted"
+                title="Click to cycle video feed"
+              >
+                {VIDEO_FEEDS[currentVideoIdx].title}
+              </button>
+              <button
+                onClick={toggleVideo}
+                className="ml-1 p-1 hover:text-white text-zinc-500"
+                title={videoPlaying ? 'Pause Video' : 'Play Video'}
+              >
+                {videoPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-emerald-400" />}
+              </button>
+              <button
+                onClick={() => setCrtEnabled(!crtEnabled)}
+                className={`p-1 text-[10px] rounded px-1 transition-colors ${crtEnabled ? 'text-red-400 bg-red-500/10' : 'text-zinc-600'}`}
+                title="Toggle CRT Scanline Overlay"
+              >
+                CRT
+              </button>
+            </div>
+
+            {/* Sci-Fi Sound Synthesizer Toggle */}
             <button
-              onClick={() => setShowCommunityModal(true)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/5 transition-colors hidden md:flex items-center gap-1.5"
+              onClick={toggleSound}
+              className={`p-2 rounded-lg border text-xs transition-colors flex items-center gap-1.5 ${
+                soundEnabled 
+                  ? 'bg-red-500/20 border-red-500/40 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
+                  : 'bg-white/5 border-white/5 text-zinc-400 hover:text-white'
+              }`}
+              title={soundEnabled ? 'Synthesized Sound Active (Click to Mute)' : 'Enable Sci-Fi Audio Synthesizer'}
+            >
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              <span className="hidden xl:inline text-[10px] font-mono font-bold">
+                {soundEnabled ? 'AUDIO:ON' : 'AUDIO:OFF'}
+              </span>
+            </button>
+
+            {/* Community Discord Modal */}
+            <button
+              onClick={() => {
+                cyberSound.playClick();
+                setShowCommunityModal(true);
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/5 transition-colors hidden md:flex items-center gap-1.5 cursor-pointer"
             >
               <MessageSquare className="w-3.5 h-3.5 text-[#5865F2]" />
               <span>Community</span>
             </button>
 
+            {/* Terminal Quick Jump */}
             <button
               onClick={() => {
+                cyberSound.playClick();
                 window.history.pushState({}, '', '/console');
                 window.dispatchEvent(new Event('popstate'));
               }}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/5 transition-colors hidden sm:flex items-center gap-1.5"
+              className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/5 transition-colors hidden sm:flex items-center gap-1.5 cursor-pointer"
             >
               <Terminal className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Terminal</span>
+              <span>Console</span>
             </button>
 
+            {/* VPN Node Routing Trigger */}
             <button
-              onClick={() => setShowVpnModal(true)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+              onClick={() => {
+                cyberSound.playClick();
+                setShowVpnModal(true);
+              }}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
                 vpnEnabled 
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
                   : 'bg-white/5 border-white/5 text-zinc-300 hover:text-white'
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
-              <span className="uppercase font-mono">{vpnEnabled ? vpnCountry.id : 'VPN'}</span>
+              <span className="uppercase font-mono">{vpnEnabled ? vpnCountry.id : 'VPN SHIELD'}</span>
             </button>
 
+            {/* Main CTA: Launch Auth */}
             <button
-              onClick={() => setShowAuthModal(true)}
-              className="text-xs font-semibold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-950/40 transition-all flex items-center gap-1.5"
+              onClick={() => {
+                cyberSound.playBlip();
+                setShowAuthModal(true);
+              }}
+              className="text-xs font-semibold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-950/50 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>Get Started</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -281,37 +450,56 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         </div>
       </header>
 
-      {/* Main Landing Page Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 py-12 md:py-20 space-y-24">
+      {/* Real-time Data Stream Ticker Bar */}
+      <div className="bg-black/80 border-b border-white/5 px-4 sm:px-8 py-1.5 flex items-center justify-between text-xs z-20">
+        <CyberDataStreamTicker />
+        <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-500 hidden sm:flex">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            CORE: STABLE
+          </span>
+          <span>LATENCY: 14ms</span>
+          <span>TLS 1.3 ENCRYPTED</span>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* MAIN FUTURISTIC LANDING HERO & SHOWCASES                  */}
+      {/* ========================================================= */}
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16 space-y-20">
         
-        {/* Hero Section: "Yuri Selfbot: Why Should You Use This?" */}
-        <section className="text-center space-y-8 max-w-4xl mx-auto">
+        {/* HERO SECTION */}
+        <section className="relative text-center space-y-6 max-w-4xl mx-auto pt-4">
+          
+          {/* Top Sci-Fi Badge */}
           <motion.div 
-            initial={{ opacity: 0, y: 15 }} 
+            initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono tracking-wide"
+            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-red-950/60 border border-red-500/30 text-red-400 text-xs font-mono tracking-wider shadow-[0_0_20px_rgba(239,68,68,0.2)]"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>UNCOMPROMISING PRECISION & 24/7 DEDICATED COMPANION</span>
+            <Zap className="w-3.5 h-3.5 text-red-500 animate-bounce" />
+            <span>UNCOMPROMISING PRECISION // 24/7 DEDICATED COMPANION ENGINE</span>
           </motion.div>
 
+          {/* Futuristic Title with Glitch Chromatic Feel */}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
+            initial={{ opacity: 0, y: 15 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: 0.1 }}
             className="space-y-4"
           >
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white leading-[1.08] uppercase">
               Yuri Selfbot <br />
-              <span className="bg-gradient-to-r from-red-400 via-rose-300 to-zinc-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-red-500 via-rose-300 to-zinc-200 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(239,68,68,0.4)]">
                 Why Should You Use This?
               </span>
             </h1>
-            <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
-              Built from the ground up for enthusiasts who demand zero-lag responsiveness, stealth spoofing, and a dedicated 24/7 companion bot that operates seamlessly in every server and direct message.
+            <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto leading-relaxed font-normal">
+              Engineered with zero-lag WebSocket pipelines, anti-detection client spoofing, and an independent 24/7 Discord companion bot delivering pure crimson embeds with complete Slash &amp; Prefix command parity.
             </p>
           </motion.div>
 
+          {/* Action Buttons */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
@@ -320,246 +508,209 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           >
             <button
               onClick={() => {
+                cyberSound.playScan();
                 setActiveTab('login');
                 setShowAuthModal(true);
               }}
-              className="px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-sm shadow-xl shadow-red-900/30 transition-all flex items-center gap-2.5 active:scale-95 cursor-pointer"
+              className="px-7 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-[0_0_25px_rgba(239,68,68,0.4)] transition-all flex items-center gap-2.5 active:scale-95 cursor-pointer"
             >
               <span>Get Started with Yuri</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
             <button
-              onClick={() => setShowCommunityModal(true)}
-              className="px-6 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 font-medium text-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              onClick={() => {
+                cyberSound.playClick();
+                setShowCommunityModal(true);
+              }}
+              className="px-7 py-4 rounded-xl bg-black/60 hover:bg-white/10 text-zinc-200 border border-white/10 font-medium text-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer backdrop-blur-md"
             >
               <MessageSquare className="w-4 h-4 text-[#5865F2]" />
               <span>Join Official Discord</span>
             </button>
           </motion.div>
 
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 max-w-3xl mx-auto">
-            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-bold font-mono text-white">99.9%</div>
-              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">24/7 Uptime</div>
+          {/* Live Cyber Metrics Bar (Equalizer + Radar + Uptime + Ping) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-6 max-w-4xl mx-auto">
+            
+            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">24/7 Uptime Rate</div>
+              <div className="text-2xl font-black font-mono text-white mt-1">99.99%</div>
+              <div className="mt-2 text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Continuous Host
+              </div>
             </div>
-            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-bold font-mono text-emerald-400">&lt; 38ms</div>
-              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Gateway Ping</div>
+
+            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Gateway Ping</div>
+              <div className="text-2xl font-black font-mono text-emerald-400 mt-1">&lt; 18ms</div>
+              <div className="mt-2">
+                <CyberEqualizerWaveform />
+              </div>
             </div>
-            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-bold font-mono text-red-400">Pure Embed</div>
-              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Companion Output</div>
+
+            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Bot Presentation</div>
+              <div className="text-2xl font-black font-mono text-red-400 mt-1">Pure Embed</div>
+              <div className="mt-2 text-[10px] text-zinc-400 font-mono">
+                Crimson Discord Embeds
+              </div>
             </div>
-            <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 text-center">
-              <div className="text-2xl font-bold font-mono text-white">Slash &amp; Prefix</div>
-              <div className="text-xs text-zinc-500 uppercase tracking-wider mt-1">Full Command Parity</div>
+
+            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Command Parity</div>
+              <div className="text-2xl font-black font-mono text-white mt-1">Slash &amp; Prefix</div>
+              <div className="mt-2 text-[10px] text-zinc-400 font-mono">
+                /giverole, /whois, /snipe
+              </div>
             </div>
+
           </div>
         </section>
 
-        {/* Media & Interactive Feature Demonstration */}
-        <section className="relative rounded-3xl border border-white/10 bg-gradient-to-b from-zinc-900/60 to-black/80 p-8 sm:p-12 overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-[100px] pointer-events-none" />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-            <div className="lg:col-span-5 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-mono">
-                <Bot className="w-3.5 h-3.5" />
-                <span>24/7 DEDICATED COMPANION</span>
+        {/* ========================================================= */}
+        {/* INTERACTIVE COMMAND CONSOLE & RADAR SCOPE SHOWCASE        */}
+        {/* ========================================================= */}
+        <section className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-mono mb-2">
+                <Terminal className="w-3.5 h-3.5" />
+                <span>LIVE COMMAND MATRIX // PARITY ENGINE</span>
               </div>
-              <h2 className="text-3xl font-bold text-white tracking-tight">
-                Designed For Speed, Crafted for Longevity
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">
+                Interactive Command Sandbox
               </h2>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Why settle for standard Discord limitations? Yuri combines a high-speed local selfbot engine with an independent 24/7 companion bot.
+              <p className="text-xs sm:text-sm text-zinc-400 max-w-xl mt-1">
+                Try commands in real-time below. In Yuri, your selfbot answers in raw line text while the 24/7 Companion generates rich crimson embeds.
               </p>
-
-              <ul className="space-y-3.5 text-sm text-zinc-300">
-                <li className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3" />
-                  </div>
-                  <div>
-                    <strong className="text-white">Pure Embed Companion Output:</strong> The 24/7 Companion formats every profile, server stat, and role command in styled crimson Discord embeds.
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3" />
-                  </div>
-                  <div>
-                    <strong className="text-white">Active Slash Command Integration:</strong> Full Discord application commands (`/giverole`, `/whois`, `/avatar`, `/banner`, `/serverinfo`).
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3" />
-                  </div>
-                  <div>
-                    <strong className="text-white">Anti-Detection &amp; Rate-Limit Cloak:</strong> Spoofed headers and client heartbeats protect your active accounts.
-                  </div>
-                </li>
-              </ul>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="px-5 py-3 rounded-xl bg-white text-zinc-900 font-semibold text-xs hover:bg-zinc-200 transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <span>Launch Yuri Now</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
 
-            {/* Visual Media Showcase: Video Loop / Interactive Embed Card */}
-            <div className="lg:col-span-7">
-              <div className="rounded-2xl border border-white/10 bg-black/80 shadow-2xl p-4 sm:p-6 space-y-4">
-                {/* Simulated Discord Window Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-white/5 text-xs text-zinc-400">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                    <span className="ml-2 font-mono text-zinc-400">#yuri-companion-preview</span>
-                  </div>
-                  <span className="font-mono text-[10px] text-zinc-500">Gateway Active (38ms)</span>
-                </div>
-
-                {/* Simulated Discord Embed */}
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-start gap-3">
-                    <img 
-                      src="https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif" 
-                      alt="Yuri Avatar" 
-                      className="w-10 h-10 rounded-full border border-red-500/30 object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-white">Yuri Selfbot Companion</span>
-                        <span className="text-[10px] font-bold bg-[#5865F2] text-white px-1.5 py-0.2 rounded">BOT</span>
-                        <span className="text-[10px] text-zinc-500">Today at 12:00</span>
-                      </div>
-
-                      {/* Discord Embed preview */}
-                      <div className="border-l-4 border-red-500 bg-zinc-900/90 rounded-r-xl p-4 space-y-3 shadow-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs font-bold text-white">🛡️ Role Granted Successfully</div>
-                          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">EXECUTED</span>
-                        </div>
-                        <p className="text-xs text-zinc-300">
-                          Assigned role <span className="text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded font-mono">@VIP Elite</span> to <span className="text-white font-medium">@harumi</span> in guild <strong className="text-zinc-200">Yuri HQ</strong>.
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-[11px] bg-black/40 p-2.5 rounded-lg border border-white/5">
-                          <div>
-                            <span className="text-zinc-500 block">Command</span>
-                            <span className="font-mono text-zinc-300">/giverole</span>
-                          </div>
-                          <div>
-                            <span className="text-zinc-500 block">Status</span>
-                            <span className="font-mono text-emerald-400">Verified Selfbot User</span>
-                          </div>
-                        </div>
-                        <div className="text-[10px] text-zinc-500 pt-1 border-t border-white/5 flex items-center justify-between font-mono">
-                          <span>Yuri Selfbot Companion • Role Administration</span>
-                          <span>Pure Embed Architecture</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Animated Graphic Media Strip */}
-                <div className="relative rounded-xl overflow-hidden border border-white/5 mt-4 group">
-                  <img 
-                    src="https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif" 
-                    alt="Yuri Showcase" 
-                    className="w-full h-32 object-cover object-center opacity-40 group-hover:opacity-60 transition-opacity"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex items-end p-3">
-                    <div className="text-xs font-mono text-zinc-300 flex items-center justify-between w-full">
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                        24/7 Companion Service Online
-                      </span>
-                      <span className="text-zinc-500">Live Telemetry</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
+            {/* Radar Scope Radar HUD on right */}
+            <div className="hidden md:flex items-center gap-4">
+              <CyberRadarScope />
             </div>
           </div>
+
+          {/* Real Interactive Terminal */}
+          <InteractiveCyberTerminal />
         </section>
 
-        {/* Feature Pillar Cards */}
+        {/* ========================================================= */}
+        {/* 24/7 BOT INVITER CARDS: BOTH ONLINE COMPANIONS           */}
+        {/* ========================================================= */}
+        <section className="space-y-6">
+          <div className="text-center max-w-xl mx-auto space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-mono">
+              <Bot className="w-3.5 h-3.5" />
+              <span>DISCORD APPLICATION GATEWAY</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              24/7 Companion Service Inviter
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-400">
+              Invite the companion bot to your servers with full Administrator and Application Command scopes.
+            </p>
+          </div>
+
+          <BotShowcaseCards />
+        </section>
+
+        {/* ========================================================= */}
+        {/* THREE CORE ARCHITECTURAL PILLARS                          */}
+        {/* ========================================================= */}
         <section className="space-y-8">
           <div className="text-center space-y-2 max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Everything You Need in One Unified Suite
+              Why Elite Users Choose Yuri
             </h2>
             <p className="text-xs sm:text-sm text-zinc-400">
-              High-performance automation tailored for Discord power users.
+              Complete feature dominance designed for zero detection and maximum speed.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#111114] border border-white/5 hover:border-red-500/30 rounded-2xl p-6 transition-all space-y-4 group">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
-                <Shield className="w-5 h-5" />
+            
+            <div className="bg-black/60 border border-white/5 hover:border-red-500/40 rounded-2xl p-6 transition-all space-y-4 group backdrop-blur-md relative overflow-hidden">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+                <Shield className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-semibold text-white">Stealth Handshake &amp; VPN</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Spoofed client identifiers, dynamic WebSocket pacing, and built-in multi-region VPN routing hide your true footprint.
+              <h3 className="text-base font-bold text-white uppercase tracking-wider font-mono">
+                Stealth Handshake &amp; VPN
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
+                Dynamic browser user-agent spoofing, jittered WebSocket packet pacing, and integrated multi-region routing shield your real IP address and device credentials.
               </p>
+              <div className="text-[10px] font-mono text-zinc-600">
+                [ SEC // ZERO_FOOTPRINT ]
+              </div>
             </div>
 
-            <div className="bg-[#111114] border border-white/5 hover:border-red-500/30 rounded-2xl p-6 transition-all space-y-4 group">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
-                <Sliders className="w-5 h-5" />
+            <div className="bg-black/60 border border-white/5 hover:border-red-500/40 rounded-2xl p-6 transition-all space-y-4 group backdrop-blur-md relative overflow-hidden">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+                <Sliders className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-semibold text-white">Full Command Parity</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Selfbot commands run with clean straight-line syntax, while the 24/7 companion answers in rich Discord embeds.
+              <h3 className="text-base font-bold text-white uppercase tracking-wider font-mono">
+                Dual Command Architecture
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
+                Selfbot executes instant raw line commands, while the 24/7 Companion generates Discord embeds with interactive buttons, pagination, and role dispatch.
               </p>
+              <div className="text-[10px] font-mono text-zinc-600">
+                [ ENGINE // DUAL_CORE_DISPATCH ]
+              </div>
             </div>
 
-            <div className="bg-[#111114] border border-white/5 hover:border-red-500/30 rounded-2xl p-6 transition-all space-y-4 group">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
-                <Radio className="w-5 h-5" />
+            <div className="bg-black/60 border border-white/5 hover:border-red-500/40 rounded-2xl p-6 transition-all space-y-4 group backdrop-blur-md relative overflow-hidden">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+                <Radio className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-semibold text-white">Voice &amp; RPC Soundboard</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Stream camera, screenshare, soundboard sounds, and customize multi-presence status directly to voice channels.
+              <h3 className="text-base font-bold text-white uppercase tracking-wider font-mono">
+                Voice &amp; Multi-RPC Engine
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
+                Transmit audio soundboard clips, inject synthesized neural voice streams, and manage multi-state Rich Presence profiles with customized assets.
               </p>
+              <div className="text-[10px] font-mono text-zinc-600">
+                [ MEDIA // VC_SOUNDBOARD ]
+              </div>
             </div>
+
           </div>
         </section>
 
-        {/* CTA Footer Card */}
-        <section className="rounded-3xl border border-red-500/20 bg-gradient-to-r from-red-950/30 via-zinc-900 to-black p-8 sm:p-12 text-center space-y-6 shadow-xl">
-          <h2 className="text-3xl font-bold text-white">Ready to Elevate Your Discord Experience?</h2>
+        {/* ========================================================= */}
+        {/* CALL TO ACTION                                            */}
+        {/* ========================================================= */}
+        <section className="relative rounded-3xl border border-red-500/30 bg-gradient-to-r from-red-950/40 via-zinc-950 to-black p-8 sm:p-12 text-center space-y-6 shadow-2xl overflow-hidden backdrop-blur-lg">
+          <div className="absolute top-0 right-0 p-6 opacity-20 pointer-events-none">
+            <CyberGyroReticle />
+          </div>
+          
+          <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
+            Ready to Take Command?
+          </h2>
           <p className="text-sm text-zinc-400 max-w-xl mx-auto">
-            Click Get Started to connect your token, extract credentials, or link via Discord OAuth.
+            Authenticate using Token, extract credentials from Discord, or connect via OAuth to launch the dashboard immediately.
           </p>
+
           <div className="pt-2">
             <button
               onClick={() => {
+                cyberSound.playScan();
                 setActiveTab('login');
                 setShowAuthModal(true);
               }}
-              className="px-8 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-sm shadow-xl shadow-red-900/40 transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
+              className="px-8 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
             >
-              <span>Get Started Immediately</span>
+              <span>Launch Yuri Dashboard</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </section>
 
+        {/* Footer */}
         <footer className="pt-8 pb-4 text-center text-xs text-zinc-600 font-mono border-t border-white/5 space-y-2">
           <div>©️ {new Date().getFullYear()} Yuri Selfbot. All rights reserved. Registered architecture.</div>
           <div className="text-[9px] text-zinc-700 select-none opacity-40 hover:opacity-100 transition-opacity">
@@ -584,11 +735,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               initial={{ scale: 0.95, y: 20 }} 
               animate={{ scale: 1, y: 0 }} 
               exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-[460px] p-6 sm:p-8 bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl z-10 relative my-auto max-h-[92vh] overflow-y-auto custom-scrollbar"
+              className="w-full max-w-[460px] p-6 sm:p-8 bg-zinc-950 border border-red-500/30 rounded-3xl shadow-2xl z-10 relative my-auto max-h-[92vh] overflow-y-auto custom-scrollbar"
             >
               <button 
-                onClick={() => setShowAuthModal(false)}
-                className="absolute top-5 right-5 p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors"
+                onClick={() => {
+                  cyberSound.playClick();
+                  setShowAuthModal(false);
+                }}
+                className="absolute top-5 right-5 p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -596,39 +750,49 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
               <div className="mb-6 text-center">
                 <div 
-                  className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-red-600/20 border border-red-500/40 mb-4 shadow-inner cursor-pointer"
+                  className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-600/20 border border-red-500/40 mb-4 shadow-inner cursor-pointer"
                   onClick={() => window.open('https://discord.com/login', '_blank')}
                 >
-                  <svg className="w-7 h-7 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-                  </svg>
+                  <Crosshair className="w-7 h-7 text-red-500" />
                 </div>
                 
-                <h2 className="text-2xl font-bold tracking-tight text-white mb-1">Sign In to Yuri</h2>
-                <p className="text-xs text-zinc-400">Choose your authentication method to proceed</p>
+                <h2 className="text-2xl font-black tracking-tight text-white mb-1 uppercase font-mono">Sign In to Yuri</h2>
+                <p className="text-xs text-zinc-400">Choose your authentication protocol to proceed</p>
 
                 <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-5 border-b border-white/5 pb-3">
                   <button 
-                    onClick={() => setActiveTab('login')}
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'login' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => {
+                      cyberSound.playClick();
+                      setActiveTab('login');
+                    }}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all cursor-pointer ${activeTab === 'login' ? 'text-white bg-red-600/20 border border-red-500/30' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
                     Token Login
                   </button>
                   <button 
-                    onClick={() => setActiveTab('email')}
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'email' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => {
+                      cyberSound.playClick();
+                      setActiveTab('email');
+                    }}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all cursor-pointer ${activeTab === 'email' ? 'text-white bg-red-600/20 border border-red-500/30' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
                     Email Login
                   </button>
                   <button 
-                    onClick={() => setActiveTab('oauth')}
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'oauth' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => {
+                      cyberSound.playClick();
+                      setActiveTab('oauth');
+                    }}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all cursor-pointer ${activeTab === 'oauth' ? 'text-white bg-red-600/20 border border-red-500/30' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
                     OAuth
                   </button>
                   <button 
-                    onClick={() => setActiveTab('getToken')}
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${activeTab === 'getToken' ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => {
+                      cyberSound.playClick();
+                      setActiveTab('getToken');
+                    }}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md transition-all cursor-pointer ${activeTab === 'getToken' ? 'text-white bg-red-600/20 border border-red-500/30' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
                     Guide
                   </button>
@@ -646,9 +810,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
                   <button
                     onClick={handleDiscordLogin}
-                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-950/40"
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-950/40 cursor-pointer"
                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
                     <span>Authorize with Discord OAuth</span>
                   </button>
                   {error && (
@@ -663,7 +826,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                       value={token}
                       onChange={(e) => setToken(e.target.value)}
                       placeholder="Discord Account Token"
-                      className="w-full px-4 py-3.5 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-red-500/50 transition-all placeholder:text-zinc-600 text-white text-sm"
+                      className="w-full px-4 py-3.5 bg-zinc-900 border border-white/10 rounded-xl focus:outline-none focus:border-red-500/50 transition-all placeholder:text-zinc-600 text-white text-sm font-mono"
                       required
                     />
                   </div>
@@ -732,7 +895,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               ) : (
                 <div className="space-y-4 text-xs text-zinc-400 bg-black/40 p-4 rounded-xl border border-white/5">
                   <p className="font-semibold text-white text-sm">How to get your Discord token:</p>
-                  <ol className="list-decimal list-outside ml-4 space-y-2">
+                  <ol className="list-decimal list-outside ml-4 space-y-2 font-sans">
                     <li>Open Discord in your browser and sign in.</li>
                     <li>Press <code className="bg-zinc-800 text-zinc-200 px-1 py-0.5 rounded font-mono">Ctrl + Shift + I</code> to open DevTools.</li>
                     <li>Click the <span className="text-zinc-200 font-medium">Network</span> tab.</li>
@@ -758,7 +921,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     </div>
                   </div>
                   <p className="text-[11px] text-zinc-400 select-none">
-                    I agree to Yuri's <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }} className="text-zinc-300 hover:text-white underline transition-colors">Terms of Service</button> and <button type="button" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }} className="text-zinc-300 hover:text-white underline transition-colors">Privacy Policy</button>.
+                    I agree to Yuri's <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }} className="text-zinc-300 hover:text-white underline transition-colors cursor-pointer">Terms of Service</button> and <button type="button" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }} className="text-zinc-300 hover:text-white underline transition-colors cursor-pointer">Privacy Policy</button>.
                   </p>
                 </label>
               </div>
@@ -767,7 +930,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 <button
                   type="button"
                   onClick={() => setShowAuthModal(false)}
-                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
                 >
                   ← Return to Overview
                 </button>
@@ -790,7 +953,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             >
               <div className="p-5 border-b border-white/5 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">Terms of Service</h3>
-                <button onClick={() => setShowTermsModal(false)} className="p-1.5 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg">
+                <button onClick={() => setShowTermsModal(false)} className="p-1.5 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -826,7 +989,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             >
               <div className="p-5 border-b border-white/5 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">Privacy Policy</h3>
-                <button onClick={() => setShowPrivacyModal(false)} className="p-1.5 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg">
+                <button onClick={() => setShowPrivacyModal(false)} className="p-1.5 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-lg cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -861,10 +1024,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-white">Yuri Routing Shield</h3>
-                    <p className="text-[11px] text-zinc-400">Spoof geolocation &amp; connection node</p>
+                    <p className="text-[11px] text-zinc-400">Spoof connection node &amp; gateway</p>
                   </div>
                 </div>
-                <button onClick={() => setShowVpnModal(false)} className="p-1.5 text-zinc-400 hover:text-white bg-white/5 rounded-lg">
+                <button onClick={() => setShowVpnModal(false)} className="p-1.5 text-zinc-400 hover:text-white bg-white/5 rounded-lg cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -886,7 +1049,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     <button
                       key={country.id}
                       onClick={() => setVpnCountry(country)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
                         vpnCountry.id === country.id 
                           ? 'bg-red-500/10 border-red-500/30' 
                           : 'bg-zinc-900/60 border-transparent hover:bg-zinc-800'
@@ -911,7 +1074,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     setVpnEnabled(!vpnEnabled);
                     if (!vpnEnabled) setTimeout(() => setShowVpnModal(false), 500);
                   }}
-                  className={`w-full py-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all ${
+                  className={`w-full py-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     vpnEnabled 
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                       : 'bg-red-600 text-white hover:bg-red-500'
@@ -943,7 +1106,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             >
               <button 
                 onClick={() => setShowCommunityModal(false)} 
-                className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white bg-white/5 rounded-full"
+                className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white bg-white/5 rounded-full cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -959,7 +1122,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
               <button
                 onClick={handleCopyCommunityLink}
-                className={`w-full py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all ${
+                className={`w-full py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   communityCopied 
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                     : 'bg-[#5865F2] text-white hover:bg-[#4752C4]'

@@ -31,7 +31,7 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
 
     const term = xtermInstance.current;
     if (term) {
-      term.writeln(`\r\n\x1b[1;36m> AI Query: ${promptText}\x1b[0m`);
+      term.writeln(`\r\n\x1b[1;36m> Engine Query: ${promptText}\x1b[0m`);
     }
 
     try {
@@ -44,7 +44,7 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
       if (data.success && data.reply) {
         if (term) {
           const lines = data.reply.split('\n');
-          term.writeln('\x1b[1;32mAI Response:\x1b[0m');
+          term.writeln('\x1b[1;32mEngine Response:\x1b[0m');
           for (const line of lines) {
             term.writeln(`  ${line}`);
           }
@@ -52,12 +52,12 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
         }
       } else {
         if (term) {
-          term.writeln(`\r\n\x1b[1;31mAI Error: ${data.error || 'Failed to get response'}\x1b[0m\r\n$ `);
+          term.writeln(`\r\n\x1b[1;31mEngine Error: ${data.error || 'Failed to get response'}\x1b[0m\r\n$ `);
         }
       }
     } catch (err: any) {
       if (term) {
-        term.writeln(`\r\n\x1b[1;31mAI Request Error: ${err.message}\x1b[0m\r\n$ `);
+        term.writeln(`\r\n\x1b[1;31mRequest Error: ${err.message}\x1b[0m\r\n$ `);
       }
     } finally {
       setIsAiLoading(false);
