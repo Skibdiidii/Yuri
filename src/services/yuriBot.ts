@@ -2232,18 +2232,6 @@ async function createAndRunBot(
 
       // 27. /say
       if (commandName === "say") {
-        if (!guild) {
-          return await interaction.reply({
-            content: buildServerBotWarningMessage("broadcast official announcements in servers"),
-            ephemeral: true,
-          });
-        }
-        if (!isServerBotInGuild(guild)) {
-          await interaction.followUp({
-            content: buildServerBotWarningMessage("broadcast server messages (requires Yuri Server Bot `1545528232898465893`)"),
-            ephemeral: true,
-          }).catch(() => {});
-        }
         const msg = options.getString("message", true);
         const embed = new EmbedBuilder()
           .setColor(0xed4245)
@@ -2251,23 +2239,19 @@ async function createAndRunBot(
           .setTimestamp();
         
         await interaction.reply({ content: "📢 **Dispatching broadcast embed...**", ephemeral: true });
+
+        if (guild && !isServerBotInGuild(guild)) {
+          await interaction.followUp({
+            content: buildServerBotWarningMessage("broadcast server messages (requires Yuri Server Bot `1545528232898465893`)"),
+            ephemeral: true,
+          }).catch(() => {});
+        }
+
         return await interaction.channel?.send({ embeds: [embed] });
       }
 
       // 28. /embed
       if (commandName === "embed") {
-        if (!guild) {
-          return await interaction.reply({
-            content: buildServerBotWarningMessage("dispatch custom embeds in servers"),
-            ephemeral: true,
-          });
-        }
-        if (!isServerBotInGuild(guild)) {
-          await interaction.followUp({
-            content: buildServerBotWarningMessage("dispatch server embeds (requires Yuri Server Bot `1545528232898465893`)"),
-            ephemeral: true,
-          }).catch(() => {});
-        }
         const title = options.getString("title", true);
         const desc = options.getString("description", true);
         const embed = new EmbedBuilder()
@@ -2277,6 +2261,14 @@ async function createAndRunBot(
           .setTimestamp();
 
         await interaction.reply({ content: "💎 **Dispatching custom formatted embed...**", ephemeral: true });
+
+        if (guild && !isServerBotInGuild(guild)) {
+          await interaction.followUp({
+            content: buildServerBotWarningMessage("dispatch server embeds (requires Yuri Server Bot `1545528232898465893`)"),
+            ephemeral: true,
+          }).catch(() => {});
+        }
+
         return await interaction.channel?.send({ embeds: [embed] });
       }
 
