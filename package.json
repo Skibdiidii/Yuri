@@ -14,7 +14,9 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@discordjs/voice": "^0.19.2",
     "@google/genai": "^2.16.0",
+    "@snazzah/davey": "^0.1.12",
     "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/ssh2": "^1.15.5",

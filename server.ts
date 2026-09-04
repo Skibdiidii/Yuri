@@ -166,6 +166,40 @@ import fs from "fs";
 import https from "https";
 import * as cheerio from "cheerio";
 
+// WebSocketShard prototype hook for Bot tokens compatibility
+import { createRequire } from "module";
+const requireLocal = createRequire(import.meta.url);
+const WebSocketShard = requireLocal("discord.js-selfbot-v13/src/client/websocket/WebSocketShard");
+
+const original_send = WebSocketShard.prototype._send;
+WebSocketShard.prototype._send = function(data: any) {
+  const isBot = this.manager.client.options.isBot || (this.manager.client.rest && typeof this.manager.client.rest.getAuth === "function" && this.manager.client.rest.getAuth().startsWith("Bot "));
+  if (isBot) {
+    if (data && data.op === 37) {
+      // Block guild subscriptions packet for bot accounts (fixes 4001 Close Code loop)
+      return;
+    }
+    if (data && data.op === 2) {
+      if (data.d) {
+        data.d.properties = {
+          os: "linux",
+          browser: "discord.js",
+          device: "discord.js"
+        };
+        delete data.d.capabilities;
+        delete data.d.client_state;
+      }
+    } else if (data && data.op === 4) {
+      if (data.d) {
+        delete data.d.self_video;
+        delete data.d.flags;
+      }
+    }
+  }
+  return original_send.call(this, data);
+};
+
+
 async function generateDynamicAccountScreenshot(message: any, token: string) {
   try {
     const width = 1536;
@@ -3095,10 +3129,15 @@ async function startServer() {
            const tempClient = new Client({
              patchVoice: true,
              syncStatus: true,
+             isBot: true,
              ws: {
                intents: bitfieldValue,
              },
            } as any);
+
+           tempClient.rest.getAuth = function() {
+             return "Bot " + token;
+           };
 
            tempClient.on("ready", async () => {
              console.log(`[24/7 Bot] SUCCESS: Securely logged in as ${tempClient.user?.tag} (${tempClient.user?.id})`);
@@ -3108,13 +3147,18 @@ async function startServer() {
                  const g = await tempClient.guilds.fetch(targetGuildId).catch(() => null);
                  if (g) {
                    const c = await g.channels.fetch(targetVcId).catch(() => null);
-                   if (c && tempClient.voice && typeof tempClient.voice.joinChannel === "function") {
-                     await tempClient.voice.joinChannel(c as any, { selfDeaf: false, selfMute: false }).catch((err) => {
-                       console.error("[24/7 Bot] Voice join error:", err);
+                   if (c && g.voiceAdapterCreator) {
+                     const { joinVoiceChannel } = requireLocal("@discordjs/voice");
+                     joinVoiceChannel({
+                       channelId: c.id,
+                       guildId: g.id,
+                       adapterCreator: g.voiceAdapterCreator,
+                       selfMute: false,
+                       selfDeaf: false,
                      });
-                     console.log(`[24/7 Bot] Successfully connected to Voice Channel: ${c.name}`);
+                     console.log(`[24/7 Bot] Successfully connected to Voice Channel: ${c.name} via @discordjs/voice`);
                    } else {
-                     console.warn("[24/7 Bot] Target voice channel not found or voice manager unavailable.");
+                     console.warn("[24/7 Bot] Target voice channel or voiceAdapterCreator unavailable.");
                    }
                  } else {
                    console.warn("[24/7 Bot] Target guild not found for bot account.");
