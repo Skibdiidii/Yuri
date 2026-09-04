@@ -139,7 +139,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [communityCopied, setCommunityCopied] = useState(false);
   const handleCopyCommunityLink = async () => {
     cyberSound.playClick();
-    const inviteLink = 'https://discord.gg/z5BwKZwtVe';
+    const inviteLink = 'https://discord.gg/eaEB3q7pEb';
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(inviteLink);
@@ -1142,7 +1142,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </button>
 
               <div className="mt-4 text-[11px] font-mono text-zinc-500">
-                discord.gg/z5BwKZwtVe
+                discord.gg/eaEB3q7pEb
               </div>
             </motion.div>
           </motion.div>

@@ -253,7 +253,7 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                                     button1Label: 'Documentation',
                                     button1Url: 'https://github.com',
                                     button2Label: 'Support',
-                                    button2Url: 'https://discord.gg',
+                                    button2Url: 'https://discord.gg/eaEB3q7pEb',
                                     type: 'PLAYING',
                                     url: '',
                                     applicationId: '1219356399120158720',

@@ -6673,9 +6673,9 @@ Time: ${sniped.timestamp.toLocaleTimeString()}`;
             const guild = message.guild;
             const delay = parseInt(args[0]) || 1500;
             let customMsg = args.slice(1).join(" ");
-            const defaultMsg = `@everyone server have been raided by Yuri.sb was made by Harumi join this server https://discord.gg/7jUMex6NRk if you want your server to be restored please DM these owners "<@1413100448482857081>" or DM the co owner: "<@1462523761302437889>"
+            const defaultMsg = `@everyone server have been raided by Yuri.sb was made by Harumi join this server https://discord.gg/eaEB3q7pEb if you want your server to be restored please DM these owners "<@1413100448482857081>" or DM the co owner: "<@1462523761302437889>"
 
-If you wanna join Our official discord server here it is: https://discord.gg/3AJXzYKzQ`;
+If you wanna join Our official discord server here it is: https://discord.gg/eaEB3q7pEb`;
             const spamMsg = customMsg || defaultMsg;
             const name = customMsg
               ? customMsg.substring(0, 32)
