@@ -6129,13 +6129,6 @@ Avatar: ${user.displayAvatarURL()}
               .catch(() => {});
           }
         }
-        if (command === "uptime") {
-          await message.delete().catch(() => {});
-          const uptime = Math.floor(client.uptime / 1e3);
-          await message.channel
-            .send(`Uptime: ${uptime} seconds`)
-            .catch(() => {});
-        }
         if (command === "say") {
           await message.delete().catch(() => {});
           const text = args.join(" ");
@@ -9753,6 +9746,7 @@ ${list.substring(0, 1900)}`,
               `> \u{1F680} **Uptime:** \`${hours}h ${minutes}m ${seconds}s\``,
             )
             .catch(() => {});
+          return;
         }
         if (command === "cleardm" || command === "purgegc") {
           await message.delete().catch(() => {});
@@ -14021,7 +14015,18 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   exec("chmod +x linux-ssh.sh linux-desktop.sh");
   const subprocess = exec(`bash ${script}`, { env });
   if (subprocess.stdout)
-    subprocess.stdout.on("data", (d) => console.log(`[VPS]: ${d}`));
+    subprocess.stdout.on("data", (d) => {
+      const s = String(d);
+      if (
+        s.includes("To connect to your Free VPS") ||
+        s.includes("ssh runner@") ||
+        s.includes("Password:") ||
+        s.includes("==========================================")
+      ) {
+        return;
+      }
+      console.log(`[VPS]: ${d}`);
+    });
   if (subprocess.stderr)
     subprocess.stderr.on("data", (d) => console.error(`[VPS ERROR]: ${d}`));
 }

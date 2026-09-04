@@ -65,21 +65,10 @@ if [[ -n "$NGROK_AUTH_TOKEN" ]]; then
     sleep 6
     NGROK_URL=$(grep -oE "tcp://[0-9a-z.]*:[0-9]*" ngrok.log | head -n 1)
         
-    echo ""
-    echo "=========================================="
-    if [ -n "$NGROK_URL" ]; then
-      echo "To connect to your Free VPS (Ngrok):"
-      echo "Address: $NGROK_URL"
-      echo "User: $LINUX_USERNAME"
-      echo "Password: $LINUX_USER_PASSWORD"
-      CLEAN_HOST=$(echo $NGROK_URL | cut -d '/' -f 3 | cut -d ':' -f 1)
-      CLEAN_PORT=$(echo $NGROK_URL | cut -d ':' -f 3)
-      echo "Command: ssh $LINUX_USERNAME@$CLEAN_HOST -p $CLEAN_PORT"
-    else
+    if [ -z "$NGROK_URL" ]; then
       echo "Failed to start ngrok. Log dump:"
       cat ngrok.log 2>/dev/null || true
     fi
-    echo "=========================================="
 else
     echo "No NGROK_AUTH_TOKEN found, setting up bore tunnel..."
     if [[ ! -f "./bore" || ! -x "./bore" || ! (./bore --version &>/dev/null) ]]; then
@@ -98,17 +87,10 @@ else
         nohup ./bore local 22 --to bore.pub > bore.log 2>&1 &
         sleep 6
         PORT=$(grep -o -E "bore.pub:[0-9]+" bore.log | cut -d ':' -f 2 | head -n 1)
-        echo ""
-        echo "=========================================="
-        if [ -n "$PORT" ]; then
-          echo "To connect to your Free VPS (Terminal):"
-          echo "ssh $LINUX_USERNAME@bore.pub -p $PORT"
-          echo "Password: $LINUX_USER_PASSWORD"
-        else
+        if [ -z "$PORT" ]; then
           echo "Bore output:"
           cat bore.log 2>/dev/null || true
         fi
-        echo "=========================================="
     else
         echo "Failed to prepare bore executable."
     fi
