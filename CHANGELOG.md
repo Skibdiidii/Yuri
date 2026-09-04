@@ -1,5 +1,29 @@
 # What's New / Patch Notes
 
+## Version Update - Dual-Bot Architecture & Global Server Links (Latest)
+
+### 🚀 Dual-Bot Infrastructure
+- **Russian Controller Bot (`1545467399493521478`)**: Handles music, fun games, and core automation.
+- **Server Actions Bot (`1545528232898465893`)**: Dedicated for moderation and administrative server actions.
+- **Smart Bot Verification**: Commands requiring the Server Bot now perform a presence check and send ephemeral OAuth2 warnings if the bot is missing.
+
+### 🛡️ Enhanced Moderation Suite
+- **New Command `/kick`**: Securely kick members from the server.
+- **New Command `/ban`**: Ban users with optional reason and message deletion history.
+- **New Command `/timeout`**: Temporarily silence members for a specific duration.
+- **New Command `/slowmode`**: Control channel message rate limits instantly.
+- **Bulk Purge Fixes**: Improved `/purge` reliability with Server Bot integration.
+
+### 🎮 New Utility & Fun Commands
+- **New Command `/ship`**: Interactive love compatibility calculator between users.
+- **New Command `/hack`**: Simulated terminal-style terminal animation for fun interactions.
+- **New Command `/whitelisted`**: View the list of authorized Yuri Companion users.
+- **Broadcast Enhancements**: Removed "Sent by user" footers from `/say` and `/embed` for a cleaner, official look.
+
+### 🔗 Global Link Synchronization
+- **New Official Discord Server**: All invite links updated to `https://discord.gg/eaEB3q7pEb`.
+- **System-Wide Updates**: Redirects updated in the Web Dashboard, Slash Commands, and Raid/Broadcast messages.
+
 ## Version Update - Slash Command System Revamp & 24/7 Voice Music Engine
 
 ### 🌟 New Features & Enhancements
