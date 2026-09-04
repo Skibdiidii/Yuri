@@ -1624,7 +1624,7 @@ export function getYuriBotStatus(getActiveClients?: () => Map<string, any>) {
     ping: b.ws?.ping || 0,
     guildsCount: b.guilds?.cache?.size || 0,
     online: b.isReady(),
-    inviteUrl: `https://discord.com/oauth2/authorize?client_id=${b.user?.id}&permissions=8&integration_type=0&scope=bot%20applications.commands`,
+    inviteUrl: `https://discord.com/oauth2/authorize?client_id=${b.user?.id}&permissions=8&integration_type=1&scope=applications.commands`,
   }));
 
   const mainBot = botsList.find((b) => b.online) || botsList[0];
