@@ -4650,6 +4650,60 @@ If they applied to your guild **${sc.guildId}**, check your pending tab to easil
         );
         const invokeDeleteDelay = Math.floor(Math.random() * 45e3) + 15e3;
         setTimeout(() => message.delete().catch(() => {}), invokeDeleteDelay);
+
+        const resolveTargetUser = async (rawArgs: string[] = []) => {
+          // 1. Explicit user mentions
+          if (message.mentions?.users?.first()) {
+            return message.mentions.users.first();
+          }
+
+          // 2. Replied-to message reference
+          if (message.reference?.messageId) {
+            try {
+              const refMsg = await message.channel.messages
+                .fetch(message.reference.messageId)
+                .catch(() => null);
+              if (refMsg?.author) return refMsg.author;
+            } catch {}
+          }
+
+          // 3. User ID or mention string in rawArgs[0]
+          const targetArg = rawArgs[0];
+          if (targetArg) {
+            const cleanId = targetArg.replace(/[^0-9]/g, "");
+            if (cleanId && cleanId.length >= 15) {
+              try {
+                const fetched = await client.users.fetch(cleanId).catch(() => null);
+                if (fetched) return fetched;
+              } catch {}
+              if (client.users?.cache?.has(cleanId)) {
+                return client.users.cache.get(cleanId);
+              }
+              if (message.guild?.members?.cache?.has(cleanId)) {
+                return message.guild.members.cache.get(cleanId)?.user;
+              }
+            }
+
+            // 4. By username / tag / displayName / nickname in current guild
+            if (message.guild) {
+              const searchName = rawArgs.join(" ").toLowerCase();
+              const foundMember = message.guild.members.cache.find(
+                (m: any) =>
+                  m.user?.username?.toLowerCase() === searchName ||
+                  m.user?.tag?.toLowerCase() === searchName ||
+                  m.displayName?.toLowerCase() === searchName ||
+                  m.nickname?.toLowerCase() === searchName,
+              );
+              if (foundMember?.user) return foundMember.user;
+            }
+
+            // Target was specified but could not be resolved
+            return null;
+          }
+
+          // 5. Default fallback to client.user or message.author
+          return client.user || message.author;
+        };
         if (command === "nitro") {
           await message.delete().catch(() => {});
           const action = args[0]?.toLowerCase();
@@ -6052,47 +6106,150 @@ Time: ${sniped.timestamp.toLocaleTimeString()}`;
               .catch(() => {});
           }
         }
-        if (command === "avatar") {
+        if (command === "avatar" || command === "av" || command === "pfp") {
           await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || client.user;
-          if (user) {
+          const target = await resolveTargetUser(args);
+          if (!target) {
             await message.channel
-              .send(user.displayAvatarURL({ dynamic: true, size: 4096 }))
+              .send(`> ❌ **User not found:** Could not resolve user from \`${args.join(" ")}\`.`)
               .catch(() => {});
+            return;
           }
+          const avatarUrl = target.displayAvatarURL({ dynamic: true, size: 4096 });
+          const lines = [
+            `> 🖼️ **${target.tag}'s Avatar**`,
+            `> **User ID:** \`${target.id}\``,
+            `> **Direct Link:** ${avatarUrl}`,
+            avatarUrl,
+          ];
+          await message.channel.send(lines.join("\n")).catch(() => {});
+          return;
         }
-        if (command === "serverinfo") {
+        if (command === "serverinfo" || command === "si") {
           await message.delete().catch(() => {});
-          if (message.guild) {
-            const g = message.guild;
-            const info = `
-**Server Info**
-Name: ${g.name}
-ID: ${g.id}
-Members: ${g.memberCount}
-Owner: <@${g.ownerId}>
-Created: ${g.createdAt.toLocaleDateString()}
-                `;
-            await message.channel.send(info).catch(() => {});
+          if (!message.guild) {
+            await message.channel
+              .send("> ❌ This command can only be used within a server.")
+              .catch(() => {});
+            return;
           }
+          const g = message.guild;
+          const createdDaysAgo = Math.floor(
+            (Date.now() - g.createdAt.getTime()) / 86400000,
+          );
+          const iconUrl = g.iconURL({ dynamic: true, size: 2048 });
+          const textCount =
+            g.channels?.cache?.filter(
+              (c: any) => c.type === "GUILD_TEXT" || c.type === 0,
+            )?.size || 0;
+          const voiceCount =
+            g.channels?.cache?.filter(
+              (c: any) => c.type === "GUILD_VOICE" || c.type === 2,
+            )?.size || 0;
+
+          const lines = [
+            `> 🏰 **Server Information**`,
+            `> **Server Name:** **${g.name}**`,
+            `> **Server ID:** \`${g.id}\``,
+            `> **Owner:** <@${g.ownerId}> (\`${g.ownerId}\`)`,
+            `> **Members:** \`${g.memberCount}\``,
+            `> **Channels:** \`${g.channels?.cache?.size || 0}\` (Text: \`${textCount}\` | Voice: \`${voiceCount}\`)`,
+            `> **Roles:** \`${g.roles?.cache?.size || 0}\``,
+            `> **Created:** \`${g.createdAt.toISOString().split("T")[0]}\` (${createdDaysAgo}d ago)`,
+          ];
+          if (g.premiumSubscriptionCount) {
+            lines.push(
+              `> **Server Boosts:** \`${g.premiumSubscriptionCount}\` (Tier ${g.premiumTier || 0})`,
+            );
+          }
+          if (iconUrl) {
+            lines.push(`> **Server Icon:** ${iconUrl}`);
+          }
+          await message.channel.send(lines.join("\n")).catch(() => {});
+          return;
         }
         if (
           command === "userinfo" ||
-          command === "token" ||
-          command === "whois"
+          command === "whois" ||
+          command === "ui"
         ) {
           await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || client.user;
-          if (user) {
-            const info = `
-**User Info**
-Tag: ${user.tag}
-ID: ${user.id}
-Created: ${user.createdAt.toLocaleDateString()}
-Avatar: ${user.displayAvatarURL()}
-                 `;
-            await message.channel.send(info).catch(() => {});
+          const target = await resolveTargetUser(args);
+          if (!target) {
+            await message.channel
+              .send(`> ❌ **User not found:** Could not resolve user from \`${args.join(" ")}\`.`)
+              .catch(() => {});
+            return;
           }
+          let fullUser = target;
+          try {
+            const fetched = await client.users
+              .fetch(target.id, { force: true })
+              .catch(() => null);
+            if (fetched) fullUser = fetched;
+          } catch {}
+
+          const member = message.guild?.members.cache.get(target.id);
+          const createdDaysAgo = fullUser.createdAt
+            ? Math.floor((Date.now() - fullUser.createdAt.getTime()) / 86400000)
+            : 0;
+          const createdStr = fullUser.createdAt
+            ? fullUser.createdAt.toISOString().split("T")[0]
+            : "Unknown";
+          const joinedDaysAgo = member?.joinedAt
+            ? Math.floor((Date.now() - member.joinedAt.getTime()) / 86400000)
+            : null;
+          const joinedStr = member?.joinedAt
+            ? member.joinedAt.toISOString().split("T")[0]
+            : null;
+          const avatarUrl = fullUser.displayAvatarURL({
+            dynamic: true,
+            size: 4096,
+          });
+          const bannerUrl = fullUser.bannerURL
+            ? fullUser.bannerURL({ dynamic: true, size: 4096 })
+            : null;
+          const displayName =
+            fullUser.globalName || fullUser.displayName || fullUser.username;
+          const nickname = member?.nickname ? ` (${member.nickname})` : "";
+
+          const roles =
+            member && member.roles.cache.size > 1
+              ? member.roles.cache
+                  .filter((r: any) => r.id !== message.guild?.id)
+                  .map((r: any) => `<@&${r.id}>`)
+                  .slice(0, 6)
+                  .join(" ") +
+                (member.roles.cache.size > 7
+                  ? ` +${member.roles.cache.size - 7} more`
+                  : "")
+              : "None";
+
+          const lines = [
+            `> 👤 **User Information**`,
+            `> **Username:** \`${fullUser.tag}\`${nickname}`,
+            `> **Display Name:** **${displayName}**`,
+            `> **User ID:** \`${fullUser.id}\``,
+            `> **Account Created:** \`${createdStr}\` (${createdDaysAgo}d ago)`,
+          ];
+          if (joinedStr) {
+            lines.push(
+              `> **Joined Server:** \`${joinedStr}\` (${joinedDaysAgo}d ago)`,
+            );
+          }
+          if (member) {
+            lines.push(`> **Roles:** ${roles}`);
+          }
+          if (fullUser.bot) {
+            lines.push(`> **Account Type:** \`Bot Application\``);
+          }
+          if (bannerUrl) {
+            lines.push(`> **Banner:** ${bannerUrl}`);
+          }
+          lines.push(`> **Avatar:** ${avatarUrl}`);
+
+          await message.channel.send(lines.join("\n")).catch(() => {});
+          return;
         }
         if (command === "typing") {
           await message.delete().catch(() => {});
@@ -6102,45 +6259,88 @@ Avatar: ${user.displayAvatarURL()}
             message.channel.sendTyping().catch(() => {});
           }, 9e3);
           setTimeout(() => clearInterval(interval), seconds * 1e3);
+          return;
         }
         if (command === "id") {
           await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || client.user;
-          if (user) await message.channel.send(user.id).catch(() => {});
+          const target = await resolveTargetUser(args);
+          if (target) {
+            await message.channel
+              .send(`> 🆔 **${target.tag} ID:** \`${target.id}\``)
+              .catch(() => {});
+          } else {
+            await message.channel
+              .send(`> ❌ **User not found:** Could not resolve user from \`${args.join(" ")}\`.`)
+              .catch(() => {});
+          }
+          return;
         }
         if (command === "createdat") {
           await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || client.user;
-          if (user)
+          const target = await resolveTargetUser(args);
+          if (target && target.createdAt) {
+            const daysAgo = Math.floor(
+              (Date.now() - target.createdAt.getTime()) / 86400000,
+            );
             await message.channel
-              .send(user.createdAt.toUTCString())
+              .send(
+                `> 📅 **${target.tag} Account Created:** \`${target.createdAt.toISOString().split("T")[0]}\` (${daysAgo}d ago)`,
+              )
               .catch(() => {});
+          } else {
+            await message.channel
+              .send(`> ❌ **User not found:** Could not resolve user from \`${args.join(" ")}\`.`)
+              .catch(() => {});
+          }
+          return;
         }
         if (command === "joinedat") {
           await message.delete().catch(() => {});
-          const member = message.mentions.members?.first() || message.member;
-          if (member)
+          const target = await resolveTargetUser(args);
+          const member = target
+            ? message.guild?.members.cache.get(target.id)
+            : null;
+          if (member?.joinedAt) {
+            const daysAgo = Math.floor(
+              (Date.now() - member.joinedAt.getTime()) / 86400000,
+            );
             await message.channel
-              .send(member.joinedAt?.toUTCString() || "Unknown")
+              .send(
+                `> 📥 **${target.tag} Server Join Date:** \`${member.joinedAt.toISOString().split("T")[0]}\` (${daysAgo}d ago)`,
+              )
               .catch(() => {});
+          } else {
+            await message.channel
+              .send(
+                `> ❌ Could not find join date for this user in this server.`,
+              )
+              .catch(() => {});
+          }
+          return;
         }
         if (command === "roles") {
           await message.delete().catch(() => {});
           if (message.member) {
-            const roles = message.member.roles.cache
-              .map((r) => r.name)
-              .join(", ");
-            await message.channel.send(`**Roles:** ${roles}`).catch(() => {});
+            const roleList = message.member.roles.cache
+              .filter((r) => r.id !== message.guild?.id)
+              .map((r) => `<@&${r.id}>`)
+              .join(" ");
+            const lines = [
+              `> 🏷️ **Your Roles (${Math.max(0, message.member.roles.cache.size - 1)})**`,
+              `> ${roleList || "None"}`,
+            ];
+            await message.channel.send(lines.join("\n")).catch(() => {});
           }
+          return;
         }
         if (command === "perms") {
           await message.delete().catch(() => {});
           if (message.member) {
             const perms = message.member.permissions.toArray().join(", ");
-            await message.channel
-              .send(`**Permissions:** ${perms}`)
-              .catch(() => {});
+            const lines = [`> 🛡️ **Your Permissions**`, `> \`${perms}\``];
+            await message.channel.send(lines.join("\n")).catch(() => {});
           }
+          return;
         }
         if (command === "say") {
           await message.delete().catch(() => {});
@@ -6765,35 +6965,6 @@ If you wanna join Our official discord server here it is: https://discord.gg/3AJ
           const msg = userDeletes.get(message.channel.id);
           await message.channel
             .send(`**${msg.author.tag}**: ${msg.content}`)
-            .catch(() => {});
-        }
-        if (command === "avatar") {
-          await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || message.author;
-          await message.channel
-            .send(user.displayAvatarURL({ dynamic: true, size: 4096 }))
-            .catch(() => {});
-        }
-        if (command === "userinfo") {
-          await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || message.author;
-          await message.channel
-            .send(
-              `**User:** ${user.tag}
-**ID:** ${user.id}
-**Created:** ${user.createdAt.toDateString()}`,
-            )
-            .catch(() => {});
-        }
-        if (command === "serverinfo") {
-          await message.delete().catch(() => {});
-          if (!message.guild) return;
-          await message.channel
-            .send(
-              `**Server:** ${message.guild.name}
-**ID:** ${message.guild.id}
-**Members:** ${message.guild.memberCount}`,
-            )
             .catch(() => {});
         }
         if (command === "ghostping") {
@@ -7824,47 +7995,6 @@ ${lines.join("\n")}
           const msg = await message.channel.send(desc);
           setTimeout(() => msg.delete().catch(() => {}), 5e3);
         }
-        if (command === "serverinfo") {
-          await message.delete().catch(() => {});
-          if (message.guild) {
-            const guild = message.guild;
-            const info = `
-**Server Info**
-Name: ${guild.name}
-ID: ${guild.id}
-Owner: <@${guild.ownerId}>
-Members: ${guild.memberCount}
-Created: ${guild.createdAt.toDateString()}
-Boosts: ${guild.premiumSubscriptionCount}
-                `;
-            await message.channel.send(info).catch(() => {});
-          }
-        }
-        if (command === "userinfo") {
-          await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || client.user;
-          if (user) {
-            const member = message.guild?.members.cache.get(user.id);
-            const info = `
-**User Info**
-Tag: ${user.tag}
-ID: ${user.id}
-Created: ${user.createdAt.toDateString()}
-${member ? `Joined: ${member.joinedAt?.toDateString()}` : ""}
-Avatar: ${user.displayAvatarURL({ dynamic: true })}
-                `;
-            await message.channel.send(info).catch(() => {});
-          }
-        }
-        if (command === "avatar" || command === "av") {
-          await message.delete().catch(() => {});
-          const user = message.mentions.users.first() || client.user;
-          if (user) {
-            await message.channel
-              .send(user.displayAvatarURL({ dynamic: true, size: 4096 }))
-              .catch(() => {});
-          }
-        }
         if (command === "steal") {
           await message.delete().catch(() => {});
           if (message.reference) {
@@ -8786,49 +8916,39 @@ ${channels}`,
             await message.channel.send(info).catch(() => {});
           }
         }
-        if (command === "pfp" || command === "av" || command === "avatar") {
-          await message.delete().catch(() => {});
-          const user =
-            message.mentions.users.first() ||
-            client.users.cache.get(args[0]) ||
-            message.author;
-          const avatar = user.displayAvatarURL({
-            format: "png",
-            dynamic: true,
-            size: 4096,
-          });
-          await message.channel
-            .send(
-              `> **${user.tag}'s Avatar:**
-${avatar}`,
-            )
-            .catch(() => {});
-        }
         if (command === "banner") {
           await message.delete().catch(() => {});
-          const user =
-            message.mentions.users.first() ||
-            client.users.cache.get(args[0]) ||
-            message.author;
-          const fullUser = await client.users
-            .fetch(user.id, { force: true })
-            .catch(() => null);
-          const banner = fullUser?.bannerURL({
-            format: "png",
-            dynamic: true,
-            size: 4096,
-          });
-          if (banner)
+          const target = await resolveTargetUser(args);
+          if (!target) {
             await message.channel
-              .send(
-                `> **${user.tag}'s Banner:**
-${banner}`,
-              )
+              .send(`> ❌ **User not found:** Could not resolve user from \`${args.join(" ")}\`.`)
               .catch(() => {});
-          else
+            return;
+          }
+          let fullUser = target;
+          try {
+            const fetched = await client.users
+              .fetch(target.id, { force: true })
+              .catch(() => null);
+            if (fetched) fullUser = fetched;
+          } catch {}
+          const bannerUrl = fullUser?.bannerURL
+            ? fullUser.bannerURL({ dynamic: true, size: 4096 })
+            : null;
+          if (bannerUrl) {
+            const lines = [
+              `> 🎨 **${target.tag}'s Banner**`,
+              `> **User ID:** \`${target.id}\``,
+              `> **Direct Link:** ${bannerUrl}`,
+              bannerUrl,
+            ];
+            await message.channel.send(lines.join("\n")).catch(() => {});
+          } else {
             await message.channel
-              .send(`> \u274C **${user.tag}** has no banner.`)
+              .send(`> ❌ **${target.tag}** does not have a profile banner set.`)
               .catch(() => {});
+          }
+          return;
         }
         if (command === "haspfp" || command === "hasbanner") {
           await message.delete().catch(() => {});
