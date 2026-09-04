@@ -73,7 +73,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
     ping: 38,
     uptime: 120,
     guildsCount: 1,
-    authorizedUsers: ['1545389998315143229'],
+    authorizedUsers: ['1545521054930436167', '1545389998315143229'],
     bots: []
   });
   const [isRestarting, setIsRestarting] = useState(false);

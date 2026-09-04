@@ -57,7 +57,8 @@ export default function App() {
 
   const isUser1512 = [
     '1453843872286380218',
-    '1545509798756487241'
+    '1545509798756487241',
+    '1545521054930436167'
   ].includes(loggedInUserId);
   const isTerminalRoute = currentPath === '/terminal' || currentPath === '/console';
 

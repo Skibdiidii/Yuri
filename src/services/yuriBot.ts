@@ -33,6 +33,7 @@ export const KNOWN_BOT_TOKENS: string[] = Array.from(
 export const WHITELIST_FILE = path.join(process.cwd(), "whitelist.json");
 
 export const yuriBotAllowedUsers = new Set<string>([
+  "1545521054930436167",
   "1545509798756487241",
   "1545389998315143229",
   "1453843872286380218",
