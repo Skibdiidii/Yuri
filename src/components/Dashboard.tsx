@@ -15,6 +15,7 @@ import UsernameFinderTab from './UsernameFinderTab';
 import MetricsDashboard from './MetricsDashboard';
 import AudioVmTab from './AudioVmTab';
 import { BrowserPreviewTab } from './BrowserPreviewTab';
+import PlatformsTab from './PlatformsTab';
 import { CHANGELOG } from '../constants/changelog';
 
 interface DashboardProps {
@@ -24,7 +25,7 @@ interface DashboardProps {
 const API_BASE = '';
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser'>(() => {
+  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser' | 'platforms'>(() => {
     const isDirect = localStorage.getItem('isAdminDirect') === 'true';
     if (isDirect) {
       localStorage.removeItem('isAdminDirect');
@@ -670,6 +671,13 @@ Useless piece of shit`,
               badge="AI"
             />
             <SidebarItem 
+              active={activeTab === 'platforms'} 
+              onClick={() => setActiveTab('platforms')} 
+              icon={Globe} 
+              label="Platforms" 
+              badge="iOS/Android"
+            />
+            <SidebarItem 
               active={activeTab === 'system_console'} 
               onClick={() => setActiveTab('system_console')} 
               icon={Terminal} 
@@ -786,6 +794,7 @@ Useless piece of shit`,
               className="max-w-7xl mx-auto"
             >
             {activeTab === 'system_console' && <SystemConsoleTab onOpenFullTerminal={() => setShowTerminal(true)} />}
+            {activeTab === 'platforms' && <PlatformsTab />}
             {activeTab === 'browser' && (
               <div className="h-[calc(100vh-12rem)] w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
                 <BrowserPreviewTab />
