@@ -157,7 +157,7 @@ export const BrowserPreviewTab: React.FC<BrowserPreviewTabProps> = ({
 
     setGenerating(true);
     try {
-      const res = await fetch('/api/mistral/chat', {
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -264,7 +264,7 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
     const promptToSend = promptOverride || (currentHistory[currentHistory.length - 1]?.content || "");
 
     try {
-      const res = await fetch('/api/mistral/chat', {
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

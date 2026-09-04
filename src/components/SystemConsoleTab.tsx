@@ -35,7 +35,7 @@ export default function SystemConsoleTab({ fullscreen = false, onOpenFullTermina
     }
 
     try {
-      const res = await fetch('/api/mistral/chat', {
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: promptText })

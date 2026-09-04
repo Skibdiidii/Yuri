@@ -3048,6 +3048,11 @@ async function startServer() {
   });
 
   app.post("/api/mistral/chat", async (req, res) => {
+    req.url = "/api/ai/chat";
+    return app._router.handle(req, res);
+  });
+
+  app.post("/api/ai/chat", async (req, res) => {
     const { prompt, history, terminalContext, fileContext, statusContext } = req.body || {};
     if (!prompt) return res.status(400).json({ error: "Prompt required" });
 
@@ -3174,7 +3179,7 @@ async function startServer() {
       return rawText;
     }
 
-    // Try Gemini API first if GEMINI_API_KEY is configured
+    // Try Primary AI API first if GEMINI_API_KEY is configured
     if (process.env.GEMINI_API_KEY) {
       try {
         const { GoogleGenAI } = require("@google/genai");
@@ -3213,18 +3218,18 @@ async function startServer() {
 
         let replyText = response.text?.trim();
         if (!replyText) {
-          throw new Error("Gemini returned an empty, blocked, or invalid response.");
+          throw new Error("AI returned an empty, blocked, or invalid response.");
         }
         replyText = await runCodeFactorCorrection(replyText);
         syncPreviewFromReply(replyText);
         const processed = processReplyForClient(replyText);
         return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
-      } catch (geminiErr: any) {
-        console.warn("[AI AGENT] Gemini generation error, falling back to Mistral:", geminiErr.message);
+      } catch (primaryErr: any) {
+        console.warn("[AI AGENT] Primary AI generation error, falling back to secondary AI:", primaryErr.message);
       }
     }
 
-    // Fallback to Mistral API
+    // Fallback to Secondary AI API
     try {
       const messages = [
         { 
@@ -3249,11 +3254,11 @@ async function startServer() {
       const data: any = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error?.message || data.message || "Mistral API Error");
+        throw new Error(data.error?.message || data.message || "AI API Error");
       }
 
       let reply = data.choices?.[0]?.message?.content;
-      if (!reply) throw new Error("Mistral returned an empty response.");
+      if (!reply) throw new Error("Secondary AI returned an empty response.");
       
       reply = await runCodeFactorCorrection(reply);
       syncPreviewFromReply(reply);
