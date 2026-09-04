@@ -4355,38 +4355,51 @@ If they applied to your guild **${sc.guildId}**, check your pending tab to easil
         }
         const currentAfk = afkStatus.get(token);
         if (currentAfk) {
-          if (
-            message.author.id === client.user?.id &&
-            !message.content.startsWith(prefixes.get(token) || ".") &&
-            Date.now() - currentAfk.since > 3e3
-          ) {
+          const content = (message.content || "").trim();
+          const isOwnMessage = message.author.id === client.user?.id;
+          const isAutomatedMessage =
+            content.startsWith("afk reason:") ||
+            content.startsWith("> ") ||
+            content.startsWith(prefixes.get(token) || ".") ||
+            content.includes("AFK Mode") ||
+            content.includes("Welcome back!");
+
+          if (isOwnMessage && !isAutomatedMessage && Date.now() - currentAfk.since > 5000) {
             afkStatus.delete(token);
             await message.channel
               .send("> \u{1F305} **Welcome back!** AFK mode has been disabled.")
-              .then((m) => setTimeout(() => m.delete().catch(() => {}), 5e3));
-          } else if (
-            message.author.id !== client.user?.id &&
-            (message.mentions.users.has(client.user?.id || "") ||
-              !message.guild)
-          ) {
-            const now2 = Date.now();
-            const lastReply =
-              autoReactRules.get("afk_cooldown_" + message.channel.id) || 0;
-            if (now2 - lastReply > 1e4) {
-              autoReactRules.set("afk_cooldown_" + message.channel.id, now2);
-              const diffMs = now2 - currentAfk.since;
-              const diffSec = Math.floor(diffMs / 1e3);
-              const h = Math.floor(diffSec / 3600);
-              const m = Math.floor((diffSec % 3600) / 60);
-              const s = diffSec % 60;
-              const durationParts = [];
-              if (h > 0) durationParts.push(`${h}h`);
-              if (m > 0 || h > 0) durationParts.push(`${m}m`);
-              durationParts.push(`${s}s`);
-              const durationStr = durationParts.join(" ");
-              await message
-                .reply(`afk reason: ${currentAfk.reason} (${durationStr} ago)`)
-                .catch(() => {});
+              .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000))
+              .catch(() => {});
+          } else if (!isOwnMessage) {
+            const isMentioned = message.mentions.users.has(client.user?.id || "");
+            let isRepliedToUser = false;
+            if (message.reference?.messageId) {
+              const refMsg = message.channel.messages?.cache?.get(message.reference.messageId);
+              if (refMsg && refMsg.author?.id === client.user?.id) {
+                isRepliedToUser = true;
+              }
+            }
+
+            if (isMentioned || isRepliedToUser || !message.guild) {
+              const now2 = Date.now();
+              const lastReply =
+                autoReactRules.get("afk_cooldown_" + message.channel.id) || 0;
+              if (now2 - lastReply > 10000) {
+                autoReactRules.set("afk_cooldown_" + message.channel.id, now2);
+                const diffMs = now2 - currentAfk.since;
+                const diffSec = Math.floor(diffMs / 1000);
+                const h = Math.floor(diffSec / 3600);
+                const m = Math.floor((diffSec % 3600) / 60);
+                const s = diffSec % 60;
+                const durationParts = [];
+                if (h > 0) durationParts.push(`${h}h`);
+                if (m > 0 || h > 0) durationParts.push(`${m}m`);
+                durationParts.push(`${s}s`);
+                const durationStr = durationParts.join(" ") || "0s";
+                await message
+                  .reply(`afk reason: ${currentAfk.reason} (${durationStr} ago)`)
+                  .catch(() => {});
+              }
             }
           }
         }
@@ -7190,6 +7203,17 @@ ${def.definition.replace(/[\[\]]/g, "")}
               .catch(() => {});
             addLog(token, `AFK Enabled: ${reason}`);
           }
+          return;
+        }
+        if (command === "unafk") {
+          await message.delete().catch(() => {});
+          afkStatus.delete(token);
+          await client.user?.setActivity(null);
+          await client.user?.setPresence({ status: "online" });
+          await message.channel
+            .send("> \u2705 **AFK Mode Disabled.**")
+            .catch(() => {});
+          addLog(token, `AFK Disabled`);
           return;
         }
         if (command === "antigc") {
@@ -13336,7 +13360,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     res.json({ success: true, count });
   });
   app.get("/api/auth/discord/url", (req, res) => {
-    const clientId = process.env.DISCORD_CLIENT_ID || "1545409686164086834";
+    const clientId = (req.query.client_id as string) || process.env.DISCORD_CLIENT_ID || "1545409686164086834";
     const clientRedirectUri = req.query.redirect_uri;
     const appUrl =
       process.env.APP_URL ||

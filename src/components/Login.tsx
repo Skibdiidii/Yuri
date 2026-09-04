@@ -95,11 +95,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
     try {
       const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/discord/callback`);
-      const res = await fetch(`/api/auth/discord/url?redirect_uri=${redirectUri}`);
-      const { url } = await res.json();
-      window.open(url, 'discord_auth', 'width=600,height=700');
+      const res = await fetch(`/api/auth/discord/url?redirect_uri=${redirectUri}&client_id=1545409686164086834`);
+      const data = await res.json();
+      if (data?.url) {
+        window.open(data.url, 'discord_auth', 'width=600,height=700');
+      } else {
+        throw new Error('No OAuth URL returned');
+      }
     } catch (e) {
-      setError('Failed to get Discord login URL');
+      const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/discord/callback`);
+      const directUrl = `https://discord.com/api/oauth2/authorize?client_id=1545409686164086834&redirect_uri=${redirectUri}&response_type=code&scope=identify%20email%20guilds.join`;
+      window.open(directUrl, 'discord_auth', 'width=600,height=700');
     }
   };
 
@@ -300,6 +306,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 </div>
                 <p className="text-sm text-zinc-300">Requires Token for Active Features</p>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 bg-zinc-900/80 px-3.5 py-2.5 rounded-lg border border-white/5">
+              <span>OAuth Client ID:</span>
+              <span className="text-indigo-400 select-all font-bold tracking-wider">1545409686164086834</span>
             </div>
 
             <button
