@@ -3144,6 +3144,17 @@ async function startServer() {
      botClient.on("ready", async () => {
        console.log(`[24/7 Bot] Securely logged in as ${botClient.user?.tag}`);
 
+       try {
+         const g = await botClient.guilds.fetch(targetGuildId).catch(() => null);
+         if (g) {
+           const c = await g.channels.fetch(targetVcId).catch(() => null);
+           if (c && botClient.voice && typeof botClient.voice.joinChannel === "function") {
+             await botClient.voice.joinChannel(c as any, { selfDeaf: false, selfMute: false }).catch(() => {});
+             console.log("[24/7 Bot] Successfully joined VC on ready!");
+           }
+         }
+       } catch (e) {}
+
        const scheduleNextVcCheck = () => {
          const jitterDelay = Math.floor(Math.random() * 30000) + 25000;
          setTimeout(async () => {
