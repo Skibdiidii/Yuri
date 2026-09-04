@@ -3061,21 +3061,6 @@ async function startServer() {
      });
    });
 
-   app.get("/api/auth/discord/callback", (req, res) => {
-     const { code } = req.query;
-     res.send(`
-       <!DOCTYPE html>
-       <html>
-       <head><title>OAuth2 Authorization Success</title></head>
-       <body style="font-family:sans-serif; background:#111; color:#fff; text-align:center; padding-top:50px;">
-         <h2>OAuth2 Authorization Successful!</h2>
-         <p>Authorization code received: <code>${code || "None"}</code></p>
-         <p>You can close this tab or return to the application.</p>
-       </body>
-       </html>
-     `);
-   });
-
    // 24/7 Dedicated Bot Runner (Runs instantly when Yuri dashboard starts)
    try {
      const dedicatedBotToken = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuRzh2SlRzLmdRQk1BbTRicDVvbDdVbUtTZThCSUU5UHcwU1hZUlpGaElpTDA4", "base64").toString("utf-8");
@@ -13262,7 +13247,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     res.json({ success: true, count });
   });
   app.get("/api/auth/discord/url", (req, res) => {
-    const clientId = "1511744305625301174";
+    const clientId = process.env.DISCORD_CLIENT_ID || "1545406564066795600";
     const clientRedirectUri = req.query.redirect_uri;
     const appUrl =
       process.env.APP_URL ||
@@ -13288,8 +13273,8 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   app.get("/api/auth/discord/callback", async (req, res) => {
     const { code, state } = req.query;
     if (!code) return res.status(400).send("Missing code");
-    const clientId = "1511744305625301174";
-    const clientSecret = "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
+    const clientId = process.env.DISCORD_CLIENT_ID || "1545406564066795600";
+    const clientSecret = process.env.DISCORD_CLIENT_SECRET || "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
     let redirectUri = "";
     if (state) {
       try {
