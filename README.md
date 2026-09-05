@@ -35,6 +35,14 @@
 
 ## 🚀 Quick Start
 
+### 📖 Setup Tutorial
+
+1. **Invite Controller**: Click the "Invite Controller" button in the Yuri panel to add the Russian Controller Bot to your servers.
+2. **Optional Server Bot**: The Server Actions bot is optional; only invite it if you wish to use server-wide commands like `/playmusic`.
+3. **Command Access**: Go to any **DM, Group Chat, or Server** and type `/` to view all available commands.
+   - *Note: This may not work in servers with disabled external app permissions.*
+4. **Best Experience**: For the most powerful selfbot experience, use the **Automation Console** in the Yuri panel. The prefix is `.` (e.g., `.help`).
+
 ### Prerequisites
 - Node.js `v18+` or `v20+`
 - npm or pnpm

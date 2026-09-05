@@ -639,6 +639,87 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
           </div>
         </div>
 
+        {/* Quick Setup Tutorial */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 text-white font-medium text-lg">
+            <Sparkles className="w-5 h-5 text-red-400" />
+            <h3>Quick Setup Tutorial</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-6 relative overflow-hidden group">
+              <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Bot className="w-24 h-24 text-red-500" />
+              </div>
+              <div className="space-y-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-500 text-white flex items-center justify-center font-bold shadow-lg shadow-red-900/40">1</div>
+                  <h4 className="font-semibold text-white">Invite Controller</h4>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Click the **"Invite Controller"** button at the top to add the Yuri Controller to your account or servers.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-6 relative overflow-hidden group">
+              <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <ShieldCheck className="w-24 h-24 text-blue-500" />
+              </div>
+              <div className="space-y-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold shadow-lg shadow-blue-900/40">2</div>
+                  <h4 className="font-semibold text-white">Optional Server Bot</h4>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  The Server Actions bot is **optional**. Only invite it if you want to use server-level commands like <code className="text-blue-300">/playmusic</code>.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-6 relative overflow-hidden group">
+              <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Terminal className="w-24 h-24 text-red-500" />
+              </div>
+              <div className="space-y-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-500 text-white flex items-center justify-center font-bold shadow-lg shadow-red-900/40">3</div>
+                  <h4 className="font-semibold text-white">Command Access</h4>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Go to any **DM, Group Chat, or Server** and type <code className="text-red-300">/</code> to view and execute all available commands instantly.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <Activity className="w-5 h-5 text-red-400" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-white">Important Compatibility Note</h4>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  The Slash Command interface may not work in servers that have **disabled external app permissions**. In such cases, use the selfbot console directly.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <Zap className="w-5 h-5 text-red-400" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-white">Pro Tip: Automation Console</h4>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  For the most powerful and responsive experience, we recommend using the **Automation Console** inside this panel. The prefix is <code className="text-white bg-white/10 px-1 rounded">.</code> (e.g., <code className="text-red-300">.help</code>).
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* 4-Card Feature Highlights */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-white font-medium text-lg">

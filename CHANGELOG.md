@@ -2,6 +2,11 @@
 
 ## Version Update - Stability & Reliability Patch (Latest)
 
+### 📚 Documentation & User Experience
+- **Integrated Setup Tutorial**: Added a new interactive "Quick Setup Tutorial" section to the Companion Service dashboard and the main repository README.
+- **Improved Onboarding**: Explicitly documented the relationship between the Russian Controller and Server Actions bots, command access via the `/` interface, and the recommended use of the Automation Console with the `.` prefix.
+- **Permission Awareness**: Added warnings regarding server-specific external app permission constraints.
+
 ### 🛡️ Security & Access Control Hardening
 - **Russian Bot Lockdown**: Implemented a global permission firewall for the **Russian Controller Bot**. Only authorized Yuri selfbot users can now execute commands, use interactive buttons, or submit modals. Unauthorized users attempting to use the bot will receive an immediate access denial message.
 - **Slash Command Registry Fix**: Resolved a critical `APPLICATION_COMMANDS_DUPLICATE_NAME` error that was preventing the Russian Bot from registering new commands. Pruned duplicate entries in the global command array.
