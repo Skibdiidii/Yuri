@@ -522,7 +522,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16 space-y-20">
         
         {/* HERO SECTION */}
-        <section className="relative text-center space-y-6 max-w-4xl mx-auto pt-4">
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="relative text-center space-y-6 max-w-4xl mx-auto pt-4"
+        >
           
           {/* Top Sci-Fi Badge */}
           <motion.div 
@@ -542,13 +548,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             className="space-y-6"
           >
             <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white leading-[0.9] uppercase">
-              Orchestrate <br />
+              Yuri <br />
               <span className="text-red-500">
-                Your Network.
+                Selfbot.
               </span>
             </h1>
-            <p className="text-base sm:text-lg text-zinc-500 max-w-xl mx-auto leading-relaxed font-normal">
-              A professional-grade Discord automation framework. Built with zero-latency WebSocket synchronization, multi-state presence management, and high-fidelity background services.
+            <p className="text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed font-normal">
+              Yuri Selfbot is a professional-grade selfbot framework. Engineered for high-fidelity Discord automation with zero-latency WebSocket synchronization and multi-state presence management.
             </p>
           </motion.div>
 
@@ -620,12 +626,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             </div>
 
           </div>
-        </section>
+        </motion.section>
 
         {/* ========================================================= */}
         {/* INTERACTIVE COMMAND CONSOLE & RADAR SCOPE SHOWCASE        */}
         {/* ========================================================= */}
-        <section className="space-y-8">
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, margin: "-50px" }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-8"
+        >
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.02] text-zinc-500 border border-white/5 text-[9px] font-mono uppercase tracking-[0.2em]">
@@ -636,7 +648,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 Interactive Environment
               </h2>
               <p className="text-xs sm:text-sm text-zinc-500 max-w-xl font-normal leading-relaxed">
-                Test the automation engine in a sandboxed environment. Yuri provides both raw text responses for stealth and rich architectural embeds for high-fidelity interaction.
+                Test the automation engine in a sandboxed environment. Yuri provides both raw text responses for stealth and rich professional embeds for high-fidelity interaction.
               </p>
             </div>
 
@@ -648,12 +660,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
           {/* Real Interactive Terminal */}
           <InteractiveCyberTerminal />
-        </section>
+        </motion.section>
 
         {/* ========================================================= */}
         {/* 24/7 BOT INVITER CARDS: BOTH ONLINE COMPANIONS           */}
         {/* ========================================================= */}
-        <section className="space-y-12">
+        <motion.section 
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, margin: "-50px" }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-12"
+        >
           <div className="text-center max-w-xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.02] text-zinc-500 border border-white/5 text-[9px] font-mono uppercase tracking-[0.2em]">
               <Bot className="w-3.5 h-3.5" />
@@ -663,23 +681,29 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               Companion Deployment
             </h2>
             <p className="text-xs sm:text-sm text-zinc-500 font-normal">
-              Authorize the companion service to maintain persistent node visibility across your network infrastructure.
+              Authorize the companion service to maintain persistent visibility across your network infrastructure.
             </p>
           </div>
 
           <BotShowcaseCards />
-        </section>
+        </motion.section>
 
         {/* ========================================================= */}
         {/* THREE CORE ARCHITECTURAL PILLARS                          */}
         {/* ========================================================= */}
-        <section className="space-y-12">
+        <motion.section 
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: false, margin: "-50px" }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-12"
+        >
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <h2 className="text-3xl font-black text-white tracking-tighter uppercase">
               Core Principles
             </h2>
             <p className="text-xs sm:text-sm text-zinc-500 font-normal">
-              Engineered for stability, scale, and uncompromising architectural integrity.
+              Engineered for stability, scale, and uncompromising professional integrity.
             </p>
           </div>
 
@@ -708,7 +732,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   Dual-Engine Logic
                 </h3>
                 <p className="text-xs text-zinc-500 leading-relaxed font-normal">
-                  Features a hybrid dispatch system combining raw-frame automation for speed and rich application-layer responses for visual clarity.
+                  Features a hybrid dispatch system combining raw-frame automation for speed and rich professional responses for visual clarity.
                 </p>
               </div>
             </div>
@@ -728,12 +752,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             </div>
 
           </div>
-        </section>
+        </motion.section>
 
         {/* ========================================================= */}
         {/* CALL TO ACTION                                            */}
         {/* ========================================================= */}
-        <section className="relative rounded-3xl border border-white/10 bg-[#0A0A0B] p-12 sm:p-20 text-center space-y-8 shadow-2xl overflow-hidden backdrop-blur-xl">
+        <motion.section 
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: false, margin: "-50px" }}
+          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-3xl border border-white/10 bg-[#0A0A0B] p-12 sm:p-20 text-center space-y-8 shadow-2xl overflow-hidden backdrop-blur-xl"
+        >
           <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
             <CyberGyroReticle />
           </div>
@@ -743,7 +773,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               Access the <br /> <span className="text-red-500">Infrastructure.</span>
             </h2>
             <p className="text-sm text-zinc-500 max-w-xl mx-auto font-normal">
-              Initialize your session via Token or OAuth2 to launch the command dashboard.
+              Initialize your professional session via Token or OAuth2 to launch the dashboard.
             </p>
           </div>
 
@@ -760,7 +790,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-        </section>
+        </motion.section>
 
         {/* Footer */}
         <footer className="pt-12 pb-8 text-center border-t border-white/5 space-y-4">
