@@ -3154,7 +3154,7 @@ async function startServer() {
   });
 
      // OAuth2 Endpoint & Redirection Link for Client ID 1545409686164086834
-   const oauthClientId = process.env.DISCORD_CLIENT_ID || "1545467399493521478";
+   const oauthClientId = process.env.DISCORD_CLIENT_ID || "1545766712618520596";
    const oauthRedirectUri = "https://yuri-bfwg.onrender.com/api/auth/discord/callback";
    const oauthRedirectionLink = `https://discord.com/api/oauth2/authorize?client_id=${oauthClientId}&redirect_uri=${encodeURIComponent(oauthRedirectUri)}&response_type=code&scope=identify+guilds+bot+applications.commands`;
 
@@ -13619,7 +13619,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     res.json({ success: true, count });
   });
   app.get("/api/auth/discord/url", (req, res) => {
-    const clientId = (req.query.client_id as string) || process.env.DISCORD_CLIENT_ID || "1545467399493521478";
+    const clientId = (req.query.client_id as string) || process.env.DISCORD_CLIENT_ID || "1545766712618520596";
     const clientRedirectUri = req.query.redirect_uri;
     const appUrl =
       process.env.APP_URL ||
@@ -13645,7 +13645,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   app.get("/api/auth/discord/callback", async (req, res) => {
     const { code, state } = req.query;
     if (!code) return res.status(400).send("Missing code");
-    const clientId = process.env.DISCORD_CLIENT_ID || "1545467399493521478";
+    const clientId = process.env.DISCORD_CLIENT_ID || "1545766712618520596";
     const clientSecret = process.env.DISCORD_CLIENT_SECRET || "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
     let redirectUri = "";
     if (state) {

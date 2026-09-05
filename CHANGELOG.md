@@ -1,6 +1,13 @@
 # What's New / Patch Notes
 
-## Version Update - Selfbot Command Stability & Security Fix (Latest)
+## Version Update - OAuth2 Configuration & Client ID Update (Latest)
+
+### 🔑 OAuth2 & Identity Fixes
+- **Updated Client ID**: Successfully migrated the application's global Discord Client ID to `1545766712618520596` across the frontend dashboard and backend OAuth2 handlers.
+- **Redirect URI Resolution**: Verified and provided the official OAuth2 redirect link: `https://yuri-bfwg.onrender.com/api/auth/discord/callback`.
+- **Dashboard Synchronization**: Updated all invite links, status trackers, and help embeds in the Yuri Companion Service tab to reflect the new application identity.
+
+## Version Update - Selfbot Command Stability & Security Fix
 
 ### ⚡ Selfbot Command Engine Fixes
 - **Build Fix (Redeclaration)**: Resolved a critical build error caused by redundant variable declarations in `server.ts`. This ensures the application can build and start successfully.
