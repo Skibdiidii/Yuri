@@ -13661,16 +13661,19 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       }
     }
 
-    let clientSecret = process.env.DISCORD_CLIENT_SECRET;
+    const CLIENT_SECRETS: Record<string, string> = {
+      "1545766712618520596": "-1B07lolXgnSciw9555EBDv7bEIs7nvO",
+      "1545467399493521478": "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF"
+    };
+
+    let clientSecret = CLIENT_SECRETS[clientId];
+    
+    // Fallback to env only if no specific hardcoded match found for this ID
     if (!clientSecret) {
-      if (clientId === "1545766712618520596") {
-        clientSecret = "-1B07lolXgnSciw9555EBDv7bEIs7nvO";
-      } else {
-        clientSecret = "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
-      }
+      clientSecret = process.env.DISCORD_CLIENT_SECRET || "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
     }
 
-    console.log(`[AUTH] Attempting token exchange for Client ID: ${clientId} using secret starting with: ${clientSecret?.substring(0, 4)}...`);
+    console.log(`[AUTH] Exchange - ID: ${clientId}, SecretPrefix: ${clientSecret?.substring(0, 4)}, Redirect: ${redirectUri}`);
     
     if (!redirectUri) {
       const protocol =

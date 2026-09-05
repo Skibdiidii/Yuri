@@ -1,12 +1,12 @@
 # What's New / Patch Notes
 
-## Version Update - OAuth2 Credential Synchronization (Latest)
+## Version Update - Prioritized Identity Mapping (Latest)
 
-### 🔑 Authentication Security
-- **Updated Client Secret**: Applied the matching Client Secret for application `1545766712618520596`, resolving the `invalid_client` error during OAuth2 token exchange.
-- **Credential Synchronization**: Ensured both Client ID and Client Secret are correctly paired in the backend authentication handler for seamless user login.
+### 🔑 Authentication Refinement
+- **Prioritized Credential Mapping**: Re-architected the OAuth2 callback to prioritize ID-specific Client Secrets. This ensures that even if a global `DISCORD_CLIENT_SECRET` is set in environment variables, the system correctly uses the specific credentials required for each bot identity (`1545766712618520596` vs `1545467399493521478`).
+- **Enhanced Traceability**: Added high-resolution logging during the token exchange phase to track Client ID and Secret Prefix, allowing for faster debugging of `invalid_client` errors.
 
-## Version Update - Scoped OAuth2 Client Identity
+## Version Update - OAuth2 Credential Synchronization
 
 ### ⚡ Selfbot Command Engine Fixes
 - **Build Fix (Redeclaration)**: Resolved a critical build error caused by redundant variable declarations in `server.ts`. This ensures the application can build and start successfully.
