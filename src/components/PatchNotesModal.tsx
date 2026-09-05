@@ -10,24 +10,24 @@ interface PatchNotesModalProps {
 export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   const updates = [
     {
-      title: "Robust OAuth Session Management",
-      icon: <Shield className="w-5 h-5 text-blue-400" />,
-      description: "Resolved authentication failures with new server-side session registration and robust cross-tab synchronization."
+      title: "Global Network Orchestration",
+      icon: <Rocket className="w-5 h-5 text-blue-400" />,
+      description: "Implemented high-reliability global admin actions. 'Set All Status' and 'Join All VC' now iterate through all sessions with automated initialization."
     },
     {
-      title: "Enhanced Login Flow",
-      icon: <Rocket className="w-5 h-5 text-purple-400" />,
-      description: "Known administrators now benefit from seamless auto-login after Discord identity verification."
+      title: "Enhanced Session Continuity",
+      icon: <Shield className="w-5 h-5 text-purple-400" />,
+      description: "The system now proactively connects all saved sessions before performing bulk operations, ensuring maximum reach and reliability."
     },
     {
-      title: "Visual Identity Refinement",
-      icon: <Sparkles className="w-5 h-5 text-yellow-400" />,
-      description: "Redesigned OAuth success interface with Discord profile integration and responsive feedback."
+      title: "Robust Admin Verification",
+      icon: <Zap className="w-5 h-5 text-yellow-400" />,
+      description: "Integrated multi-layer ID verification for admin endpoints and UI, supporting both legacy tokens and modern Discord OAuth sessions."
     },
     {
-      title: "Prioritized Identity Mapping",
-      icon: <Zap className="w-5 h-5 text-orange-400" />,
-      description: "Intelligent Client Secret routing based on Application ID to ensure zero-collision authentication."
+      title: "Identity Fixes",
+      icon: <Sparkles className="w-5 h-5 text-orange-400" />,
+      description: "Fixed silent failures in status updates by resolving missing library dependencies and improving error logging."
     }
   ];
 
@@ -46,7 +46,7 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
             </div>
             <div>
               <h2 className="text-lg font-medium text-white">What's New</h2>
-              <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">Patch v1.2.4-stable</p>
+              <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">Patch v1.2.5-stable</p>
             </div>
           </div>
           <button 

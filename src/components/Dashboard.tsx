@@ -292,11 +292,15 @@ Useless piece of shit`,
   } catch (e) {}
 
   const loggedInSession = tokens.find(t => t.token === loggedInToken);
+  
+  // Use stored session ID for isAdmin check to support Discord OAuth logins
+  const tokenUser = JSON.parse(localStorage.getItem('token_user') || 'null');
   const isAdmin = [
     '1453843872286380218',
     '1545509798756487241',
-    '1545521054930436167'
-  ].includes(loggedInUserId);
+    '1545521054930436167',
+    '1545389998315143229'
+  ].includes(tokenUser?.id || loggedInUserId);
 
   const fetchAltStats = async () => {
       try {
