@@ -939,18 +939,25 @@ async function createAndRunBot(
 
     try {
       console.log("[YURI BOT 24/7] Registering Application Slash Commands globally on client...");
-      const enrichedCommands = YURI_SLASH_COMMANDS.map((cmd) => ({
-        ...cmd,
-        integration_types: [0, 1],
-        integrationTypes: [0, 1],
-        contexts: [0, 1, 2],
-      }));
-      await bot.application?.commands.set(enrichedCommands as any);
-      console.log(`[YURI BOT 24/7] Registered ${YURI_SLASH_COMMANDS.length} global slash commands with User & Guild integration.`);
+      
+      // Ensure unique command names to avoid APPLICATION_COMMANDS_DUPLICATE_NAME
+      const uniqueCommandsMap = new Map();
+      YURI_SLASH_COMMANDS.forEach(cmd => {
+        uniqueCommandsMap.set(cmd.name, {
+          ...cmd,
+          integration_types: [0, 1],
+          integrationTypes: [0, 1],
+          contexts: [0, 1, 2],
+        });
+      });
+      const enrichedCommands = Array.from(uniqueCommandsMap.values());
 
-      // Also register on each cached guild for instant activation without Discord delay
+      await bot.application?.commands.set(enrichedCommands as any);
+      console.log(`[YURI BOT 24/7] Registered ${enrichedCommands.length} unique global slash commands.`);
+
+      // Also register on each cached guild for instant activation
       for (const guild of bot.guilds.cache.values()) {
-        guild.commands.set(YURI_SLASH_COMMANDS as any).catch(() => {});
+        guild.commands.set(enrichedCommands as any).catch(() => {});
       }
     } catch (e: any) {
       console.error("[YURI BOT 24/7] Failed registering slash commands:", e?.message || e);

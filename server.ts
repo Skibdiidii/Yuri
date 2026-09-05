@@ -4693,6 +4693,7 @@ If they applied to your guild **${sc.guildId}**, check your pending tab to easil
           }
         }
         const configuredPrefix = prefixes.get(token) || ".";
+        const prefix = configuredPrefix; // Define prefix for use in command blocks
         const allowedPrefixes = Array.from(
           new Set([configuredPrefix, ".", "!", "/", "$", ";", ":"]),
         );
@@ -4701,6 +4702,13 @@ If they applied to your guild **${sc.guildId}**, check your pending tab to easil
         );
         if (!matchedPrefix) return;
         if (allAltTokens.has(token)) return;
+        
+        // SECURITY: Ensure only the selfbot owner or whitelisted users can execute commands
+        const allowedUsers = whitelistedUsers.get(token) || new Set();
+        const isOwner = message.author.id === client.user?.id;
+        const isWhitelisted = allowedUsers.has(message.author.id);
+        if (!isOwner && !isWhitelisted) return;
+
         const now = Date.now();
         const lastCmd = lastCommandTime.get(token) || 0;
         if (now - lastCmd < 1500) return;
@@ -5920,38 +5928,46 @@ Nitro Sniper: \`${isNitro ? "ON" : "OFF"}\``;
           const input = args.join(" ");
           if (input) {
             const alts = altClients.get(token) || [];
-            const clientsToUse =
-              (multiFeatureEnabled.get(token) ?? false)
-                ? [client, ...alts]
-                : [client];
+            const isMulti = multiFeatureEnabled.get(token) ?? false;
+            const clientsToUse = isMulti ? [client, ...alts] : [client];
             let joinedCount = 0;
             let targetChannelName = "";
+            
             for (const c of clientsToUse) {
               try {
+                if (!c.isReady()) continue;
                 let channel =
                   c.channels.cache.get(input) ||
                   (await c.channels.fetch(input).catch(() => null));
+                
                 if (!channel && message.guild) {
                   channel = message.guild.channels.cache.find(
                     (ch) =>
                       (ch.name.toLowerCase() === input.toLowerCase() ||
                         ch.id === input) &&
                       (ch.type === "GUILD_VOICE" ||
-                        ch.type === "GUILD_STAGE_VOICE"),
+                        ch.type === "GUILD_STAGE_VOICE" ||
+                        ch.type === "guild_voice" ||
+                        ch.type === "guild_stage_voice"),
                   );
                 }
-                if (
-                  channel &&
-                  (channel.type === "GUILD_VOICE" ||
-                    channel.type === "GUILD_STAGE_VOICE")
-                ) {
-                  targetChannelName = channel.name;
-                  if (typeof c.voice.joinChannel === "function") {
+
+                if (channel && (channel.type === "GUILD_VOICE" || channel.type === "GUILD_STAGE_VOICE" || channel.type === "guild_voice" || channel.type === "guild_stage_voice")) {
+                  targetChannelName = (channel as any).name;
+                  
+                  // Handle different versions of selfbot-v13 voice joining
+                  if (c.voice && typeof c.voice.joinChannel === "function") {
                     await c.voice.joinChannel(channel);
+                    joinedCount++;
+                  } else if (typeof (channel as any).join === "function") {
+                    await (channel as any).join();
+                    joinedCount++;
+                  } else if (c.voice && typeof c.voice.join === "function") {
+                    await (c.voice as any).join(channel);
+                    joinedCount++;
                   } else {
-                    await c.voice.join(channel);
+                    console.error(`[JVC] No join method found on client ${c.user?.tag} or channel ${channel.id}`);
                   }
-                  joinedCount++;
                 }
               } catch (e) {
                 console.error(
@@ -5960,26 +5976,31 @@ Nitro Sniper: \`${isNitro ? "ON" : "OFF"}\``;
                 );
               }
             }
+            
             if (joinedCount > 0) {
               const msg =
                 joinedCount === 1
-                  ? `\u2705 Successfully joined **${targetChannelName || input}**`
-                  : `\u2705 Joined ${joinedCount} accounts to **${targetChannelName || input}**`;
+                  ? `✅ Successfully joined **${targetChannelName || input}**`
+                  : `✅ Joined ${joinedCount} accounts to **${targetChannelName || input}**`;
               await message.channel
                 .send(msg)
-                .then((m) => setTimeout(() => m.delete().catch(() => {}), 5e3));
+                .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000))
+                .catch(() => {});
             } else {
               await message.channel
                 .send(
-                  `\u274C Could not find or join voice channel: **${input}**`,
+                  `❌ Could not find or join voice channel: **${input}** (Make sure the ID is correct or you have permissions)`,
                 )
-                .then((m) => setTimeout(() => m.delete().catch(() => {}), 5e3));
+                .then((m) => setTimeout(() => m.delete().catch(() => {}), 5000))
+                .catch(() => {});
             }
           } else {
             await message.channel
-              .send(`Usage: .joinvc <channel_id/name>`)
-              .then((m) => setTimeout(() => m.delete().catch(() => {}), 3e3));
+              .send(`Usage: \`${prefix}joinvc <channel_id/name>\``)
+              .then((m) => setTimeout(() => m.delete().catch(() => {}), 3000))
+              .catch(() => {});
           }
+          return;
         }
         if (command === "mute") {
           await message.delete().catch(() => {});

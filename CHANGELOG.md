@@ -1,6 +1,18 @@
 # What's New / Patch Notes
 
-## Version Update - Stability & Reliability Patch (Latest)
+## Version Update - Selfbot Command Stability & Security Fix (Latest)
+
+### ⚡ Selfbot Command Engine Fixes
+- **Restored `.jvc` & `.joinvc`**: Fixed a critical bug where selfbot voice joining commands were failing due to missing method checks on different `discord.js-selfbot-v13` versions. Added support for multiple join methods (`joinChannel`, `join`, `connect`).
+- **Prefix Variable Resolution**: Resolved a major `ReferenceError` that was causing the `messageCreate` handler to crash when command usage errors occurred. The `prefix` variable is now globally defined within the handler scope.
+- **Improved Voice Multi-Account Sync**: Enhanced the logic for joining multiple accounts to the same voice channel. Now checks for `isReady()` state and handles guild channel resolution more robustly.
+
+### 🛡️ Security & Registry Improvements
+- **Selfbot Command Owner Lock**: Added a strict security check for all commands starting with `.` (and other configured prefixes). The selfbot will now ONLY respond to the account owner or whitelisted user IDs, preventing unauthorized remote control by others in mutual servers.
+- **Slash Command Duplicate Protection**: Implemented a unique name filter in the Russian Bot's slash command registration logic. This permanently resolves the `APPLICATION_COMMANDS_DUPLICATE_NAME` Discord API error that was causing registration failures.
+- **Enhanced Reliability**: Added try-catch blocks and null-checks across the command execution pipeline to ensure a single failed command doesn't crash the entire client listener.
+
+## Version Update - Stability & Reliability Patch
 
 ### 📚 Documentation & User Experience
 - **Integrated Setup Tutorial**: Added a new interactive "Quick Setup Tutorial" section to the Companion Service dashboard and the main repository README.
