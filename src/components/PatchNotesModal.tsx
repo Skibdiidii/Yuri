@@ -10,19 +10,14 @@ interface PatchNotesModalProps {
 export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   const updates = [
     {
-      title: "OAuth2 Mass Join via Bot",
-      icon: <Rocket className="w-5 h-5 text-blue-400" />,
-      description: "Admin Panel expansion allowing authorized users to be bulk-joined to any server using the system bot token and OAuth2 credentials."
-    },
-    {
-      title: "Status Overlap Resolution",
+      title: "Enhanced Presence Sync",
       icon: <Shield className="w-5 h-5 text-emerald-400" />,
-      description: "Fixed a long-standing bug where Global Status updates were fighting with RPC rotation; statuses now persist across presence changes."
+      description: "Optimized the presence synchronization engine to ensure custom statuses and activities remain consistent across long sessions."
     },
     {
-      title: "Global Metrics Tracking",
+      title: "Network Optimization",
       icon: <Zap className="w-5 h-5 text-purple-400" />,
-      description: "New real-time counter for authorized OAuth2 users in the admin dashboard for easier fleet management."
+      description: "Improved global request orchestration for smoother concurrent operations and reduced latency during high-density traffic."
     },
     {
       title: "Logout Stability Fix",
