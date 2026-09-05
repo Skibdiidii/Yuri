@@ -8,6 +8,7 @@ import { api } from './services/api';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import CatalystCordTab from './components/CatalystCordTab';
+import PatchNotesModal from './components/PatchNotesModal';
 import Sb2Tab from './components/Sb2Tab';
 import SystemConsoleTab from './components/SystemConsoleTab';
 import FullscreenTerminal from './components/FullscreenTerminal';
@@ -46,6 +47,16 @@ export default function App() {
   } catch (e) {}
 
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [showPatchNotes, setShowPatchNotes] = useState(() => {
+    const lastSeen = localStorage.getItem('last_seen_patch');
+    const currentVersion = '1.2.4';
+    return lastSeen !== currentVersion;
+  });
+
+  const handleClosePatchNotes = () => {
+    localStorage.setItem('last_seen_patch', '1.2.4');
+    setShowPatchNotes(false);
+  };
 
   useEffect(() => {
     const handlePopState = () => {
@@ -120,6 +131,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-zinc-100 font-sans selection:bg-white/20">
       <AnimatePresence mode="wait">
+        {showPatchNotes && (
+          <PatchNotesModal onClose={handleClosePatchNotes} />
+        )}
         {isTerminalRoute ? (
             <motion.div
               key="terminal_route"
