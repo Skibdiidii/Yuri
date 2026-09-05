@@ -3725,6 +3725,13 @@ async function startServer() {
     let { token } = req.body;
     if (!token) return res.status(400).json({ error: "Token required" });
     token = token.trim().replace(/^["']|["']$/g, "");
+    
+    // Check for existing OAuth session to bypass client initialization
+    if (token === "DISCORD_OAUTH_SESSION" && sessions.has(token)) {
+      console.log("[AUTH] Bypassing client login for existing OAuth session");
+      return res.json({ success: true, session: sessions.get(token) });
+    }
+
     console.log(
       `Attempting login for token starting with: ${token.substring(0, 10)}...`,
     );
@@ -13725,6 +13732,24 @@ async function formatImageForRpc(img: any): Promise<string | null> {
         return res.status(500).send("Failed to fetch user info");
       }
       const userData = await userResponse.json();
+      
+      // Register this user session on the server if they are a known admin
+      const knownAdmins = ['1545521054930436167', '1545509798756487241', '1545389998315143229'];
+      if (knownAdmins.includes(userData.id)) {
+        console.log(`[AUTH] Registering OAuth admin session for: ${userData.username} (${userData.id})`);
+        const session = {
+          id: userData.id,
+          token: 'DISCORD_OAUTH_SESSION',
+          username: userData.username,
+          discriminator: userData.discriminator,
+          avatar: userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : null,
+          status: 'online',
+          logs: ['Authenticated via Discord OAuth'],
+          isOAuth: true
+        };
+        sessions.set('DISCORD_OAUTH_SESSION', session);
+      }
+
       const botToken =
         process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN;
       if (botToken) {
@@ -13754,19 +13779,86 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       }
       res.send(`
         <html>
-          <body>
-            <script>
-              if (window.opener) {
-                window.opener.postMessage({ 
-                  type: 'OAUTH_AUTH_SUCCESS', 
-                  user: ${JSON.stringify(userData)} 
-                }, '*');
-                window.close();
-              } else {
-                window.location.href = '/';
+          <head>
+            <title>Authentication Successful</title>
+            <style>
+              body { 
+                background: #0A0A0A; 
+                color: white; 
+                font-family: sans-serif; 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                height: 100vh; 
+                margin: 0;
+                text-align: center;
               }
+              .card {
+                background: #111;
+                border: 1px solid #333;
+                padding: 2rem;
+                border-radius: 1rem;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+              }
+              .avatar {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                margin-bottom: 1rem;
+                border: 2px solid #5865F2;
+              }
+              h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; }
+              p { color: #888; margin: 0 0 1.5rem 0; }
+              .btn {
+                background: #5865F2;
+                color: white;
+                border: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 0.5rem;
+                cursor: pointer;
+                font-weight: bold;
+                text-decoration: none;
+                display: inline-block;
+              }
+              .btn:hover { background: #4752C4; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <img src="${userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" class="avatar" />
+              <h1>Verified as ${userData.global_name || userData.username}</h1>
+              <p>Your identity has been confirmed. You can close this window now.</p>
+              <button onclick="window.close()" class="btn">Close Window</button>
+            </div>
+            <script>
+              const userData = ${JSON.stringify(userData)};
+              function notify() {
+                // Broad-cast success via localStorage for cross-tab detection
+                localStorage.setItem('discord_oauth_success', JSON.stringify({
+                  user: userData,
+                  timestamp: Date.now()
+                }));
+
+                if (window.opener) {
+                  console.log("Notifying opener via postMessage...");
+                  try {
+                    window.opener.postMessage({ 
+                      type: 'OAUTH_AUTH_SUCCESS', 
+                      user: userData 
+                    }, '*');
+                  } catch (e) {
+                    console.error("postMessage failed:", e);
+                  }
+                  // Give it a moment before closing
+                  setTimeout(() => window.close(), 1000);
+                } else {
+                  console.log("No opener found, redirecting main window is impossible, user must return manually.");
+                  // We already set localStorage, so the main tab should see it if it's listening.
+                }
+              }
+              notify();
             <\/script>
-            <p>Authentication successful. You can close this window.</p>
           </body>
         </html>
       `);

@@ -165,16 +165,69 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   });
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.user) {
-        const user = event.data.user;
-        setDiscordUser(user);
-        localStorage.setItem('discord_user', JSON.stringify(user));
+    // Check URL for direct redirect success (fallback for null window.opener)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth') === 'success') {
+      const userId = params.get('user');
+      console.log('Detected Discord Auth Redirect Success for user:', userId);
+    }
+
+    // Check for existing OAuth success in localStorage (stale check)
+    const checkLocalStorage = () => {
+      const raw = localStorage.getItem('discord_oauth_success');
+      if (raw) {
+        try {
+          const data = JSON.parse(raw);
+          // Only process if it's fresh (last 30 seconds)
+          if (Date.now() - data.timestamp < 30000) {
+            handleAuthSuccess(data.user);
+            localStorage.removeItem('discord_oauth_success');
+          }
+        } catch (e) {}
       }
     };
+
+    const handleAuthSuccess = (user: any) => {
+      setDiscordUser(user);
+      localStorage.setItem('discord_user', JSON.stringify(user));
+      
+      const knownAdmins = ['1545521054930436167', '1545509798756487241', '1545389998315143229'];
+      if (knownAdmins.includes(user.id)) {
+        localStorage.setItem('token', 'DISCORD_OAUTH_SESSION');
+        localStorage.setItem('token_user', JSON.stringify({
+          id: user.id,
+          username: user.global_name || user.username,
+          avatar: user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : null
+        }));
+        onLoginSuccess();
+      }
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.user) {
+        handleAuthSuccess(event.data.user);
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'discord_oauth_success' && event.newValue) {
+        try {
+          const data = JSON.parse(event.newValue);
+          handleAuthSuccess(data.user);
+          localStorage.removeItem('discord_oauth_success');
+        } catch (e) {}
+      }
+    };
+
+    checkLocalStorage();
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+    window.addEventListener('storage', handleStorage);
+    
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [onLoginSuccess]);
 
   const handleDiscordLogin = async () => {
     cyberSound.playBlip();
