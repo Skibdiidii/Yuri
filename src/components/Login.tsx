@@ -396,61 +396,54 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-base font-extrabold tracking-wider text-white font-mono">
-                  YURI<span className="text-red-500">.SELFBOT</span>
+                <span className="text-lg font-black tracking-tighter text-white font-sans">
+                  YURI<span className="text-red-500">.ARCHITECT</span>
                 </span>
-                <span className="text-[9px] font-mono font-bold bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded">
-                  v2.0-FUTURISTIC
+                <span className="text-[9px] font-mono font-bold bg-white/5 text-zinc-400 border border-white/10 px-2 py-0.5 rounded uppercase tracking-widest">
+                  Release v3.0
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-400 font-mono hidden sm:block">
-                STEALTH DAEMON // 24/7 COMPANION PARITY
+              <p className="text-[10px] text-zinc-500 font-mono tracking-tighter hidden sm:block">
+                PERSISTENT DAEMON // NETWORK LAYER PARITY
               </p>
             </div>
           </div>
 
           {/* Live Audio / Video Controls & Action HUD */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-4">
             
             {/* Real Video HUD Controls */}
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 border border-white/10 text-[11px] font-mono text-zinc-400">
-              <Tv className="w-3.5 h-3.5 text-red-400" />
+            <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/5 text-[10px] font-mono text-zinc-500">
+              <Tv className="w-3.5 h-3.5 text-zinc-400" />
               <button 
                 onClick={cycleVideo}
-                className="hover:text-white transition-colors underline decoration-dotted"
-                title="Click to cycle video feed"
+                className="hover:text-zinc-200 transition-colors tracking-tight"
+                title="Cycle Visual Feed"
               >
                 {VIDEO_FEEDS[currentVideoIdx].title}
               </button>
               <button
                 onClick={toggleVideo}
-                className="ml-1 p-1 hover:text-white text-zinc-500"
-                title={videoPlaying ? 'Pause Video' : 'Play Video'}
+                className="ml-1 p-1 hover:text-white text-zinc-600 transition-colors"
+                title={videoPlaying ? 'Suspend Feed' : 'Resume Feed'}
               >
-                {videoPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-emerald-400" />}
-              </button>
-              <button
-                onClick={() => setCrtEnabled(!crtEnabled)}
-                className={`p-1 text-[10px] rounded px-1 transition-colors ${crtEnabled ? 'text-red-400 bg-red-500/10' : 'text-zinc-600'}`}
-                title="Toggle CRT Scanline Overlay"
-              >
-                CRT
+                {videoPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-red-500" />}
               </button>
             </div>
 
             {/* Sci-Fi Sound Synthesizer Toggle */}
             <button
               onClick={toggleSound}
-              className={`p-2 rounded-lg border text-xs transition-colors flex items-center gap-1.5 ${
+              className={`p-2.5 rounded-xl border text-xs transition-all flex items-center gap-2 ${
                 soundEnabled 
-                  ? 'bg-red-500/20 border-red-500/40 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
-                  : 'bg-white/5 border-white/5 text-zinc-400 hover:text-white'
+                  ? 'bg-red-500/10 border-red-500/20 text-red-500' 
+                  : 'bg-white/[0.02] border-white/5 text-zinc-500 hover:text-zinc-300'
               }`}
-              title={soundEnabled ? 'Synthesized Sound Active (Click to Mute)' : 'Enable Sci-Fi Audio Synthesizer'}
+              title={soundEnabled ? 'Acoustic Feedback: Active' : 'Enable Acoustic Feedback'}
             >
               {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-              <span className="hidden xl:inline text-[10px] font-mono font-bold">
-                {soundEnabled ? 'AUDIO:ON' : 'AUDIO:OFF'}
+              <span className="hidden xl:inline text-[9px] font-bold tracking-widest">
+                {soundEnabled ? 'SYSTEM_AUDIO:1' : 'SYSTEM_AUDIO:0'}
               </span>
             </button>
 
@@ -535,10 +528,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <motion.div 
             initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-red-950/60 border border-red-500/30 text-red-400 text-xs font-mono tracking-wider shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/[0.02] border border-white/10 text-zinc-400 text-[10px] font-mono tracking-[0.2em] uppercase"
           >
-            <Zap className="w-3.5 h-3.5 text-red-500 animate-bounce" />
-            <span>UNCOMPROMISING PRECISION // 24/7 DEDICATED COMPANION ENGINE</span>
+            <Activity className="w-3.5 h-3.5 text-red-500" />
+            <span>Scaleable Infrastructure // Advanced Presence Logic</span>
           </motion.div>
 
           {/* Futuristic Title with Glitch Chromatic Feel */}
@@ -546,16 +539,16 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             initial={{ opacity: 0, y: 15 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ delay: 0.1 }}
-            className="space-y-4"
+            className="space-y-6"
           >
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white leading-[1.08] uppercase">
-              Yuri Selfbot <br />
-              <span className="bg-gradient-to-r from-red-500 via-rose-300 to-zinc-200 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(239,68,68,0.4)]">
-                Why Should You Use This?
+            <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white leading-[0.9] uppercase">
+              Orchestrate <br />
+              <span className="text-red-500">
+                Your Network.
               </span>
             </h1>
-            <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto leading-relaxed font-normal">
-              Engineered with zero-lag WebSocket pipelines, anti-detection client spoofing, and an independent 24/7 Discord companion bot delivering pure crimson embeds with complete Slash &amp; Prefix command parity.
+            <p className="text-base sm:text-lg text-zinc-500 max-w-xl mx-auto leading-relaxed font-normal">
+              A professional-grade Discord automation framework. Built with zero-latency WebSocket synchronization, multi-state presence management, and high-fidelity background services.
             </p>
           </motion.div>
 
@@ -572,10 +565,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 setActiveTab('login');
                 setShowAuthModal(true);
               }}
-              className="px-7 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-[0_0_25px_rgba(239,68,68,0.4)] transition-all flex items-center gap-2.5 active:scale-95 cursor-pointer"
+              className="px-8 py-4 rounded-xl bg-white text-black font-black text-[11px] transition-all flex items-center gap-2.5 active:scale-95 cursor-pointer uppercase tracking-[0.2em] shadow-2xl shadow-white/5"
             >
-              <span>Get Started with Yuri</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Initialize System</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
             <button
@@ -583,46 +576,46 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 cyberSound.playClick();
                 setShowCommunityModal(true);
               }}
-              className="px-7 py-4 rounded-xl bg-black/60 hover:bg-white/10 text-zinc-200 border border-white/10 font-medium text-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer backdrop-blur-md"
+              className="px-8 py-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] text-zinc-400 border border-white/5 font-bold text-[10px] transition-all flex items-center gap-2 active:scale-95 cursor-pointer backdrop-blur-md uppercase tracking-[0.2em]"
             >
-              <MessageSquare className="w-4 h-4 text-[#5865F2]" />
-              <span>Join Official Discord</span>
+              <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+              <span>Connect</span>
             </button>
           </motion.div>
 
           {/* Live Cyber Metrics Bar (Equalizer + Radar + Uptime + Ping) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-12 max-w-4xl mx-auto">
             
-            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">24/7 Uptime Rate</div>
-              <div className="text-2xl font-black font-mono text-white mt-1">99.99%</div>
-              <div className="mt-2 text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Continuous Host
+            <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-5 text-left relative overflow-hidden backdrop-blur-sm">
+              <div className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-mono">System Uptime</div>
+              <div className="text-2xl font-black font-sans text-white mt-1">99.98<span className="text-zinc-600">%</span></div>
+              <div className="mt-2 text-[9px] text-zinc-500 font-mono flex items-center gap-1.5 uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                Persistent Node
               </div>
             </div>
 
-            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Gateway Ping</div>
-              <div className="text-2xl font-black font-mono text-emerald-400 mt-1">&lt; 18ms</div>
+            <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-5 text-left relative overflow-hidden backdrop-blur-sm">
+              <div className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-mono">Gateway Latency</div>
+              <div className="text-2xl font-black font-sans text-red-500 mt-1">12<span className="text-zinc-600">ms</span></div>
               <div className="mt-2">
                 <CyberEqualizerWaveform />
               </div>
             </div>
 
-            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Bot Presentation</div>
-              <div className="text-2xl font-black font-mono text-red-400 mt-1">Pure Embed</div>
-              <div className="mt-2 text-[10px] text-zinc-400 font-mono">
-                Crimson Discord Embeds
+            <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-5 text-left relative overflow-hidden backdrop-blur-sm">
+              <div className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-mono">Response Protocol</div>
+              <div className="text-2xl font-black font-sans text-white mt-1">Direct</div>
+              <div className="mt-2 text-[9px] text-zinc-500 font-mono uppercase">
+                Low-Latency Delivery
               </div>
             </div>
 
-            <div className="bg-black/60 border border-red-500/20 rounded-2xl p-4 text-left relative overflow-hidden backdrop-blur-md">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Command Parity</div>
-              <div className="text-2xl font-black font-mono text-white mt-1">Slash &amp; Prefix</div>
-              <div className="mt-2 text-[10px] text-zinc-400 font-mono">
-                /giverole, /whois, /snipe
+            <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-5 text-left relative overflow-hidden backdrop-blur-sm">
+              <div className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-mono">API Architecture</div>
+              <div className="text-2xl font-black font-sans text-white mt-1">REST/WS</div>
+              <div className="mt-2 text-[9px] text-zinc-500 font-mono uppercase">
+                Hybrid Synchronization
               </div>
             </div>
 
@@ -632,18 +625,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         {/* ========================================================= */}
         {/* INTERACTIVE COMMAND CONSOLE & RADAR SCOPE SHOWCASE        */}
         {/* ========================================================= */}
-        <section className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-mono mb-2">
+        <section className="space-y-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.02] text-zinc-500 border border-white/5 text-[9px] font-mono uppercase tracking-[0.2em]">
                 <Terminal className="w-3.5 h-3.5" />
-                <span>LIVE COMMAND MATRIX // PARITY ENGINE</span>
+                <span>Command Execution Interface</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">
-                Interactive Command Sandbox
+              <h2 className="text-3xl font-black tracking-tighter text-white uppercase">
+                Interactive Environment
               </h2>
-              <p className="text-xs sm:text-sm text-zinc-400 max-w-xl mt-1">
-                Try commands in real-time below. In Yuri, your selfbot answers in raw line text while the 24/7 Companion generates rich crimson embeds.
+              <p className="text-xs sm:text-sm text-zinc-500 max-w-xl font-normal leading-relaxed">
+                Test the automation engine in a sandboxed environment. Yuri provides both raw text responses for stealth and rich architectural embeds for high-fidelity interaction.
               </p>
             </div>
 
@@ -660,17 +653,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         {/* ========================================================= */}
         {/* 24/7 BOT INVITER CARDS: BOTH ONLINE COMPANIONS           */}
         {/* ========================================================= */}
-        <section className="space-y-6">
-          <div className="text-center max-w-xl mx-auto space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-mono">
+        <section className="space-y-12">
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.02] text-zinc-500 border border-white/5 text-[9px] font-mono uppercase tracking-[0.2em]">
               <Bot className="w-3.5 h-3.5" />
-              <span>DISCORD APPLICATION GATEWAY</span>
+              <span>Identity Distribution</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              24/7 Companion Service Inviter
+            <h2 className="text-3xl font-black text-white tracking-tighter uppercase">
+              Companion Deployment
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-400">
-              Invite the companion bot to your servers with full Administrator and Application Command scopes.
+            <p className="text-xs sm:text-sm text-zinc-500 font-normal">
+              Authorize the companion service to maintain persistent node visibility across your network infrastructure.
             </p>
           </div>
 
@@ -680,60 +673,57 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         {/* ========================================================= */}
         {/* THREE CORE ARCHITECTURAL PILLARS                          */}
         {/* ========================================================= */}
-        <section className="space-y-8">
-          <div className="text-center space-y-2 max-w-xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Why Elite Users Choose Yuri
+        <section className="space-y-12">
+          <div className="text-center space-y-3 max-w-xl mx-auto">
+            <h2 className="text-3xl font-black text-white tracking-tighter uppercase">
+              Core Principles
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-400">
-              Complete feature dominance designed for zero detection and maximum speed.
+            <p className="text-xs sm:text-sm text-zinc-500 font-normal">
+              Engineered for stability, scale, and uncompromising architectural integrity.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <div className="bg-black/60 border border-white/5 hover:border-red-500/40 rounded-2xl p-6 transition-all space-y-4 group backdrop-blur-md relative overflow-hidden">
-              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+            <div className="bg-white/[0.01] border border-white/5 hover:border-white/20 rounded-2xl p-8 transition-all space-y-6 group backdrop-blur-sm relative overflow-hidden">
+              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 group-hover:text-white transition-all">
                 <Shield className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-white uppercase tracking-wider font-mono">
-                Stealth Handshake &amp; VPN
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-                Dynamic browser user-agent spoofing, jittered WebSocket packet pacing, and integrated multi-region routing shield your real IP address and device credentials.
-              </p>
-              <div className="text-[10px] font-mono text-zinc-600">
-                [ SEC // ZERO_FOOTPRINT ]
+              <div className="space-y-3">
+                <h3 className="text-sm font-black text-white uppercase tracking-[0.1em] font-sans">
+                  Identity Shielding
+                </h3>
+                <p className="text-xs text-zinc-500 leading-relaxed font-normal">
+                  Utilizes advanced handshake protocols and multi-region routing to maintain network anonymity and ensure secure session persistence.
+                </p>
               </div>
             </div>
 
-            <div className="bg-black/60 border border-white/5 hover:border-red-500/40 rounded-2xl p-6 transition-all space-y-4 group backdrop-blur-md relative overflow-hidden">
-              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+            <div className="bg-white/[0.01] border border-white/5 hover:border-white/20 rounded-2xl p-8 transition-all space-y-6 group backdrop-blur-sm relative overflow-hidden">
+              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 group-hover:text-white transition-all">
                 <Sliders className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-white uppercase tracking-wider font-mono">
-                Dual Command Architecture
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-                Selfbot executes instant raw line commands, while the 24/7 Companion generates Discord embeds with interactive buttons, pagination, and role dispatch.
-              </p>
-              <div className="text-[10px] font-mono text-zinc-600">
-                [ ENGINE // DUAL_CORE_DISPATCH ]
+              <div className="space-y-3">
+                <h3 className="text-sm font-black text-white uppercase tracking-[0.1em] font-sans">
+                  Dual-Engine Logic
+                </h3>
+                <p className="text-xs text-zinc-500 leading-relaxed font-normal">
+                  Features a hybrid dispatch system combining raw-frame automation for speed and rich application-layer responses for visual clarity.
+                </p>
               </div>
             </div>
 
-            <div className="bg-black/60 border border-white/5 hover:border-red-500/40 rounded-2xl p-6 transition-all space-y-4 group backdrop-blur-md relative overflow-hidden">
-              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+            <div className="bg-white/[0.01] border border-white/5 hover:border-white/20 rounded-2xl p-8 transition-all space-y-6 group backdrop-blur-sm relative overflow-hidden">
+              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 group-hover:text-white transition-all">
                 <Radio className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-white uppercase tracking-wider font-mono">
-                Voice &amp; Multi-RPC Engine
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-                Transmit audio soundboard clips, inject synthesized neural voice streams, and manage multi-state Rich Presence profiles with customized assets.
-              </p>
-              <div className="text-[10px] font-mono text-zinc-600">
-                [ MEDIA // VC_SOUNDBOARD ]
+              <div className="space-y-3">
+                <h3 className="text-sm font-black text-white uppercase tracking-[0.1em] font-sans">
+                  Media Orchestration
+                </h3>
+                <p className="text-xs text-zinc-500 leading-relaxed font-normal">
+                  Integrated high-fidelity audio stream management and multi-state presence synchronization for complete profile control.
+                </p>
               </div>
             </div>
 
@@ -743,38 +733,40 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         {/* ========================================================= */}
         {/* CALL TO ACTION                                            */}
         {/* ========================================================= */}
-        <section className="relative rounded-3xl border border-red-500/30 bg-gradient-to-r from-red-950/40 via-zinc-950 to-black p-8 sm:p-12 text-center space-y-6 shadow-2xl overflow-hidden backdrop-blur-lg">
-          <div className="absolute top-0 right-0 p-6 opacity-20 pointer-events-none">
+        <section className="relative rounded-3xl border border-white/10 bg-[#0A0A0B] p-12 sm:p-20 text-center space-y-8 shadow-2xl overflow-hidden backdrop-blur-xl">
+          <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
             <CyberGyroReticle />
           </div>
           
-          <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
-            Ready to Take Command?
-          </h2>
-          <p className="text-sm text-zinc-400 max-w-xl mx-auto">
-            Authenticate using Token, extract credentials from Discord, or connect via OAuth to launch the dashboard immediately.
-          </p>
+          <div className="space-y-3">
+            <h2 className="text-4xl sm:text-6xl font-black text-white uppercase tracking-tighter">
+              Access the <br /> <span className="text-red-500">Infrastructure.</span>
+            </h2>
+            <p className="text-sm text-zinc-500 max-w-xl mx-auto font-normal">
+              Initialize your session via Token or OAuth2 to launch the command dashboard.
+            </p>
+          </div>
 
-          <div className="pt-2">
+          <div className="pt-4">
             <button
               onClick={() => {
                 cyberSound.playScan();
                 setActiveTab('login');
                 setShowAuthModal(true);
               }}
-              className="px-8 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-[0_0_30px_rgba(239,68,68,0.5)] transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
+              className="px-12 py-5 rounded-2xl bg-white text-black font-black text-[12px] shadow-2xl transition-all cursor-pointer inline-flex items-center gap-3 active:scale-95 uppercase tracking-[0.3em]"
             >
-              <span>Launch Yuri Dashboard</span>
+              <span>Authorize System</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </section>
 
         {/* Footer */}
-        <footer className="pt-8 pb-4 text-center text-xs text-zinc-600 font-mono border-t border-white/5 space-y-2">
-          <div>©️ {new Date().getFullYear()} Yuri Selfbot. All rights reserved. Registered architecture.</div>
-          <div className="text-[9px] text-zinc-700 select-none opacity-40 hover:opacity-100 transition-opacity">
-            crafted by harumi (@myeyesaregoingdownx)
+        <footer className="pt-12 pb-8 text-center border-t border-white/5 space-y-4">
+          <div className="text-[10px] text-zinc-700 font-mono uppercase tracking-[0.4em]">©️ {new Date().getFullYear()} Yuri System Architecture</div>
+          <div className="text-[8px] text-zinc-800 select-none opacity-40 hover:opacity-100 transition-opacity uppercase tracking-widest">
+            Registered Design & Engineering by harumi
           </div>
         </footer>
 
