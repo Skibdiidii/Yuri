@@ -10,24 +10,24 @@ interface PatchNotesModalProps {
 export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   const updates = [
     {
+      title: "Logout Stability Fix",
+      icon: <Shield className="w-5 h-5 text-emerald-400" />,
+      description: "Resolved a critical TypeError during the logout and system wipe process caused by asynchronous database query builder limitations."
+    },
+    {
+      title: "Database Reliability",
+      icon: <Zap className="w-5 h-5 text-blue-400" />,
+      description: "Standardized all Supabase operations with robust error handling patterns to prevent runtime crashes during bulk data pruning."
+    },
+    {
       title: "Global Network Orchestration",
-      icon: <Rocket className="w-5 h-5 text-blue-400" />,
-      description: "Implemented high-reliability global admin actions. 'Set All Status' and 'Join All VC' now iterate through all sessions with automated initialization."
+      icon: <Rocket className="w-5 h-5 text-purple-400" />,
+      description: "Admin actions 'Set All Status' and 'Join All VC' now feature automated session initialization for maximum reliability."
     },
     {
-      title: "Enhanced Session Continuity",
-      icon: <Shield className="w-5 h-5 text-purple-400" />,
-      description: "The system now proactively connects all saved sessions before performing bulk operations, ensuring maximum reach and reliability."
-    },
-    {
-      title: "Robust Admin Verification",
-      icon: <Zap className="w-5 h-5 text-yellow-400" />,
-      description: "Integrated multi-layer ID verification for admin endpoints and UI, supporting both legacy tokens and modern Discord OAuth sessions."
-    },
-    {
-      title: "Identity Fixes",
-      icon: <Sparkles className="w-5 h-5 text-orange-400" />,
-      description: "Fixed silent failures in status updates by resolving missing library dependencies and improving error logging."
+      title: "Identity Verification",
+      icon: <Sparkles className="w-5 h-5 text-yellow-400" />,
+      description: "Enhanced multi-layer ID verification for admin endpoints, ensuring seamless access across legacy and OAuth sessions."
     }
   ];
 
@@ -46,7 +46,7 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
             </div>
             <div>
               <h2 className="text-lg font-medium text-white">What's New</h2>
-              <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">Patch v1.2.5-stable</p>
+              <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">Patch v1.2.6-stable</p>
             </div>
           </div>
           <button 

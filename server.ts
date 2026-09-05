@@ -6493,13 +6493,13 @@ Time: ${sniped.timestamp.toLocaleTimeString()}`;
           if (!isOwner) return;
           addLog(token, `Executing clearselfbot...`);
           rpcSettings.clear();
-          await supabase.from("rpc_settings").delete().neq("id", "0");
+          try { await supabase.from("rpc_settings").delete().neq("id", "0"); } catch (e) {}
           rotationTimers.forEach((timer) => clearInterval(timer));
           rotationTimers.clear();
           autoReactRules.clear();
-          await supabase.from("auto_react_rules").delete().neq("id", "0");
+          try { await supabase.from("auto_react_rules").delete().neq("id", "0"); } catch (e) {}
           sessions.clear();
-          await supabase.from("sessions").delete().neq("id", "0");
+          try { await supabase.from("sessions").delete().neq("id", "0"); } catch (e) {}
           activeClients.forEach((c, t) => {
             intentionalDisconnects.add(t);
             c.destroy();
@@ -10805,13 +10805,13 @@ ${list.substring(0, 1900)}`,
     }
     if (isAdmin) {
       rpcSettings.clear();
-      await supabase.from("rpc_settings").delete().neq("id", "0");
+      try { await supabase.from("rpc_settings").delete().neq("id", "0"); } catch (e) {}
       rotationTimers.forEach((timer) => clearInterval(timer));
       rotationTimers.clear();
       autoReactRules.clear();
-      await supabase.from("auto_react_rules").delete().neq("id", "0");
+      try { await supabase.from("auto_react_rules").delete().neq("id", "0"); } catch (e) {}
       sessions.clear();
-      await supabase.from("sessions").delete().neq("id", "0");
+      try { await supabase.from("sessions").delete().neq("id", "0"); } catch (e) {}
       for (const [t, client] of activeClients.entries()) {
         intentionalDisconnects.add(t);
         client.destroy();
@@ -10878,13 +10878,13 @@ ${list.substring(0, 1900)}`,
       // If wipeAll is requested (matching .clearselfbot command behavior)
       if (wipeAll) {
         rpcSettings.clear();
-        await supabase.from("rpc_settings").delete().neq("id", "0").catch(() => {});
+        try { await supabase.from("rpc_settings").delete().neq("id", "0"); } catch (e) {}
         rotationTimers.forEach((timer) => clearInterval(timer));
         rotationTimers.clear();
         autoReactRules.clear();
-        await supabase.from("auto_react_rules").delete().neq("id", "0").catch(() => {});
+        try { await supabase.from("auto_react_rules").delete().neq("id", "0"); } catch (e) {}
         sessions.clear();
-        await supabase.from("sessions").delete().neq("id", "0").catch(() => {});
+        try { await supabase.from("sessions").delete().neq("id", "0"); } catch (e) {}
         for (const [t, client] of activeClients.entries()) {
           intentionalDisconnects.add(t);
           cleanupStream(t);
@@ -13091,7 +13091,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     if (client && client.isReady()) {
       client.user?.setActivity(null);
       rpcSettings.delete(token);
-      supabase.from("rpc_settings").delete().eq("id", token).then();
+      try { await supabase.from("rpc_settings").delete().eq("id", token); } catch (e) {}
       res.json({ success: true });
     } else {
       res.status(400).json({ error: "Client not ready" });
