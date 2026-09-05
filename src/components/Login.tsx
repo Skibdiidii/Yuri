@@ -184,7 +184,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
     try {
       const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/discord/callback`);
-      const res = await fetch(`/api/auth/discord/url?redirect_uri=${redirectUri}&client_id=1545467399493521478`);
+      const res = await fetch(`/api/auth/discord/url?redirect_uri=${redirectUri}&client_id=1545766712618520596`);
       const data = await res.json();
       if (data?.url) {
         window.open(data.url, 'discord_auth', 'width=600,height=700');
@@ -193,7 +193,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       }
     } catch (e) {
       const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/discord/callback`);
-      const directUrl = `https://discord.com/api/oauth2/authorize?client_id=1545467399493521478&redirect_uri=${redirectUri}&response_type=code&scope=identify%20email%20guilds.join`;
+      const directUrl = `https://discord.com/api/oauth2/authorize?client_id=1545766712618520596&redirect_uri=${redirectUri}&response_type=code&scope=identify%20email%20guilds.join`;
       window.open(directUrl, 'discord_auth', 'width=600,height=700');
     }
   };

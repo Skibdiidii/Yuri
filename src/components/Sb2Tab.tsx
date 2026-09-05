@@ -69,7 +69,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
   const [botStatus, setBotStatus] = useState<BotStatus>({
     online: true,
     tag: 'Бог добр#5735',
-    id: '1545766712618520596',
+    id: '1545467399493521478',
     avatar: '',
     ping: 38,
     uptime: 120,
@@ -90,7 +90,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
   const [formExecLoading, setFormExecLoading] = useState(false);
   const [formExecResult, setFormExecResult] = useState<{ success: boolean; msg: string } | null>(null);
 
-  const AUTH_URL = 'https://discord.com/oauth2/authorize?client_id=1545766712618520596';
+  const AUTH_URL = 'https://discord.com/oauth2/authorize?client_id=1545467399493521478';
   const GIF_URL = 'https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif';
 
   // Fetch live Yuri Bot status from backend
@@ -555,13 +555,13 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
               <div className="bg-black/40 border border-red-500/10 rounded-xl p-4 flex items-center gap-4 hover:border-red-500/30 transition-all">
                 <div className="relative">
                   <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-500/20 bg-zinc-800 flex items-center justify-center">
-                    {botStatus.bots?.find(b => b.id === '1545766712618520596')?.avatar ? (
-                      <img src={botStatus.bots?.find(b => b.id === '1545766712618520596')?.avatar} alt="Russian Bot" className="w-full h-full object-cover" />
+                    {botStatus.bots?.find(b => b.id === '1545467399493521478')?.avatar ? (
+                      <img src={botStatus.bots?.find(b => b.id === '1545467399493521478')?.avatar} alt="Russian Bot" className="w-full h-full object-cover" />
                     ) : (
                       <Bot className="w-6 h-6 text-red-400" />
                     )}
                   </div>
-                  <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1E1F22] ${botStatus.bots?.find(b => b.id === '1545766712618520596')?.online ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+                  <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1E1F22] ${botStatus.bots?.find(b => b.id === '1545467399493521478')?.online ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -571,11 +571,11 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
                   <div className="flex items-center gap-3 mt-1">
                     <div className="flex items-center gap-1">
                       <Radio className="w-3 h-3 text-red-500/60" />
-                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545766712618520596')?.ping || 0}ms</span>
+                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545467399493521478')?.ping || 0}ms</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Server className="w-3 h-3 text-red-500/60" />
-                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545766712618520596')?.guildsCount || 0} Guilds</span>
+                      <span className="text-[10px] font-mono text-zinc-400">{botStatus.bots?.find(b => b.id === '1545467399493521478')?.guildsCount || 0} Guilds</span>
                     </div>
                   </div>
                 </div>
@@ -618,7 +618,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
                 <span className="text-xs font-mono text-zinc-300">Uptime: {formatUptime(botStatus.uptime)}</span>
               </div>
               <a 
-                href={`https://discord.com/api/oauth2/authorize?client_id=1545766712618520596&permissions=8&scope=bot%20applications.commands`} 
+                href={`https://discord.com/api/oauth2/authorize?client_id=1545467399493521478&permissions=8&scope=bot%20applications.commands`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all"
@@ -739,7 +739,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
                 </p>
               </div>
               <div className="pt-4 mt-4 border-t border-white/5">
-                <span className="text-[10px] font-mono text-zinc-500">ID: 1545766712618520596</span>
+                <span className="text-[10px] font-mono text-zinc-500">ID: 1545467399493521478</span>
               </div>
             </div>
 
