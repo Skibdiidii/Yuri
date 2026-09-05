@@ -1,6 +1,14 @@
 # What's New / Patch Notes
 
-## Version Update - Prioritized Identity Mapping (Latest)
+## Version Update - Robust OAuth Session Management (Latest)
+
+### 🔑 Authentication & Login Flow
+- **Cross-Tab Authentication Sync**: Implemented a robust `localStorage` based communication channel for OAuth success. This ensures the main dashboard tab automatically detects authentication even if the popup window's connection is blocked or lost.
+- **Server-Side Session Registration**: The backend now immediately registers OAuth-authenticated users into the active session map. This resolves the "Unauthorized" errors previously encountered when attempting to access the dashboard after a Discord login.
+- **Improved Success Visuals**: Redesigned the OAuth success landing page with a cleaner dark-mode card, Discord avatar preview, and a manual "Close Window" fallback.
+- **Admin Auto-Login**: Known administrators are now automatically transitioned to the portal/dashboard view upon successful Discord identity verification, streamlining the management experience.
+
+## Version Update - Prioritized Identity Mapping
 
 ### 🔑 Authentication Refinement
 - **Prioritized Credential Mapping**: Re-architected the OAuth2 callback to prioritize ID-specific Client Secrets. This ensures that even if a global `DISCORD_CLIENT_SECRET` is set in environment variables, the system correctly uses the specific credentials required for each bot identity (`1545766712618520596` vs `1545467399493521478`).
