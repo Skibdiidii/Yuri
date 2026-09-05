@@ -521,7 +521,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       {/* ========================================================= */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16 space-y-20">
         
-        {/* HERO SECTION */}
         <motion.section 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -530,7 +529,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           className="relative text-center space-y-6 max-w-4xl mx-auto pt-4"
         >
           
-          {/* Top Sci-Fi Badge */}
           <motion.div 
             initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }}
@@ -540,7 +538,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <span>Scaleable Infrastructure // Advanced Presence Logic</span>
           </motion.div>
 
-          {/* Futuristic Title with Glitch Chromatic Feel */}
           <motion.div 
             initial={{ opacity: 0, y: 15 }} 
             animate={{ opacity: 1, y: 0 }} 
@@ -558,7 +555,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             </p>
           </motion.div>
 
-          {/* Action Buttons */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
@@ -589,7 +585,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             </button>
           </motion.div>
 
-          {/* Live Cyber Metrics Bar (Equalizer + Radar + Uptime + Ping) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-12 max-w-4xl mx-auto">
             
             <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-5 text-left relative overflow-hidden backdrop-blur-sm">
@@ -628,9 +623,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </div>
         </motion.section>
 
-        {/* ========================================================= */}
-        {/* INTERACTIVE COMMAND CONSOLE & RADAR SCOPE SHOWCASE        */}
-        {/* ========================================================= */}
         <motion.section 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -652,19 +644,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </p>
             </div>
 
-            {/* Radar Scope Radar HUD on right */}
             <div className="hidden md:flex items-center gap-4">
               <CyberRadarScope />
             </div>
           </div>
 
-          {/* Real Interactive Terminal */}
           <InteractiveCyberTerminal />
         </motion.section>
 
-        {/* ========================================================= */}
-        {/* 24/7 BOT INVITER CARDS: BOTH ONLINE COMPANIONS           */}
-        {/* ========================================================= */}
         <motion.section 
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -688,9 +675,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <BotShowcaseCards />
         </motion.section>
 
-        {/* ========================================================= */}
-        {/* THREE CORE ARCHITECTURAL PILLARS                          */}
-        {/* ========================================================= */}
         <motion.section 
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -754,9 +738,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </div>
         </motion.section>
 
-        {/* ========================================================= */}
-        {/* CALL TO ACTION                                            */}
-        {/* ========================================================= */}
         <motion.section 
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
