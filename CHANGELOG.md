@@ -3,6 +3,7 @@
 ## Version Update - Selfbot Command Stability & Security Fix (Latest)
 
 ### ⚡ Selfbot Command Engine Fixes
+- **Build Fix (Redeclaration)**: Resolved a critical build error caused by redundant variable declarations in `server.ts`. This ensures the application can build and start successfully.
 - **Restored `.jvc` & `.joinvc`**: Fixed a critical bug where selfbot voice joining commands were failing due to missing method checks on different `discord.js-selfbot-v13` versions. Added support for multiple join methods (`joinChannel`, `join`, `connect`).
 - **Prefix Variable Resolution**: Resolved a major `ReferenceError` that was causing the `messageCreate` handler to crash when command usage errors occurred. The `prefix` variable is now globally defined within the handler scope.
 - **Improved Voice Multi-Account Sync**: Enhanced the logic for joining multiple accounts to the same voice channel. Now checks for `isReady()` state and handles guild channel resolution more robustly.

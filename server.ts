@@ -5060,10 +5060,6 @@ If they applied to your guild **${sc.guildId}**, check your pending tab to easil
           }
           return;
         }
-        const allowedUsers = whitelistedUsers.get(token) || new Set();
-        const isOwner = message.author.id === client.user?.id;
-        const isWhitelisted = allowedUsers.has(message.author.id);
-        if (!isOwner && !isWhitelisted) return;
         if (command === "prefix") {
           await message.delete().catch(() => {});
           const newPrefix = args[0];
