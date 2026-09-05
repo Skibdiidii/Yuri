@@ -185,13 +185,20 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     try {
       const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/discord/callback`);
       const res = await fetch(`/api/auth/discord/url?redirect_uri=${redirectUri}&client_id=1545766712618520596`);
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to fetch OAuth URL');
+      }
+
       const data = await res.json();
       if (data?.url) {
         window.open(data.url, 'discord_auth', 'width=600,height=700');
       } else {
         throw new Error('No OAuth URL returned');
       }
-    } catch (e) {
+    } catch (e: any) {
+      console.error('[LOGIN] OAuth URL Error:', e);
       const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/discord/callback`);
       const directUrl = `https://discord.com/api/oauth2/authorize?client_id=1545766712618520596&redirect_uri=${redirectUri}&response_type=code&scope=identify%20email%20guilds.join`;
       window.open(directUrl, 'discord_auth', 'width=600,height=700');

@@ -1,13 +1,12 @@
 # What's New / Patch Notes
 
-## Version Update - Scoped OAuth2 Client Identity (Latest)
+## Version Update - OAuth2 Credential Synchronization (Latest)
 
-### 🔑 OAuth2 & Identity Refinement
-- **Scoped OAuth2 Client ID**: Reverted the global bot identity to `1545467399493521478` to restore the original Russian Bot dashboard functionality.
-- **Login Identity Update**: Successfully isolated the new Client ID `1545766712618520596` for exclusive use in the OAuth2 login flow (Login tab/modal), as requested.
-- **Improved Redirection Logic**: Optimized the fallback redirection URL in the `Login` component to ensure seamless authentication regardless of backend state.
+### 🔑 Authentication Security
+- **Updated Client Secret**: Applied the matching Client Secret for application `1545766712618520596`, resolving the `invalid_client` error during OAuth2 token exchange.
+- **Credential Synchronization**: Ensured both Client ID and Client Secret are correctly paired in the backend authentication handler for seamless user login.
 
-## Version Update - OAuth2 Configuration & Client ID Update
+## Version Update - Scoped OAuth2 Client Identity
 
 ### ⚡ Selfbot Command Engine Fixes
 - **Build Fix (Redeclaration)**: Resolved a critical build error caused by redundant variable declarations in `server.ts`. This ensures the application can build and start successfully.

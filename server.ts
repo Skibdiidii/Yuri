@@ -13630,7 +13630,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     console.log(
       `[AUTH] Generating OAuth URL with redirect_uri: ${redirectUri}`,
     );
-    const state = Buffer.from(redirectUri).toString("base64");
+    const state = Buffer.from(JSON.stringify({ redirectUri, clientId })).toString("base64");
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -13645,16 +13645,23 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   app.get("/api/auth/discord/callback", async (req, res) => {
     const { code, state } = req.query;
     if (!code) return res.status(400).send("Missing code");
-    const clientId = process.env.DISCORD_CLIENT_ID || "1545766712618520596";
-    const clientSecret = process.env.DISCORD_CLIENT_SECRET || "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
+    
+    let clientId = process.env.DISCORD_CLIENT_ID || "1545766712618520596";
     let redirectUri = "";
+    
     if (state) {
       try {
-        redirectUri = Buffer.from(state, "base64").toString("utf-8");
+        const decoded = JSON.parse(Buffer.from(state as string, "base64").toString("utf-8"));
+        redirectUri = decoded.redirectUri;
+        clientId = decoded.clientId;
       } catch (e) {
-        console.error("Failed to decode state:", e);
+        try {
+          redirectUri = Buffer.from(state as string, "base64").toString("utf-8");
+        } catch (e2) {}
       }
     }
+
+    const clientSecret = process.env.DISCORD_CLIENT_SECRET || "-1B07lolXgnSciw9555EBDv7bEIs7nvO";
     if (!redirectUri) {
       const protocol =
         req.headers["x-forwarded-proto"] || req.protocol || "http";
@@ -13685,8 +13692,16 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       );
       if (!tokenResponse.ok) {
         const err = await tokenResponse.json();
-        console.error("Discord token error:", err);
-        return res.status(500).send("Failed to exchange code for token");
+        console.error("[AUTH ERROR] Discord token exchange failed:", {
+          status: tokenResponse.status,
+          error: err,
+          clientId,
+          redirectUri
+        });
+        return res.status(500).json({ 
+          error: "Failed to exchange code for token", 
+          details: err.error_description || err.error || "Unknown error from Discord" 
+        });
       }
       const tokens = await tokenResponse.json();
       const accessToken = tokens.access_token;
