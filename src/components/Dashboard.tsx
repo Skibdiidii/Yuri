@@ -61,6 +61,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   
   const [globalStatusInput, setGlobalStatusInput] = useState('');
   const [globalMassJoinInput, setGlobalMassJoinInput] = useState('');
+  const [oauthMassJoinInput, setOauthMassJoinInput] = useState('');
+  const [oauthUsersCount, setOauthUsersCount] = useState(0);
   const [massBoostInput, setMassBoostInput] = useState('');
   const [globalGuildVC, setGlobalGuildVC] = useState('');
   const [globalChannelVC, setGlobalChannelVC] = useState('');
@@ -524,14 +526,28 @@ Useless piece of shit`,
 
   const fetchAdminData = async () => {
     setLoadingAdmin(true);
-    const res = await fetch(`${API_BASE}/api/admin/all-sessions`, {
-      headers: {
-        'Authorization': localStorage.getItem('token') || ''
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/all-sessions`, {
+        headers: {
+          'Authorization': localStorage.getItem('token') || ''
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminSessions(data);
       }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setAdminSessions(data);
+      
+      const oauthRes = await fetch(`${API_BASE}/api/admin/oauth-stats`, {
+        headers: {
+          'Authorization': localStorage.getItem('token') || ''
+        }
+      });
+      if (oauthRes.ok) {
+        const data = await oauthRes.json();
+        setOauthUsersCount(data.count || 0);
+      }
+    } catch (e) {
+      console.error("Admin data fetch error:", e);
     }
     setLoadingAdmin(false);
   };
@@ -1748,6 +1764,10 @@ Useless piece of shit`,
                                 <h4 className="text-zinc-300 font-medium mb-1">Active Instances</h4>
                                 <p className="text-2xl font-bold text-white">{adminSessions.filter(s => s.status === 'ok').length}</p>
                            </div>
+                           <div className="bg-zinc-900/50 p-4 rounded-lg border border-white/5">
+                                <h4 className="text-zinc-300 font-medium mb-1">OAuth2 Users</h4>
+                                <p className="text-2xl font-bold text-blue-400">{oauthUsersCount}</p>
+                           </div>
                         </div>
 
                         <div className="space-y-4 mb-8">
@@ -1755,7 +1775,7 @@ Useless piece of shit`,
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                   {}
                                   <div className="space-y-2">
-                                      <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Global Status</label>
+                                      <label className="text-xs text-blue-400 uppercase font-bold tracking-wider">Global Status</label>
                                       <div className="flex gap-2">
                                           <input 
                                               type="text" 
@@ -1764,19 +1784,31 @@ Useless piece of shit`,
                                               onChange={(e) => setGlobalStatusInput(e.target.value)}
                                               className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-blue-500/50"
                                           />
-                                          <button 
-                                              onClick={async () => {
-                                                  if (globalStatusInput) {
-                                                      addLog(`Initiating global status update: ${globalStatusInput}...`);
-                                                      const res = await api.adminGlobalStatus(globalStatusInput);
-                                                      addLog(`Global status update finished. Applied to ${res.count} instances.`);
-                                                      setGlobalStatusInput('');
-                                                  }
-                                              }} 
-                                              className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-2 rounded-lg text-sm border border-blue-500/20 transition-colors whitespace-nowrap"
-                                          >
-                                              Update
-                                          </button>
+                                          <div className="flex gap-1">
+                                             <button 
+                                                 onClick={async () => {
+                                                     if (globalStatusInput) {
+                                                         addLog(`Initiating global status update: ${globalStatusInput}...`);
+                                                         const res = await api.adminGlobalStatus(globalStatusInput);
+                                                         addLog(`Global status update finished. Applied to ${res.count} instances.`);
+                                                         setGlobalStatusInput('');
+                                                     }
+                                                 }} 
+                                                 className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-2 rounded-lg text-sm border border-blue-500/20 transition-colors whitespace-nowrap"
+                                             >
+                                                 Update
+                                             </button>
+                                             <button 
+                                                 onClick={async () => {
+                                                     addLog(`Clearing global status...`);
+                                                     const res = await api.adminGlobalStatus("");
+                                                     addLog(`Global status cleared for ${res.count} instances.`);
+                                                 }} 
+                                                 className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-3 py-2 rounded-lg text-sm border border-white/5 transition-colors whitespace-nowrap"
+                                             >
+                                                 Clear
+                                             </button>
+                                          </div>
                                       </div>
                                   </div>
 
@@ -1804,6 +1836,45 @@ Useless piece of shit`,
                                               className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-sm border border-emerald-500/20 transition-colors whitespace-nowrap"
                                           >
                                               Join All
+                                          </button>
+                                      </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                      <label className="text-xs text-blue-400 uppercase font-bold tracking-wider">Global OAuth2 Bot Join</label>
+                                      <div className="flex gap-2">
+                                          <input 
+                                              type="text" 
+                                              placeholder="Server ID (Guild ID)" 
+                                              value={oauthMassJoinInput}
+                                              onChange={(e) => setOauthMassJoinInput(e.target.value)}
+                                              className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-blue-500/50"
+                                          />
+                                          <button 
+                                              onClick={async () => {
+                                                  if (oauthMassJoinInput) {
+                                                      addLog(`Initiating OAuth2 Mass Join via Bot for Guild: ${oauthMassJoinInput}...`);
+                                                      const res = await fetch(`${API_BASE}/api/admin/oauth-mass-join`, {
+                                                          method: 'POST',
+                                                          headers: { 
+                                                            'Content-Type': 'application/json',
+                                                            'Authorization': localStorage.getItem('token') || ''
+                                                          },
+                                                          body: JSON.stringify({ guildId: oauthMassJoinInput })
+                                                      });
+                                                      if (res.ok) {
+                                                          const data = await res.json();
+                                                          addLog(`OAuth2 Mass Join finished. ${data.count} users joined. ${data.failed} failed.`);
+                                                          alert(`Success! ${data.count} users joined. ${data.failed} failed.`);
+                                                      } else {
+                                                          addLog(`OAuth2 Mass Join failed.`);
+                                                      }
+                                                      setOauthMassJoinInput('');
+                                                  }
+                                              }} 
+                                              className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-2 rounded-lg text-sm border border-blue-500/20 transition-colors whitespace-nowrap"
+                                          >
+                                              Bot Join All
                                           </button>
                                       </div>
                                   </div>
@@ -1893,43 +1964,6 @@ Useless piece of shit`,
                                        </div>
                                    </div>
 
-                                   {}
-                                   <div className="space-y-2 col-span-1 md:col-span-2 mt-4">
-                                       <label className="text-xs text-indigo-500 uppercase font-bold tracking-wider">Set Global Status</label>
-                                       <div className="flex gap-2">
-                                           <input 
-                                               id="admin-global-status"
-                                               type="text" 
-                                               placeholder="Type the custom status here..." 
-                                               className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-indigo-500/50 placeholder:text-zinc-600"
-                                           />
-                                           <button 
-                                               onClick={async () => {
-                                                   const statusInput = document.getElementById('admin-global-status') as HTMLInputElement;
-                                                   if (statusInput && statusInput.value) {
-                                                       try {
-                                                          const token = localStorage.getItem('token') || '';
-                                                          const cleanedToken = token.trim().replace(/^["']|["']$/g, "");
-                                                          const r = await fetch('/api/actions/admin/global-status', {
-                                                              method: 'POST',
-                                                              headers: { 'Content-Type': 'application/json', 'Authorization': cleanedToken },
-                                                              body: JSON.stringify({ status: statusInput.value })
-                                                          });
-                                                          if (r.ok) {
-                                                            alert(`Global status successfully updated.`);
-                                                            statusInput.value = '';
-                                                          } else { 
-                                                            alert(`Failed to set status`); 
-                                                          }
-                                                       } catch(e) { alert('Request Failed'); }
-                                                   }
-                                               }} 
-                                               className="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 px-4 py-2 rounded-lg text-sm border border-indigo-500/20 transition-colors py-2 whitespace-nowrap"
-                                           >
-                                               Update Status
-                                           </button>
-                                       </div>
-                                   </div>
 
                                    {}
                                    <div className="space-y-2 col-span-1 md:col-span-2 mt-4">
