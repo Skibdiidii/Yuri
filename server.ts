@@ -13661,7 +13661,17 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       }
     }
 
-    const clientSecret = process.env.DISCORD_CLIENT_SECRET || "-1B07lolXgnSciw9555EBDv7bEIs7nvO";
+    let clientSecret = process.env.DISCORD_CLIENT_SECRET;
+    if (!clientSecret) {
+      if (clientId === "1545766712618520596") {
+        clientSecret = "-1B07lolXgnSciw9555EBDv7bEIs7nvO";
+      } else {
+        clientSecret = "bt_aSrm-jCoa5ZF_TWZ4i_rjJqWQORDF";
+      }
+    }
+
+    console.log(`[AUTH] Attempting token exchange for Client ID: ${clientId} using secret starting with: ${clientSecret?.substring(0, 4)}...`);
+    
     if (!redirectUri) {
       const protocol =
         req.headers["x-forwarded-proto"] || req.protocol || "http";
