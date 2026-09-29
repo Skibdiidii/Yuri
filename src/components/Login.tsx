@@ -241,7 +241,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       setDiscordUser(user);
       localStorage.setItem('discord_user', JSON.stringify(user));
       
-      const knownAdmins = ['1545521054930436167', '1545509798756487241', '1545389998315143229'];
+      const knownAdmins = ['1545521054930436167'];
       if (knownAdmins.includes(user.id)) {
         localStorage.setItem('token', 'DISCORD_OAUTH_SESSION');
         localStorage.setItem('token_user', JSON.stringify({

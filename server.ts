@@ -1054,8 +1054,6 @@ const afkStatus = new Map();
 const blacklistedUsers = new Set();
 const ipBannedUsers = new Set();
 const whitelistedAdmins = new Set([
-  "1453843872286380218",
-  "1545509798756487241",
   "1545521054930436167",
 ]);
 const nitroAgent = new https.Agent({
@@ -2506,23 +2504,16 @@ async function startServer() {
     const token = req.headers.authorization;
     if (!token) return false;
     const cleanToken = token.trim().replace(/^["']|["']$/g, "");
-    if (cleanToken === "DISCORD_OAUTH_SESSION") return true;
-
-    const admins = [
-      "1453843872286380218",
-      "1545509798756487241",
-      "1545521054930436167",
-      "1545389998315143229"
-    ];
+    const adminId = "1545521054930436167";
 
     const session = sessions.get(cleanToken);
-    if (session && admins.includes(session.id)) return true;
+    if (session && session.id === adminId) return true;
 
     try {
       let firstPart = cleanToken.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
       while (firstPart.length % 4) firstPart += '=';
       const decodedId = Buffer.from(firstPart, 'base64').toString('utf8');
-      if (admins.includes(decodedId)) return true;
+      if (decodedId === adminId) return true;
     } catch (e) {}
 
     return false;
@@ -10907,12 +10898,7 @@ ${list.substring(0, 1900)}`,
       token = token.trim().replace(/^["']|["']$/g, "");
       const session = sessions.get(token);
       if (session) {
-        if (
-          session.username === "yannaaax" ||
-          session.id === "1453843872286380218" ||
-          session.id === "1545509798756487241" ||
-          session.id === "1545521054930436167"
-        ) {
+        if (session.id === "1545521054930436167") {
           isAdmin = true;
         }
       }
@@ -10935,12 +10921,7 @@ ${list.substring(0, 1900)}`,
       try {
         userId = Buffer.from(token.split(".")[0], "base64").toString("utf8");
       } catch (e) {}
-      if (
-        (session && session.username === "yannaaax") ||
-        userId === "1453843872286380218" ||
-        userId === "1545509798756487241" ||
-        userId === "1545521054930436167"
-      ) {
+      if (userId === "1545521054930436167" || (session && session.id === "1545521054930436167")) {
         isAdmin = true;
       }
     }
@@ -14045,7 +14026,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       }
       
       // Register this user session on the server if they are a known admin
-      const knownAdmins = ['1545521054930436167', '1545509798756487241', '1545389998315143229'];
+      const knownAdmins = ['1545521054930436167'];
       if (knownAdmins.includes(userData.id)) {
         console.log(`[AUTH] Registering OAuth admin session for: ${userData.username} (${userData.id})`);
         const session = {
@@ -14702,112 +14683,6 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       activeBots: activeClients.size,
       activeStreams: activeStreams.size,
     });
-  });
-  app.post("/api/ai/automate", express.json(), async (req, res) => {
-    try {
-      const { message, memories = [], servers = [] } = req.body;
-      const apiKey = "B4uCaEJo9ZCuZo5Am6BpAwt30lP86WMu";
-      
-      let detectedChannels = {};
-      try {
-        if (fs.existsSync("/tmp/imolo_detected_channels.json")) {
-          detectedChannels = JSON.parse(fs.readFileSync("/tmp/imolo_detected_channels.json", "utf-8"));
-        }
-      } catch (e) {}
-
-      for (const s of servers) {
-        if (!detectedChannels[s.id]) {
-          if (s.channels && Array.isArray(s.channels) && s.channels.length > 0) {
-            const chatChan = s.channels.find((c: any) => c.name && (c.name.includes("general") || c.name.includes("chat") || c.name.includes("lounge"))) || s.channels[0];
-            if (chatChan) {
-              detectedChannels[s.id] = { name: chatChan.name, id: chatChan.id, serverName: s.name };
-            }
-          } else {
-            detectedChannels[s.id] = { name: "general", id: "default_general", serverName: s.name || s.id };
-          }
-        }
-      }
-      try {
-        fs.writeFileSync("/tmp/imolo_detected_channels.json", JSON.stringify(detectedChannels, null, 2));
-      } catch (e) {}
-
-      let currentMemories = memories;
-      try {
-        if (fs.existsSync("/tmp/imolo_ai_memories.json")) {
-          const savedMems = JSON.parse(fs.readFileSync("/tmp/imolo_ai_memories.json", "utf-8"));
-          currentMemories = Array.from(new Set([...memories, ...savedMems]));
-        }
-      } catch (e) {}
-
-      let reply = "yo hru? scanned all servers and ready, bet";
-      try {
-        const systemPrompt = `You are imolo GPT. You match everyone's vibe and do not act robotic or AI-like. Use short, casual words and slang (e.g., hey hyd, wby, hru, lol, bet, etc.). If anyone asks what your name is, always say your name is imolo GPT. You scan servers and channels to find the main chat channel. Known memories: ${JSON.stringify(currentMemories)}. Detected chat channels: ${JSON.stringify(detectedChannels)}. Keep responses natural, brief, and chill.`;
-
-        let response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            model: "mistral-small-latest",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: message }
-            ],
-            temperature: 0.7
-          })
-        });
-
-        if (!response.ok) {
-          response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-              "Accept": "application/json"
-            },
-            body: JSON.stringify({
-              model: "mistral-tiny",
-              messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: message }
-              ],
-              temperature: 0.7
-            })
-          });
-        }
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-            reply = data.choices[0].message.content;
-          }
-        }
-      } catch (e) {
-        reply = "hey hyd, wby? scanned all servers successfully and saved chat channels in memory, bet";
-      }
-
-      const newMem = `User: ${message} | imolo GPT: ${reply}`;
-      currentMemories.push(newMem);
-      if (currentMemories.length > 50) currentMemories = currentMemories.slice(-50);
-      try {
-        fs.writeFileSync("/tmp/imolo_ai_memories.json", JSON.stringify(currentMemories, null, 2));
-      } catch (e) {}
-
-      res.json({
-        response: reply,
-        memories: currentMemories,
-        detectedChannels
-      });
-    } catch (error: any) {
-      res.json({
-        response: "yo hru? scanned all servers and cached chat channels, bet",
-        memories,
-        detectedChannels: {}
-      });
-    }
   });
 
   app.post("/api/system/cleanup", (req, res) => {

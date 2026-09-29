@@ -30,7 +30,7 @@ export default function App() {
     }
   });
 
-  const [view, setView] = useState<'portal' | 'dashboard' | 'catalystcord_wss' | 'sb2'>(() => {
+  const [view, setView] = useState<'portal' | 'dashboard' | 'catalystcord_wss' | 'sb2' | 'terminal'>(() => {
     return 'portal';
   });
 
@@ -66,12 +66,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const adminUserIds = [
-    '1453843872286380218',
-    '1545509798756487241',
-    '1545521054930436167',
-    '1545389998315143229'
-  ];
+  const ADMIN_ID = '1545521054930436167';
   const discordUserData = (() => {
     try {
       const saved = localStorage.getItem('discord_user');
@@ -81,17 +76,16 @@ export default function App() {
     }
   })();
   const activeUserId = String(tokenUser?.id || tokenUser?.userId || tokenUser?.user?.id || tokenUser?.session_id || discordUserData?.id || loggedInUserId || '');
-  const isUser1512 = adminUserIds.includes(activeUserId) || 
-    adminUserIds.includes(String(loggedInUserId)) || 
-    adminUserIds.includes(String(tokenUser?.id)) || 
-    adminUserIds.includes(String(discordUserData?.id)) || 
-    localStorage.getItem('isAdminDirect') === 'true' || 
-    loggedInToken === 'DISCORD_OAUTH_SESSION' || 
-    localStorage.getItem('is_admin_mode') === 'true';
+  const isUser1512 = activeUserId === ADMIN_ID || String(loggedInUserId) === ADMIN_ID;
 
-  if (isUser1512 && localStorage.getItem('isAdminDirect') !== 'true') {
-    localStorage.setItem('isAdminDirect', 'true');
-    localStorage.setItem('is_admin_mode', 'true');
+  if (isUser1512) {
+    if (localStorage.getItem('isAdminDirect') !== 'true') {
+      localStorage.setItem('isAdminDirect', 'true');
+      localStorage.setItem('is_admin_mode', 'true');
+    }
+  } else {
+    localStorage.removeItem('isAdminDirect');
+    localStorage.removeItem('is_admin_mode');
   }
   const isTerminalRoute = currentPath === '/terminal' || currentPath === '/console';
 
@@ -211,6 +205,14 @@ export default function App() {
                         />
                      )}
                     <button 
+                      onClick={() => setView('terminal')} 
+                      className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 border border-white/5 rounded-md transition-colors flex items-center gap-1.5"
+                      title="Terminal & AI Engine"
+                    >
+                      <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Terminal & AI</span>
+                    </button>
+                    <button 
                       onClick={() => setView('sb2')} 
                       className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 border border-white/5 rounded-md transition-colors flex items-center gap-1.5"
                       title="Yuri 24/7 Companion Service"
@@ -240,6 +242,26 @@ export default function App() {
                     <h2 className="text-base font-medium text-white mb-2">Automation Console</h2>
                     <p className="text-sm text-zinc-500 leading-relaxed font-normal">
                       Configure profile settings, presence, remote operations, server environments, and utility macros.
+                    </p>
+                  </motion.div>
+
+                  <motion.div 
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setView('terminal')}
+                    className="bg-[#111] border border-white/10 hover:border-emerald-500/30 rounded-xl p-8 cursor-pointer transition-colors group relative overflow-hidden"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
+                      <Terminal className="w-5 h-5 text-emerald-400 group-hover:text-emerald-300 transition-colors" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className="text-base font-medium text-white">Terminal & AI Engine</h2>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        xterm + AI
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-500 leading-relaxed font-normal">
+                      Full interactive Linux PTY shell, live xterm console, and unrestricted Cyber Engine AI agent.
                     </p>
                   </motion.div>
 
@@ -341,6 +363,18 @@ export default function App() {
                 className="h-full w-full"
               >
                 <CatalystCordTab onBack={() => setView('portal')} />
+              </motion.div>
+            )}
+
+            {view === 'terminal' && (
+              <motion.div 
+                key="terminal"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 w-screen h-screen bg-[#050508] text-zinc-100 font-sans flex flex-col z-50 overflow-hidden"
+              >
+                <FullscreenTerminal onBack={() => setView('portal')} />
               </motion.div>
             )}
           </>

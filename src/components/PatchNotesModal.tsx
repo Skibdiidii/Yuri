@@ -13,14 +13,14 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
       date: "September 2026",
       updates: [
         {
-          title: "Imolo AI Automation Engine",
+          title: "Terminal & Cyber Engine AI",
           icon: <Sparkles className="w-5 h-5 text-emerald-400" />,
-          description: "Integrated Mistral AI with automated server scanning, chat channel detection, and persistent long-term memory."
+          description: "Full interactive Linux PTY shell with real-time xterm streaming and completely unrestricted Cyber Engine AI agent."
         },
         {
-          title: "Vibe-Matched Casual Persona",
-          icon: <Zap className="w-5 h-5 text-purple-400" />,
-          description: "Configured natural conversational tone with slang (hey hyd, wby, hru) and strict identity assertion (imolo GPT)."
+          title: "Hardened Account Access Security",
+          icon: <Shield className="w-5 h-5 text-purple-400" />,
+          description: "Strict administrator control lockdown enforcing verification exclusively for authorized owner account."
         }
       ]
     },

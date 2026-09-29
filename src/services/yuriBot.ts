@@ -72,7 +72,7 @@ export function buildServerBotWarningMessage(actionName = "execute server action
   );
 }
 
-export const OWNER_IDS = ["1545389998315143229", "1545521054930436167"];
+export const OWNER_IDS = ["1545521054930436167"];
 
 export function isOwner(userId: string): boolean {
   return OWNER_IDS.includes(String(userId));

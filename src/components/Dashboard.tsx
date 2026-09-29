@@ -16,7 +16,6 @@ import MetricsDashboard from './MetricsDashboard';
 import AudioVmTab from './AudioVmTab';
 import { BrowserPreviewTab } from './BrowserPreviewTab';
 import PlatformsTab from './PlatformsTab';
-import AiAutomationTab from './AiAutomationTab';
 import { CHANGELOG } from '../constants/changelog';
 
 interface DashboardProps {
@@ -26,7 +25,7 @@ interface DashboardProps {
 const API_BASE = '';
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser' | 'platforms' | 'ai_automation'>(() => {
+  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser' | 'platforms'>(() => {
     const isDirect = localStorage.getItem('isAdminDirect') === 'true' || localStorage.getItem('is_admin_mode') === 'true';
     if (isDirect) {
       return 'admin';
@@ -295,12 +294,7 @@ Useless piece of shit`,
 
   const loggedInSession = tokens.find(t => t.token === loggedInToken);
   
-  const adminIds = [
-    '1453843872286380218',
-    '1545509798756487241',
-    '1545521054930436167',
-    '1545389998315143229'
-  ];
+  const ADMIN_ID = '1545521054930436167';
   const discordUser = (() => {
     try {
       const saved = localStorage.getItem('discord_user');
@@ -318,19 +312,17 @@ Useless piece of shit`,
     }
   })();
   const currentUserId = String(tokenUserData?.id || tokenUserData?.userId || tokenUserData?.user?.id || tokenUserData?.session_id || discordUser?.id || loggedInSession?.id || loggedInUserId || '');
-  const isAdmin = adminIds.includes(currentUserId) || 
-    adminIds.includes(String(loggedInUserId)) || 
-    adminIds.includes(String(tokenUserData?.id)) || 
-    adminIds.includes(String(discordUser?.id)) || 
-    tokens.some(t => adminIds.includes(String(t.id))) || 
-    localStorage.getItem('isAdminDirect') === 'true' || 
-    loggedInToken === 'DISCORD_OAUTH_SESSION' || 
-    localStorage.getItem('is_admin_mode') === 'true';
+  const isAdmin = currentUserId === ADMIN_ID || String(loggedInUserId) === ADMIN_ID;
   const activeUserId = currentUserId;
 
-  if (isAdmin && localStorage.getItem('isAdminDirect') !== 'true') {
-    localStorage.setItem('isAdminDirect', 'true');
-    localStorage.setItem('is_admin_mode', 'true');
+  if (isAdmin) {
+    if (localStorage.getItem('isAdminDirect') !== 'true') {
+      localStorage.setItem('isAdminDirect', 'true');
+      localStorage.setItem('is_admin_mode', 'true');
+    }
+  } else {
+    localStorage.removeItem('isAdminDirect');
+    localStorage.removeItem('is_admin_mode');
   }
 
   const fetchAltStats = async () => {
@@ -695,13 +687,6 @@ Useless piece of shit`,
           
           <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto no-scrollbar">
             <SidebarItem 
-              active={activeTab === 'ai_automation'} 
-              onClick={() => setActiveTab('ai_automation')} 
-              icon={Bot} 
-              label="Imolo AI Automation" 
-              badge="Mistral"
-            />
-            <SidebarItem 
               active={activeTab === 'metrics'} 
               onClick={() => setActiveTab('metrics')} 
               icon={LineChart} 
@@ -799,8 +784,8 @@ Useless piece of shit`,
               active={activeTab === 'system_console'} 
               onClick={() => setActiveTab('system_console')} 
               icon={Terminal} 
-              label="System Console" 
-              badge="xterm"
+              label="Terminal & AI Console" 
+              badge="xterm + AI"
             />
             <SidebarItem 
               active={activeTab === 'commands'} 
@@ -924,7 +909,6 @@ Useless piece of shit`,
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className="max-w-7xl mx-auto"
             >
-            {activeTab === 'ai_automation' && <AiAutomationTab token={loggedInToken} addLog={addLog} />}
             {activeTab === 'system_console' && <SystemConsoleTab onOpenFullTerminal={() => setShowTerminal(true)} />}
             {activeTab === 'platforms' && <PlatformsTab />}
             {activeTab === 'browser' && (

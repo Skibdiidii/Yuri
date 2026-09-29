@@ -9,9 +9,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "v1.3.2",
     date: "2026-09-11",
     features: [
-      "Added Imolo AI Automation powered by Mistral AI",
-      "Automatic server and chat channel scanning with persistent memory caching",
-      "Vibe-matched casual persona with custom identity response (imolo GPT)"
+      "Strict Administrator Access Control locked directly to owner account",
+      "Interactive Linux PTY Terminal with real-time xterm streaming & Cyber Engine AI",
+      "High-Performance Gateway & Companion Service optimizations"
     ]
   },
   {
