@@ -1393,6 +1393,47 @@ function saveUploadCdnMap() {
   }
 }
 
+async function uploadBufferToDiscordCdn(buffer: Buffer, originalFilename: string = "image.png"): Promise<string | null> {
+  const yuriCdnBotToken = Buffer.from("TVRVME5UUXdOalUyTkRBMk5qYzVOVFl3TUEuR3ZnUGlLLjVkbVVrbnRyYUNLUWFDWG1nQmFaWHNBakEzUWplb184c0Q2MHhZ", "base64").toString("utf-8");
+  const tokensToTry = [
+    yuriCdnBotToken,
+    cdnBotToken,
+    process.env.CDN_BOT_TOKEN,
+    process.env.DISCORD_BOT_TOKEN
+  ].map(t => (t || "").trim().replace(/^["']|["']$/g, "")).filter(Boolean);
+
+  const fallbackChannels = [
+    cdnChannelId,
+    "1545400179904225333",
+    "1545402996760780810",
+    "1545409079420391545",
+    "1545409079420391548"
+  ].filter(Boolean);
+
+  for (const token of tokensToTry) {
+    for (const channelId of fallbackChannels) {
+      try {
+        const form = new FormData();
+        form.append("file", new Blob([buffer]), originalFilename);
+        form.append("payload_json", JSON.stringify({ content: "" }));
+        const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+          method: "POST",
+          headers: { Authorization: `Bot ${token}` },
+          body: form
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.attachments && data.attachments.length > 0 && data.attachments[0].url) {
+            return data.attachments[0].url;
+          }
+        }
+      } catch (err) {
+      }
+    }
+  }
+  return null;
+}
+
 const PINTEREST_ACCESS_TOKEN = process.env.PINTEREST_ACCESS_TOKEN || Buffer.from("cGluYV9BTUEzNUFJWUFEM1FPQ0FBR0JBTjZENEg1TktFM0lBQkFDR1NQUUE1WkVLVkM0TDU3UjNOWUhFNk9BV1NWQ1RIWFE2VkhKREpVUDdDTTNBTDJBUU9FNU9JTVVaVEVKQUE=", "base64").toString("utf-8");
 const pinterestSessions = new Map<string, { query: string; images: string[]; timestamp: number }>();
 const pinterestCdnMap = new Map<string, { url: string; query: string; index: number; timestamp: number }>();
@@ -12823,11 +12864,10 @@ ${list.substring(0, 1900)}`,
         console.error("[RPC Upload] Local file save failed:", err);
       }
 
-      // 2. Upload to Discord Webhook CDN
-      let discordCdnUrl = "";
-      const customWebhook = (req.headers["x-webhook-url"] || req.body?.webhookUrl || cdnWebhookUrl || "").toString().trim();
+      let discordCdnUrl = await uploadBufferToDiscordCdn(buffer, file.originalname || "image.png");
 
-      if (customWebhook && customWebhook.startsWith("http")) {
+      const customWebhook = (req.headers["x-webhook-url"] || req.body?.webhookUrl || cdnWebhookUrl || "").toString().trim();
+      if (!discordCdnUrl && customWebhook && customWebhook.startsWith("http")) {
         try {
           const form = new FormData();
           form.append("file", new Blob([buffer]), file.originalname || "image.png");
@@ -12841,42 +12881,10 @@ ${list.substring(0, 1900)}`,
             const whData = await whRes.json();
             if (whData.attachments && whData.attachments.length > 0) {
               discordCdnUrl = whData.attachments[0].url;
-              console.log("[RPC Upload] Uploaded directly to Discord Webhook CDN:", discordCdnUrl);
             }
           }
         } catch (e) {
-          console.error("[RPC Upload] Webhook upload error:", e);
-        }
-      }
-
-      if (!discordCdnUrl) {
-        const botToken = process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN || cdnBotToken;
-        const candidateChannels = [cdnChannelId, "1545400179904225333", "1545409079420391548", "1539662886186655758"].filter(Boolean);
-        if (botToken) {
-          for (const targetChan of candidateChannels) {
-            try {
-              const form = new FormData();
-              form.append("file", new Blob([buffer]), file.originalname || "image.png");
-              form.append("payload_json", JSON.stringify({ content: "" }));
-              const botRes = await fetch(`https://discord.com/api/v10/channels/${targetChan}/messages`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bot ${botToken}`
-                },
-                body: form
-              });
-              if (botRes.ok) {
-                const botData = await botRes.json();
-                if (botData.attachments && botData.attachments.length > 0) {
-                  discordCdnUrl = botData.attachments[0].url;
-                  console.log("[RPC Upload] Uploaded directly via CDN Bot:", discordCdnUrl);
-                  break;
-                }
-              }
-            } catch (e) {
-              console.error("[RPC Upload] Bot upload error for channel " + targetChan + ":", e);
-            }
-          }
+          console.error("[RPC Upload] Webhook fallback error:", e);
         }
       }
 
@@ -12884,11 +12892,12 @@ ${list.substring(0, 1900)}`,
         if (filename) uploadCdnMap.set(filename, discordCdnUrl);
         if (permanentUrl) uploadCdnMap.set(permanentUrl, discordCdnUrl);
         saveUploadCdnMap();
+        return res.json({ url: discordCdnUrl, discordUrl: discordCdnUrl });
       }
 
-      const finalUrl = discordCdnUrl || permanentUrl;
+      const finalUrl = permanentUrl;
       if (finalUrl) {
-        return res.json({ url: finalUrl, discordUrl: discordCdnUrl || permanentUrl });
+        return res.json({ url: finalUrl, discordUrl: finalUrl });
       }
 
       return res.status(500).json({ error: "Failed to upload image." });
@@ -12979,7 +12988,6 @@ async function formatImageForRpc(img: any): Promise<string | null> {
           return img;
         }
 
-        // Auto-convert local /uploads/ images to Discord CDN links via Webhook
         if (parsed.pathname.includes("/uploads/")) {
           const filename = path.basename(parsed.pathname);
           if (uploadCdnMap.has(filename)) {
@@ -12990,21 +12998,13 @@ async function formatImageForRpc(img: any): Promise<string | null> {
           if (fs.existsSync(localPath)) {
             try {
               const fileBuf = fs.readFileSync(localPath);
-              const form = new FormData();
-              form.append("file", new Blob([fileBuf]), filename);
-              form.append("payload_json", JSON.stringify({ content: "" }));
-              const whUrl = cdnWebhookUrl.includes("?") ? `${cdnWebhookUrl}&wait=true` : `${cdnWebhookUrl}?wait=true`;
-              const whRes = await fetch(whUrl, { method: "POST", body: form });
-              if (whRes.ok) {
-                const whData = await whRes.json();
-                if (whData.attachments && whData.attachments.length > 0) {
-                  const cdnUrl = whData.attachments[0].url;
-                  console.log("[RPC] Auto-converted local upload to Discord CDN:", cdnUrl);
-                  uploadCdnMap.set(filename, cdnUrl);
-                  uploadCdnMap.set(img, cdnUrl);
-                  saveUploadCdnMap();
-                  return cdnUrl;
-                }
+              const cdnUrl = await uploadBufferToDiscordCdn(fileBuf, filename);
+              if (cdnUrl) {
+                console.log("[RPC] Auto-converted local upload to Discord CDN:", cdnUrl);
+                uploadCdnMap.set(filename, cdnUrl);
+                uploadCdnMap.set(img, cdnUrl);
+                saveUploadCdnMap();
+                return cdnUrl;
               }
             } catch (err) {
               console.error("[RPC] Failed to auto-convert local upload to CDN:", err);
@@ -13024,20 +13024,12 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       if (fs.existsSync(localPath)) {
         try {
           const fileBuf = fs.readFileSync(localPath);
-          const form = new FormData();
-          form.append("file", new Blob([fileBuf]), filename);
-          form.append("payload_json", JSON.stringify({ content: "" }));
-          const whUrl = cdnWebhookUrl.includes("?") ? `${cdnWebhookUrl}&wait=true` : `${cdnWebhookUrl}?wait=true`;
-          const whRes = await fetch(whUrl, { method: "POST", body: form });
-          if (whRes.ok) {
-            const whData = await whRes.json();
-            if (whData.attachments && whData.attachments.length > 0) {
-              const cdnUrl = whData.attachments[0].url;
-              uploadCdnMap.set(filename, cdnUrl);
-              uploadCdnMap.set(img, cdnUrl);
-              saveUploadCdnMap();
-              return cdnUrl;
-            }
+          const cdnUrl = await uploadBufferToDiscordCdn(fileBuf, filename);
+          if (cdnUrl) {
+            uploadCdnMap.set(filename, cdnUrl);
+            uploadCdnMap.set(img, cdnUrl);
+            saveUploadCdnMap();
+            return cdnUrl;
           }
         } catch (err) {
           console.error("[RPC] Failed relative upload conversion:", err);
