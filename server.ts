@@ -12835,14 +12835,41 @@ ${list.substring(0, 1900)}`,
         }
       }
 
+      if (!discordCdnUrl) {
+        const botToken = process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN || cdnBotToken;
+        const targetChan = cdnChannelId || "1539662886186655758";
+        if (botToken && targetChan) {
+          try {
+            const form = new FormData();
+            form.append("file", new Blob([buffer]), file.originalname || "image.png");
+            form.append("payload_json", JSON.stringify({ content: "" }));
+            const botRes = await fetch(`https://discord.com/api/v10/channels/${targetChan}/messages`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bot ${botToken}`
+              },
+              body: form
+            });
+            if (botRes.ok) {
+              const botData = await botRes.json();
+              if (botData.attachments && botData.attachments.length > 0) {
+                discordCdnUrl = botData.attachments[0].url;
+                console.log("[RPC Upload] Uploaded directly via CDN Bot:", discordCdnUrl);
+              }
+            }
+          } catch (e) {
+            console.error("[RPC Upload] Bot upload error:", e);
+          }
+        }
+      }
+
       if (discordCdnUrl) {
         if (filename) uploadCdnMap.set(filename, discordCdnUrl);
         if (permanentUrl) uploadCdnMap.set(permanentUrl, discordCdnUrl);
         saveUploadCdnMap();
       }
 
-      // Return permanentUrl as primary `url` so frontend text input shows domain/uploads/...
-      const finalUrl = permanentUrl || discordCdnUrl;
+      const finalUrl = discordCdnUrl || permanentUrl;
       if (finalUrl) {
         return res.json({ url: finalUrl, discordUrl: discordCdnUrl || permanentUrl });
       }
