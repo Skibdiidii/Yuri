@@ -115,8 +115,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (isLoggedIn && loggedInToken) {
-      
+    if (isLoggedIn && loggedInToken && loggedInToken !== 'DISCORD_OAUTH_SESSION') {
       api.login(loggedInToken)
         .then((res) => {
           localStorage.setItem('token', res.session.token);
