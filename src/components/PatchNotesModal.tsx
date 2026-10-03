@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Zap, Sparkles, Shield, Rocket, Info, Eye, Layers, RefreshCw, Cpu, Globe } from 'lucide-react';
+import { X, Zap, Sparkles, Shield, Rocket, Info, Eye, Layers, RefreshCw, Cpu, Globe, Lock, Key, Bell } from 'lucide-react';
 
 interface PatchNotesModalProps {
   onClose: () => void;
@@ -8,6 +8,27 @@ interface PatchNotesModalProps {
 
 export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   const patchHistory = [
+    {
+      version: "v1.4.0-stable",
+      date: "October 2026",
+      updates: [
+        {
+          title: "Owner Security & Session Protection",
+          icon: <Shield className="w-5 h-5 text-amber-400" />,
+          description: "Full owner verification challenge workflow with WebAuthn Passkeys, Recovery Codes, and unauthorized session lockdown."
+        },
+        {
+          title: "Multi-Platform Web Push Alerts",
+          icon: <Bell className="w-5 h-5 text-purple-400" />,
+          description: "Instant native push alerts on iOS, Android, macOS, Linux, and Windows whenever an unknown device connects."
+        },
+        {
+          title: "Session Inventory & Emergency Revocation",
+          icon: <Lock className="w-5 h-5 text-red-400" />,
+          description: "One-click emergency revocation to terminate all other active sessions and tamper-evident audit logging."
+        }
+      ]
+    },
     {
       version: "v1.3.2-stable",
       date: "September 2026",
@@ -99,7 +120,7 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
         {
           title: "Continuous Audio Soundscape",
           icon: <Zap className="w-5 h-5 text-purple-400" />,
-          description: "Embedded seamless looping background audio (proderics, melodybloom - strangers [ultra slowed]) with tactile volume controls and equalizer HUD."
+          description: "Embedded seamless looping background audio with tactile volume controls and equalizer HUD."
         },
         {
           title: "Landing Viewport Optimization",
@@ -173,8 +194,8 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
               <Sparkles className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white uppercase tracking-tight">System Changelog</h2>
-              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Version v1.3.1-stable</p>
+              <h2 className="text-lg font-bold text-white uppercase tracking-tight">System Patch Notes</h2>
+              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Version v1.4.0-stable</p>
             </div>
           </div>
           <button 

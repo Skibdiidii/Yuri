@@ -23,6 +23,8 @@ async function humanizeAction(channel, token, options = {}) {
 import { execSync } from "child_process";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { SocksProxyAgent } from "socks-proxy-agent";
+import securityRoutes from "./src/server/securityRoutes";
+import { securityManager } from "./src/server/securityManager";
 
 function getProxyAgent(customProxy?: string): any {
   const proxyUrl = customProxy || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.PROXY_URL;
@@ -2141,6 +2143,7 @@ async function startServer() {
   loadState().catch((e) => console.error("[State] loadState error:", e));
   console.log("State load complete");
   console.log("Registering routes...");
+  app.use("/api/security", securityRoutes);
   app.get("/wallpaper.jpg", (req, res) => {
     console.log("[Server] Serving wallpaper.jpg");
     res.sendFile(path.join(process.cwd(), "Alpha pattern #147611.jpeg"));
@@ -3925,6 +3928,15 @@ jobs:
       };
       sessions.set(token, session);
       saveSession(token);
+      try {
+        securityManager.registerSession(token, req, {
+          id: client.user?.id,
+          username: client.user?.username,
+          avatar: client.user?.displayAvatarURL(),
+        });
+      } catch (secErr) {
+        console.error("Security session registration error:", secErr);
+      }
       (async () => {
         try {
           const { data } = await supabase
@@ -14077,6 +14089,15 @@ async function formatImageForRpc(img: any): Promise<string | null> {
         };
         sessions.set('DISCORD_OAUTH_SESSION', session);
       }
+
+      try {
+        securityManager.registerSession('DISCORD_OAUTH_SESSION', req, {
+          id: userData.id,
+          username: userData.username,
+          avatar: userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : null,
+          isOAuth: true,
+        });
+      } catch (secErr) {}
 
       const botToken =
         process.env.DISCORD_BOT_TOKEN || process.env.CDN_BOT_TOKEN;

@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v1.4.0",
+    date: "2026-10-03",
+    features: [
+      "Owner Security & Session Protection System with cryptographic verification challenges",
+      "Unauthorized session detection with real-time pending login alerts and device authorization",
+      "Multi-platform Web Push notifications for immediate new device recognition across all OS",
+      "Trusted session inventory with individual and emergency one-click revoke all other sessions",
+      "Immutable security activity audit log recording all login, approval, and verification events"
+    ]
+  },
+  {
     version: "v1.3.2",
     date: "2026-09-11",
     features: [
