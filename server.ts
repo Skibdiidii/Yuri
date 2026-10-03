@@ -12025,7 +12025,12 @@ ${list.substring(0, 1900)}`,
   });
   app.get("/api/settings", (req, res) => {
     const token = req.headers.authorization;
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
+    if (!token) {
+      return res.json({
+        menuMode: "text",
+        multiFeatureEnabled: false,
+      });
+    }
     res.json({
       menuMode: menuMode.get(token) || "text",
       multiFeatureEnabled: multiFeatureEnabled.get(token) || false,
@@ -12944,7 +12949,7 @@ ${list.substring(0, 1900)}`,
   });
   app.get("/api/rpc/settings", (req, res) => {
     const token = req.headers.authorization;
-    if (!token) return res.status(401).json({ error: "Auth required" });
+    if (!token) return res.json({ configs: [], selectedIndex: 0 });
     const configs = rpcSettings.get(token) || [];
     const selectedIndex = rpcSelectedIndex.get(token) || 0;
     res.json({ configs, selectedIndex });

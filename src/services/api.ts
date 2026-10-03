@@ -1,22 +1,23 @@
 import { BotSession } from '../types';
-import { safeJsonParse } from '../lib/safe-json';
 
 const API_BASE = '';
 
-const safeResJson = async (res: Response) => {
-  const text = await res.text();
+const safeResJson = async (res: Response, fallback: any = {}) => {
   try {
+    const text = await res.text();
+    if (!text || text.trim().startsWith('<')) {
+      return fallback;
+    }
     return JSON.parse(text);
-  } catch(e) {
-    console.error("Failed to parse JSON, returning original text", e);
-    return text;
+  } catch (e) {
+    return fallback;
   }
 };
 
 export const api = {
   healthCheck: async () => {
     const res = await fetch(`${API_BASE}/api/health`);
-    return safeResJson(res);
+    return safeResJson(res, { status: 'ok' });
   },
 
   login: async (token: string) => {
@@ -26,10 +27,10 @@ export const api = {
       body: JSON.stringify({ token }),
     });
     if (!res.ok) {
-      const errorData = await safeResJson(res).catch(() => ({}));
+      const errorData = await safeResJson(res, {}).catch(() => ({}));
       throw new Error(errorData.error || 'Login failed');
     }
-    return safeResJson(res);
+    return safeResJson(res, { success: true });
   },
 
   uploadTokens: async (file: File) => {
@@ -39,7 +40,7 @@ export const api = {
       method: 'POST',
       body: formData,
     });
-    return safeResJson(res);
+    return safeResJson(res, { success: false });
   },
 
   getTokens: async (): Promise<BotSession[]> => {
@@ -49,7 +50,7 @@ export const api = {
         'Authorization': token
       }
     });
-    return safeResJson(res);
+    return safeResJson(res, []);
   },
 
   clearTokens: async () => {
@@ -60,7 +61,7 @@ export const api = {
         'Authorization': token
       }
     });
-    return safeResJson(res);
+    return safeResJson(res, { success: true });
   },
 
   getSettings: async () => {
@@ -68,7 +69,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/settings`, {
       headers: { 'Authorization': token }
     });
-    return safeResJson(res);
+    return safeResJson(res, { menuMode: 'text', multiFeatureEnabled: false });
   },
 
   setMenuMode: async (mode: 'text' | 'image') => {
@@ -78,7 +79,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ mode }),
     });
-    return safeResJson(res);
+    return safeResJson(res, { success: true, mode });
   },
 
   setMultiFeature: async (enabled: boolean) => {
@@ -88,7 +89,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ enabled }),
     });
-    return safeResJson(res);
+    return safeResJson(res, { success: true, enabled });
   },
 
   setBackground: async (base64Image: string) => {
@@ -98,7 +99,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ image: base64Image }),
     });
-    return safeResJson(res);
+    return safeResJson(res, { success: true });
   },
 
   getBackground: async () => {
@@ -106,7 +107,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/settings/background`, {
       headers: { 'Authorization': token }
     });
-    return safeResJson(res);
+    return safeResJson(res, { image: '' });
   },
 
   joinVC: async (token: string, channelId: string) => {
@@ -115,7 +116,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ channelId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   setMute: async (token: string, mute: boolean) => {
@@ -124,7 +125,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ mute }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   setDeafen: async (token: string, deafen: boolean) => {
@@ -133,7 +134,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ deafen }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   setVideo: async (token: string, video: boolean) => {
@@ -142,7 +143,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ video }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   speakTTS: async (token: string, text: string, voice: string) => {
@@ -151,7 +152,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ text, voice }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   testTTS: async (text: string, voice: string) => {
@@ -160,14 +161,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, voice }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   getSoundboardSounds: async (token?: string) => {
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = token;
     const res = await fetch(`${API_BASE}/api/actions/vc/soundboard/sounds`, { headers });
-    return res.json();
+    return safeResJson(res, []);
   },
 
   playSoundboard: async (token: string, soundId: string) => {
@@ -176,7 +177,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ soundId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   toggleSoundboardSpam: async (token: string, enabled: boolean, soundId: string, interval: number) => {
@@ -185,7 +186,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ enabled, soundId, interval }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   startStream: async (token: string, channelId?: string) => {
@@ -194,7 +195,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ channelId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   stopStream: async (token: string) => {
@@ -202,7 +203,7 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   setStreamImage: async (token: string, image: string) => {
@@ -211,7 +212,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ image }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   setStreamSource: async (token: string, type: 'image' | 'video' | 'youtube', url: string, options?: any) => {
@@ -220,7 +221,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ type, url, options }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   uploadStreamMedia: async (token: string, file: File) => {
@@ -231,7 +232,7 @@ export const api = {
       headers: { 'Authorization': token },
       body: formData,
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   togglePersistentTyping: async (token: string, enabled: boolean) => {
@@ -240,21 +241,21 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ enabled }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   getPersistentTypingStatus: async (token: string) => {
     const res = await fetch(`${API_BASE}/api/actions/typing/status`, {
       headers: { 'Authorization': token },
     });
-    return res.json();
+    return safeResJson(res, { enabled: false });
   },
 
   getCosmetics: async (token: string) => {
     const res = await fetch(`${API_BASE}/api/actions/cosmetics`, {
       headers: { 'Authorization': token },
     });
-    return res.json();
+    return safeResJson(res, {});
   },
 
   updateCosmetics: async (token: string, data: any) => {
@@ -263,7 +264,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify(data),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   discordGet: async (token: string, url: string, mobile: boolean = false, proxy?: string) => {
@@ -275,20 +276,17 @@ export const api = {
     const res = await fetch(proxyUrl, { headers });
     const text = await res.text();
     if (text === "[object Blob]") {
-        console.error("Received [object Blob] response, returning null");
-        return null;
+      return null;
     }
     if (!res.ok) {
-        throw new Error(text || 'Request failed');
+      throw new Error(text || 'Request failed');
     }
     try {
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            return JSON.parse(text);
-        }
-    } catch (e) {
-        console.error("Failed to parse JSON response", e);
-    }
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return JSON.parse(text);
+      }
+    } catch (e) {}
     return text;
   },
 
@@ -308,20 +306,17 @@ export const api = {
     });
     const text = await res.text();
     if (text === "[object Blob]") {
-        console.error("Received [object Blob] response, returning null");
-        return null;
+      return null;
     }
     if (!res.ok) {
-        throw new Error(text || 'Request failed');
+      throw new Error(text || 'Request failed');
     }
     try {
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            return JSON.parse(text);
-        }
-    } catch (e) {
-        console.error("Failed to parse JSON response", e);
-    }
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return JSON.parse(text);
+      }
+    } catch (e) {}
     return text;
   },
 
@@ -332,7 +327,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ ownerId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   massDM: async (message: string) => {
@@ -342,7 +337,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ message }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   statusRotate: async (statusList: string[], interval: number = 3) => {
@@ -352,7 +347,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ statusList, interval }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   friendRequest: async (userId: string) => {
@@ -362,7 +357,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ userId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   spam: async (channelId: string, message: string, count: number) => {
@@ -372,7 +367,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ channelId, message, count }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   nuke: async (guildId: string) => {
@@ -382,7 +377,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ guildId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   massBan: async (guildId: string) => {
@@ -392,7 +387,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ guildId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   renameChannels: async (guildId: string, name: string) => {
@@ -402,7 +397,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ guildId, name }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   uploadRpcImage: async (file: File) => {
@@ -412,7 +407,7 @@ export const api = {
       method: 'POST',
       body: formData,
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   deleteRoles: async (guildId: string) => {
@@ -422,7 +417,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ guildId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   getDiscordCdnUrl: (url: string) => {
@@ -435,7 +430,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ userId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   untermUser: async (token: string, userId: string) => {
@@ -444,14 +439,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ userId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   getTermedUsers: async (token: string) => {
     const res = await fetch(`${API_BASE}/api/actions/revenge/termed`, {
       headers: { 'Authorization': token }
     });
-    return res.json();
+    return safeResJson(res, []);
   },
 
   scrapeTerm: async (token: string, userId: string) => {
@@ -460,7 +455,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ userId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   blockUser: async (token: string, userId: string) => {
@@ -469,7 +464,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ userId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   ghostPing: async (token: string, channelId: string, userId: string) => {
@@ -478,7 +473,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ channelId, userId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   leaveAll: async () => {
@@ -487,7 +482,7 @@ export const api = {
       method: 'POST',
       headers: { 'Authorization': token },
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   closeAllDMs: async () => {
@@ -496,7 +491,7 @@ export const api = {
       method: 'POST',
       headers: { 'Authorization': token },
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   toggleAntiNuke: async (guildId: string, enabled: boolean) => {
@@ -506,7 +501,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ guildId, enabled }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   getAntiNukeList: async () => {
@@ -514,7 +509,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/actions/antinuke/list`, {
       headers: { 'Authorization': token }
     });
-    return res.json();
+    return safeResJson(res, []);
   },
 
   globalMassJoin: async (inviteCode: string) => {
@@ -524,7 +519,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ inviteCode }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   adminGlobalStatus: async (status: string) => {
@@ -534,7 +529,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ status }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   adminGlobalJoinVC: async (channelId: string, guildId?: string) => {
@@ -544,7 +539,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ channelId, guildId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   adminGlobalMassBoost: async (guildId: string) => {
@@ -554,7 +549,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify({ guildId }),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
 
   getServerManagement: async (token: string) => {
@@ -562,7 +557,7 @@ export const api = {
       method: 'GET',
       headers: { 'Authorization': token },
     });
-    return res.json();
+    return safeResJson(res, {});
   },
 
   updateServerManagement: async (token: string, config: any) => {
@@ -571,14 +566,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json', 'Authorization': token },
       body: JSON.stringify(config),
     });
-    return res.json();
+    return safeResJson(res, { success: false });
   },
-  
+
   getRpcSettings: async () => {
     const token = (localStorage.getItem('token') || '').trim().replace(/^["']|["']$/g, '');
     const res = await fetch(`${API_BASE}/api/rpc/settings`, {
       headers: { 'Authorization': token },
     });
-    return res.json();
+    return safeResJson(res, { configs: [], selectedIndex: 0 });
   },
 };

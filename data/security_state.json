@@ -71,12 +71,13 @@
       "browser": "Chrome",
       "location": "Secure Cloud Gateway",
       "detectedAt": 1791003445087,
-      "lastActiveAt": 1791003451805,
-      "status": "TRUSTED",
-      "trusted": true,
+      "lastActiveAt": 1791003774916,
+      "status": "REVOKED",
+      "trusted": false,
       "approvalRequired": false,
       "approvedAt": 1791003445087,
-      "isOwner": true
+      "isOwner": true,
+      "revokedAt": 1791003828559
     }
   ],
   "accountConfigs": [
@@ -92,10 +93,50 @@
       "recoveryCode": "SEC-9BE127-F4D573-YURI",
       "recoveryHash": "da0d382fc79d3e1b067a34fd26edf6b077da58d9ebabc88e4d87d007c1b7e1f9",
       "blockedIps": [],
-      "createdAt": 1791003445086
+      "createdAt": 1791003445086,
+      "autoKickUntrustedDiscord": true
     }
   ],
   "auditLogs": [
+    {
+      "id": "LOG-1791003859900-e507",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1791003859900,
+      "eventType": "EMERGENCY_REVOKE_ALL",
+      "details": "Emergency revocation executed: 0 sessions of your account were immediately revoked and kicked",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791003859899-2045",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1791003859899,
+      "eventType": "VERIFICATION_ATTEMPT",
+      "details": "Successful owner verification using recovery_code",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791003828893-1af0",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1791003828894,
+      "eventType": "DISCORD_GLOBAL_LOGOUT",
+      "details": "Discord authentication token revoked and logged out via Discord auth API"
+    },
+    {
+      "id": "LOG-1791003828627-42e6",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1791003828627,
+      "eventType": "EMERGENCY_REVOKE_ALL",
+      "details": "Emergency revocation executed: 1 sessions of your account were immediately revoked and kicked",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791003828558-0424",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1791003828558,
+      "eventType": "VERIFICATION_ATTEMPT",
+      "details": "Successful owner verification using passkey",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
     {
       "id": "LOG-1791003445087-adc4",
       "accountKey": "user:1545521054930436167",
@@ -202,5 +243,5 @@
   ],
   "pushSubscriptions": [],
   "globalBlockedIps": [],
-  "savedAt": 1791003451805
+  "savedAt": 1791003907873
 }

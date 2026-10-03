@@ -305,7 +305,7 @@ Useless piece of shit`,
     }
   } catch (e) {}
 
-  const loggedInSession = tokens.find(t => t.token === loggedInToken);
+  const loggedInSession = Array.isArray(tokens) ? tokens.find(t => t.token === loggedInToken) : undefined;
   
   const ADMIN_ID = '1545521054930436167';
   const discordUser = (() => {
@@ -356,7 +356,7 @@ Useless piece of shit`,
       const importedTokens = altTokensText.split('\n')
           .map(t => t.trim().replace(/^["']|["']$/g, ''))
           .filter(t => t);
-      const mainToken = loggedInToken || (tokens.length > 0 ? tokens[0].token : null);
+      const mainToken = loggedInToken || (Array.isArray(tokens) && tokens.length > 0 ? tokens[0].token : null);
       
       if (!mainToken) {
           addLog('Import failed: No main token found. Please login or add a token first.');
@@ -387,7 +387,7 @@ Useless piece of shit`,
 
   const refreshData = async () => {
     const data = await api.getTokens();
-    setTokens(data);
+    setTokens(Array.isArray(data) ? data : []);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -571,7 +571,7 @@ Useless piece of shit`,
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setAdminSessions(data);
-        } else if (tokens.length > 0) {
+        } else if (Array.isArray(tokens) && tokens.length > 0) {
           setAdminSessions(tokens.map(t => ({
             username: t.username || 'System Daemon',
             userId: t.id || '1545389998315143229',
@@ -593,7 +593,7 @@ Useless piece of shit`,
           }]);
         }
       } else {
-        if (tokens.length > 0) {
+        if (Array.isArray(tokens) && tokens.length > 0) {
           setAdminSessions(tokens.map(t => ({
             username: t.username || 'System Daemon',
             userId: t.id || '1545389998315143229',
@@ -912,7 +912,7 @@ Useless piece of shit`,
                   Admin Panel
                 </button>
               )}
-              {tokens.length > 0 && (
+              {Array.isArray(tokens) && tokens.length > 0 && (
                 <span className="px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold tracking-wide flex items-center gap-2 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
                   {tokens.length} Active Sessions
