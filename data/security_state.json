@@ -93,7 +93,7 @@
       "browser": "Chrome",
       "location": "Secure Cloud Gateway",
       "detectedAt": 1791009421396,
-      "lastActiveAt": 1791009841142,
+      "lastActiveAt": 1791010531947,
       "status": "TRUSTED",
       "trusted": true,
       "approvalRequired": false,
@@ -284,5 +284,5 @@
   ],
   "pushSubscriptions": [],
   "globalBlockedIps": [],
-  "savedAt": 1791009841142
+  "savedAt": 1791010531947
 }

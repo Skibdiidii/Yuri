@@ -3645,43 +3645,44 @@ jobs:
       return rawText;
     }
 
-    // Try Mistral API (Mistral Small 4 119B MoE) first with user API key
-    try {
-      const messages = [
-        { 
-          role: "system", 
-          content: systemInstruction
-        },
-        ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
-        { role: "user", content: prompt }
-      ];
+    // Try Mistral API across multiple model identifiers with user API key
+    const modelsToTry = ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest", "open-mixtral-8x22b", "codestral-latest"];
+    let mistralSuccess = false;
+    let replyText = "";
 
-      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer mstrl_rzwN1kjkJksO7TgbKK6Oab86FQm0mroJ_3YOqKJ"
-        },
-        body: JSON.stringify({
-          model: "mistral-small-latest",
-          messages: messages
-        })
-      });
-      const data: any = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error?.message || data.message || "Mistral API Error");
-      }
+    for (const m of modelsToTry) {
+      try {
+        const messages = [
+          { role: "system", content: systemInstruction },
+          ...(history || []).map((msg: any) => ({ role: msg.role, content: msg.content })),
+          { role: "user", content: prompt }
+        ];
 
-      let reply = data.choices?.[0]?.message?.content;
-      if (!reply) throw new Error("Mistral returned an empty response.");
-      
-      reply = await runCodeFactorCorrection(reply);
-      syncPreviewFromReply(reply);
-      const processed = processReplyForClient(reply);
+        const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer mstrl_rzwN1kjkJksO7TgbKK6Oab86FQm0mroJ_3YOqKJ"
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: messages
+          })
+        });
+        const data: any = await response.json();
+        if (response.ok && data.choices?.[0]?.message?.content) {
+          replyText = data.choices[0].message.content;
+          mistralSuccess = true;
+          break;
+        }
+      } catch (e) {}
+    }
+
+    if (mistralSuccess && replyText) {
+      replyText = await runCodeFactorCorrection(replyText);
+      syncPreviewFromReply(replyText);
+      const processed = processReplyForClient(replyText);
       return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
-    } catch (mistralErr: any) {
-      console.warn("[MISTRAL AI] Primary Mistral generation error, falling back to Gemini:", mistralErr.message);
     }
 
     // Fallback to Gemini if configured
