@@ -26,7 +26,7 @@ interface DashboardProps {
 const API_BASE = '';
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser' | 'platforms' | 'security'>(() => {
+  const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser' | 'platforms'>(() => {
     const isDirect = localStorage.getItem('isAdminDirect') === 'true' || localStorage.getItem('is_admin_mode') === 'true';
     if (isDirect) {
       return 'admin';
@@ -705,13 +705,7 @@ Useless piece of shit`,
               icon={LineChart} 
               label="Dashboard" 
             />
-            <SidebarItem 
-              active={activeTab === 'security'} 
-              onClick={() => setActiveTab('security')} 
-              icon={ShieldAlert} 
-              label="Security / Login Alerts" 
-              badge={pendingSecurityCount > 0 ? pendingSecurityCount : undefined}
-            />
+
             <SidebarItem 
               active={activeTab === 'tokens'} 
               onClick={() => setActiveTab('tokens')} 
@@ -889,14 +883,13 @@ Useless piece of shit`,
             <h2 className="text-2xl font-semibold text-white/90 capitalize tracking-tight flex items-center gap-3">
               {activeTab === 'tokens' && 'Token Management'}
               {activeTab === 'metrics' && 'Dashboard'}
-              {activeTab === 'security' && 'Security / Login Alerts'}
               {activeTab === 'actions' && 'Actions'}
               {activeTab === 'rotator' && 'Status Rotator'}
               {activeTab === 'username_finder' && 'Username Finder'}
               {activeTab === 'raid' && 'Raid Operations'}
               {activeTab === 'rpc' && 'Rich Presence'}
               {activeTab === 'settings' && 'Settings'}
-              {!['tokens', 'actions', 'rotator', 'raid', 'rpc', 'settings', 'security'].includes(activeTab) && activeTab.replace('_', ' ')}
+              {!['tokens', 'actions', 'rotator', 'raid', 'rpc', 'settings'].includes(activeTab) && activeTab.replace('_', ' ')}
             </h2>
             <div className="flex items-center gap-4">
               {isAdmin && (
@@ -938,7 +931,7 @@ Useless piece of shit`,
               </div>
             )}
             {activeTab === 'metrics' && <MetricsDashboard />}
-            {activeTab === 'security' && <SecurityTab token={loggedInToken} addLog={addLog} />}
+
             {activeTab === 'username_finder' && <UsernameFinderTab token={loggedInToken} addLog={addLog} />}
             {activeTab === 'rotator' && <RotatorTab token={loggedInToken} addLog={addLog} />}
 

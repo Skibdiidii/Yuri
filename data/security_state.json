@@ -78,6 +78,27 @@
       "approvedAt": 1791003445087,
       "isOwner": true,
       "revokedAt": 1791003828559
+    },
+    {
+      "sessionId": "SEC-C6D1-749A",
+      "accountKey": "user:1545521054930436167",
+      "tokenHash": "103faad49397df687a22313fbc55e5f6eda836fcad27b75f7545fdd408ec6e99",
+      "userId": "1545521054930436167",
+      "username": "imans0571",
+      "avatar": "https://cdn.discordapp.com/avatars/1545521054930436167/2e0eceda60ab886489ba34bac1849100.webp",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+      "device": "Chrome · Android",
+      "os": "Android",
+      "browser": "Chrome",
+      "location": "Secure Cloud Gateway",
+      "detectedAt": 1791009421396,
+      "lastActiveAt": 1791009421653,
+      "status": "TRUSTED",
+      "trusted": true,
+      "approvalRequired": false,
+      "approvedAt": 1791009421396,
+      "isOwner": true
     }
   ],
   "accountConfigs": [
@@ -98,6 +119,26 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "LOG-1791009421397-596f",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1791009421397,
+      "eventType": "TRUSTED_SESSION_CHANGED",
+      "details": "Device Chrome · Android registered as primary trusted device",
+      "sessionId": "SEC-C6D1-749A",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791009421396-2ebe",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1791009421396,
+      "eventType": "NEW_SESSION",
+      "details": "Primary device initialized on Chrome · Android (Secure Cloud Gateway)",
+      "sessionId": "SEC-C6D1-749A",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
     {
       "id": "LOG-1791003859900-e507",
       "accountKey": "user:1545521054930436167",
@@ -243,5 +284,5 @@
   ],
   "pushSubscriptions": [],
   "globalBlockedIps": [],
-  "savedAt": 1791009106610
+  "savedAt": 1791009421653
 }
