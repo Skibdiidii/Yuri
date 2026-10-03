@@ -3,13 +3,16 @@ import { FitAddon } from 'xterm-addon-fit';
 
 const DEFAULT_DIMENSIONS = {
   css: {
-    canvas: { width: 800, height: 400 },
-    cell: { width: 9, height: 18 }
+    cell: { width: 9, height: 18 },
+    canvas: { width: 800, height: 400 }
+  },
+  scaled: {
+    cell: { width: 9, height: 18 },
+    canvas: { width: 800, height: 400 }
   },
   device: {
-    canvas: { width: 800, height: 400 },
     cell: { width: 9, height: 18 },
-    char: { width: 9, height: 18, left: 0, top: 0 }
+    canvas: { width: 800, height: 400 }
   }
 };
 
@@ -24,7 +27,7 @@ if (typeof window !== 'undefined') {
         Object.defineProperty(proto, 'dimensions', {
           get() {
             try {
-              if (this._renderer && this._renderer.value && this._renderer.value.dimensions) {
+              if (this && this._renderer && this._renderer.value && this._renderer.value.dimensions) {
                 return this._renderer.value.dimensions;
               }
             } catch (_) {}
@@ -37,9 +40,7 @@ if (typeof window !== 'undefined') {
       }
     }
     dummy.dispose();
-  } catch (err) {
-    console.warn('[patchXterm] RenderService patch warning:', err);
-  }
+  } catch (err) {}
 
   if (FitAddon && FitAddon.prototype) {
     FitAddon.prototype.proposeDimensions = function (this: any) {
@@ -88,47 +89,13 @@ if (typeof window !== 'undefined') {
           cellHeight = fontSize * 1.2;
         }
 
-        const cols = Math.max(10, Math.floor(availableWidth / cellWidth));
-        const rows = Math.max(4, Math.floor(availableHeight / cellHeight));
-
-        if (isNaN(cols) || isNaN(rows) || cols <= 0 || rows <= 0) {
-          return { cols: 80, rows: 24 };
-        }
+        const cols = Math.max(2, Math.floor(availableWidth / cellWidth));
+        const rows = Math.max(1, Math.floor(availableHeight / cellHeight));
 
         return { cols, rows };
-      } catch (e) {
+      } catch (err) {
         return { cols: 80, rows: 24 };
       }
-    };
-
-    FitAddon.prototype.fit = function (this: any) {
-      try {
-        const t = this._terminal;
-        if (!t || t._isDisposed || !t.element || !t.element.parentElement) return;
-        const proposed = this.proposeDimensions();
-        if (!proposed || !proposed.cols || !proposed.rows || isNaN(proposed.cols) || isNaN(proposed.rows)) return;
-        if (t.rows !== proposed.rows || t.cols !== proposed.cols) {
-          const core = t._core;
-          if (core?._renderService && typeof core._renderService.clear === 'function') {
-            try {
-              if (typeof core._renderService.hasRenderer === 'function' && core._renderService.hasRenderer()) {
-                core._renderService.clear();
-              }
-            } catch (_) {}
-          }
-          t.resize(proposed.cols, proposed.rows);
-        }
-      } catch (e) {}
-    };
-  }
-
-  if (Terminal && Terminal.prototype) {
-    const origDispose = Terminal.prototype.dispose;
-    Terminal.prototype.dispose = function (this: any) {
-      try {
-        this._isDisposed = true;
-      } catch (_) {}
-      return origDispose.call(this);
     };
   }
 }
