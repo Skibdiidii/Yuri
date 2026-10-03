@@ -23,7 +23,7 @@ async function humanizeAction(channel, token, options = {}) {
 import { execSync } from "child_process";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { SocksProxyAgent } from "socks-proxy-agent";
-import securityRoutes from "./src/server/securityRoutes";
+import securityRoutes, { securityEnforcementMiddleware } from "./src/server/securityRoutes";
 import { securityManager } from "./src/server/securityManager";
 
 function getProxyAgent(customProxy?: string): any {
@@ -2141,8 +2141,19 @@ async function startServer() {
     next();
   });
   loadState().catch((e) => console.error("[State] loadState error:", e));
-  console.log("State load complete");
-  console.log("Registering routes...");
+  securityManager.setTerminationHandler(async (tokenHash, sessionId) => {
+    for (const [tok, client] of activeClients.entries()) {
+      if (securityManager.hashToken(tok) === tokenHash) {
+        try {
+          client.destroy();
+        } catch (e) {}
+        activeClients.delete(tok);
+        sessions.delete(tok);
+        hostingSessions.delete(tok);
+      }
+    }
+  });
+  app.use(securityEnforcementMiddleware);
   app.use("/api/security", securityRoutes);
   app.get("/wallpaper.jpg", (req, res) => {
     console.log("[Server] Serving wallpaper.jpg");

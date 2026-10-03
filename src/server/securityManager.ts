@@ -37,7 +37,9 @@ export interface SecurityAuditLog {
     | 'FAILED_VERIFICATION'
     | 'TRUSTED_SESSION_CHANGED'
     | 'EMERGENCY_REVOKE_ALL'
-    | 'NOTIFICATION_SENT';
+    | 'NOTIFICATION_SENT'
+    | 'IP_BLOCKED'
+    | 'IP_UNBLOCKED';
   sessionId?: string;
   device?: string;
   ip?: string;
@@ -66,6 +68,8 @@ export interface PushSubscriptionRecord {
   userAgent: string;
 }
 
+type ClientTerminationCallback = (tokenHash: string, sessionId: string) => Promise<void> | void;
+
 class SecurityManager {
   private dataDir: string;
   private stateFilePath: string;
@@ -73,15 +77,17 @@ class SecurityManager {
   private auditLogs: SecurityAuditLog[] = [];
   private challenges: Map<string, SecurityChallenge> = new Map();
   private pushSubscriptions: Map<string, PushSubscriptionRecord> = new Map();
+  private blockedIps: Set<string> = new Set();
   private sseClients: Set<Response> = new Set();
   private rateLimits: Map<string, { attempts: number; lockedUntil: number }> = new Map();
+  private terminationHandler: ClientTerminationCallback | null = null;
+
+  public readonly OWNER_ID = '1545521054930436167';
 
   private ownerRecoveryHash: string = crypto
     .createHash('sha256')
     .update('SEC-OWNER-7F89-K29X-YURI')
     .digest('hex');
-
-  private ownerPasskeyStore: Map<string, { credentialId: string; publicKey: string; signCount: number }> = new Map();
 
   constructor() {
     this.dataDir = path.join(process.cwd(), 'data');
@@ -89,6 +95,10 @@ class SecurityManager {
     this.initStorage();
     this.loadState();
     this.cleanupLoop();
+  }
+
+  public setTerminationHandler(handler: ClientTerminationCallback) {
+    this.terminationHandler = handler;
   }
 
   private initStorage() {
@@ -117,6 +127,9 @@ class SecurityManager {
             this.pushSubscriptions.set(sub.id, sub);
           }
         }
+        if (Array.isArray(data.blockedIps)) {
+          this.blockedIps = new Set(data.blockedIps);
+        }
       }
     } catch (e) {}
   }
@@ -127,6 +140,7 @@ class SecurityManager {
         sessions: Array.from(this.sessions.values()),
         auditLogs: this.auditLogs.slice(0, 500),
         pushSubscriptions: Array.from(this.pushSubscriptions.values()),
+        blockedIps: Array.from(this.blockedIps),
         savedAt: Date.now(),
       };
       fs.writeFileSync(this.stateFilePath, JSON.stringify(data, null, 2), 'utf-8');
@@ -147,6 +161,22 @@ class SecurityManager {
         }
       }
     }, 60000);
+  }
+
+  public isIpBlocked(ip: string): boolean {
+    return this.blockedIps.has(ip);
+  }
+
+  public blockIp(ip: string, reason: string = 'Blocked by Owner') {
+    this.blockedIps.add(ip);
+    this.addAuditLog('IP_BLOCKED', `IP address ${ip} was added to the blocklist: ${reason}`, undefined, undefined, ip);
+    this.saveState();
+  }
+
+  public unblockIp(ip: string) {
+    this.blockedIps.delete(ip);
+    this.addAuditLog('IP_UNBLOCKED', `IP address ${ip} was removed from the blocklist`, undefined, undefined, ip);
+    this.saveState();
   }
 
   public parseUserAgent(ua: string): { os: string; browser: string; device: string } {
@@ -230,6 +260,8 @@ class SecurityManager {
     const { os, browser, device } = this.parseUserAgent(userAgent);
     const location = this.resolveLocation(req);
 
+    const isOwner = userData?.id === this.OWNER_ID;
+
     for (const s of this.sessions.values()) {
       if (s.tokenHash === tokenHash && s.status === 'TRUSTED') {
         s.lastActiveAt = Date.now();
@@ -237,6 +269,7 @@ class SecurityManager {
         s.location = location;
         if (userData?.username) s.username = userData.username;
         if (userData?.avatar !== undefined) s.avatar = userData.avatar;
+        if (isOwner) s.isOwner = true;
         this.saveState();
         return { session: s, isNew: false };
       }
@@ -246,13 +279,13 @@ class SecurityManager {
         s.userAgent = userAgent;
         s.device = device;
         s.location = location;
+        if (isOwner) s.isOwner = true;
         this.saveState();
         return { session: s, isNew: false };
       }
     }
 
     const sessionId = this.generateSessionId();
-    const isOwner = userData?.id === '1545521054930436167';
 
     const newSession: SecuritySession = {
       sessionId,
@@ -421,7 +454,7 @@ class SecurityManager {
     return true;
   }
 
-  public rejectSession(sessionId: string, reason: string = 'Rejected by Owner'): boolean {
+  public async rejectSession(sessionId: string, reason: string = 'Rejected by Owner'): Promise<boolean> {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
@@ -438,12 +471,22 @@ class SecurityManager {
       session.ip
     );
 
-    this.broadcastEvent({ type: 'SESSION_REJECTED', session });
+    if (this.terminationHandler) {
+      try {
+        await this.terminationHandler(session.tokenHash, session.sessionId);
+      } catch (err) {}
+    }
+
+    this.broadcastEvent({
+      type: 'SESSION_REJECTED',
+      session,
+      forceKick: { sessionId: session.sessionId, tokenHash: session.tokenHash, reason },
+    });
     this.saveState();
     return true;
   }
 
-  public revokeSession(sessionId: string, reason: string = 'Revoked by Owner'): boolean {
+  public async revokeSession(sessionId: string, reason: string = 'Revoked by Owner'): Promise<boolean> {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
@@ -466,43 +509,100 @@ class SecurityManager {
       session.ip
     );
 
-    this.broadcastEvent({ type: 'SESSION_REVOKED', session });
+    if (this.terminationHandler) {
+      try {
+        await this.terminationHandler(session.tokenHash, session.sessionId);
+      } catch (err) {}
+    }
+
+    this.broadcastEvent({
+      type: 'SESSION_REVOKED',
+      session,
+      forceKick: { sessionId: session.sessionId, tokenHash: session.tokenHash, reason },
+    });
     this.saveState();
     return true;
   }
 
-  public emergencyRevokeAll(exceptSessionId?: string, ip?: string): number {
+  public async emergencyRevokeAll(exceptSessionId?: string, ip?: string): Promise<number> {
     let count = 0;
+    const revokedList: SecuritySession[] = [];
+
     for (const [id, session] of this.sessions.entries()) {
-      if (id !== exceptSessionId && session.status !== 'REVOKED') {
-        session.status = 'REVOKED';
-        session.trusted = false;
-        session.revokedAt = Date.now();
-        count++;
+      if (id !== exceptSessionId) {
+        if (session.userId === this.OWNER_ID && session.status === 'TRUSTED') {
+          continue;
+        }
+
+        if (session.status !== 'REVOKED') {
+          session.status = 'REVOKED';
+          session.trusted = false;
+          session.revokedAt = Date.now();
+          revokedList.push(session);
+          count++;
+
+          if (this.terminationHandler) {
+            try {
+              await this.terminationHandler(session.tokenHash, session.sessionId);
+            } catch (err) {}
+          }
+        }
       }
     }
 
     this.addAuditLog(
       'EMERGENCY_REVOKE_ALL',
-      `Emergency revocation triggered: ${count} sessions revoked immediately`,
+      `Emergency revocation executed: ${count} sessions immediately terminated and kicked`,
       exceptSessionId,
       undefined,
       ip
     );
 
-    this.broadcastEvent({ type: 'EMERGENCY_REVOKE_ALL', count, exceptSessionId });
+    this.broadcastEvent({
+      type: 'EMERGENCY_REVOKE_ALL',
+      count,
+      exceptSessionId,
+      revokedSessionIds: revokedList.map((s) => s.sessionId),
+      revokedTokenHashes: revokedList.map((s) => s.tokenHash),
+    });
     this.saveState();
     return count;
   }
 
-  public isTokenTrusted(token: string): boolean {
+  public isTokenAllowed(token: string, req?: Request): { allowed: boolean; status: string; reason?: string } {
+    if (!token) {
+      return { allowed: false, status: 'MISSING_TOKEN', reason: 'Authentication token required.' };
+    }
+
     const tokenHash = this.hashToken(token);
+
     for (const s of this.sessions.values()) {
       if (s.tokenHash === tokenHash) {
-        return s.status === 'TRUSTED' && s.trusted;
+        if (s.userId === this.OWNER_ID) {
+          return { allowed: true, status: 'TRUSTED' };
+        }
+        if (s.status === 'TRUSTED' && s.trusted) {
+          return { allowed: true, status: 'TRUSTED' };
+        }
+        if (s.status === 'REVOKED') {
+          return { allowed: false, status: 'REVOKED', reason: 'This session has been revoked by the system owner.' };
+        }
+        if (s.status === 'REJECTED') {
+          return { allowed: false, status: 'REJECTED', reason: 'This login was rejected by the system owner.' };
+        }
+        return { allowed: false, status: 'PENDING', reason: 'This session is pending owner approval in the Security / Login Alerts dashboard.' };
       }
     }
-    return false;
+
+    if (req) {
+      const registered = this.registerSession(token, req);
+      if (registered.session.userId === this.OWNER_ID) {
+        return { allowed: true, status: 'TRUSTED' };
+      }
+      return { allowed: false, status: 'PENDING', reason: 'New session detected. Awaiting owner approval in Security / Login Alerts.' };
+    }
+
+    return { allowed: false, status: 'PENDING', reason: 'Session is pending authorization.' };
   }
 
   public getSessionByToken(token: string): SecuritySession | undefined {
@@ -535,9 +635,11 @@ class SecurityManager {
       pendingSessions,
       trustedSessions,
       revokedSessions,
+      blockedIps: Array.from(this.blockedIps),
       totalPending: pendingSessions.length,
       totalTrusted: trustedSessions.length,
       totalRevoked: revokedSessions.length,
+      totalBlockedIps: this.blockedIps.size,
       auditLogs: this.auditLogs.slice(0, 100),
       pushSubscribed: this.pushSubscriptions.size > 0,
       pushSubscriptionsCount: this.pushSubscriptions.size,

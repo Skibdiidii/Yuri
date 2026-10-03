@@ -80,6 +80,8 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
   const [pendingSessions, setPendingSessions] = useState<SecuritySession[]>([]);
   const [trustedSessions, setTrustedSessions] = useState<SecuritySession[]>([]);
   const [revokedSessions, setRevokedSessions] = useState<SecuritySession[]>([]);
+  const [blockedIps, setBlockedIps] = useState<string[]>([]);
+  const [newBlockIp, setNewBlockIp] = useState('');
   const [auditLogs, setAuditLogs] = useState<SecurityAuditLog[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
@@ -129,6 +131,7 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
         setPendingSessions(data.pendingSessions || []);
         setTrustedSessions(data.trustedSessions || []);
         setRevokedSessions(data.revokedSessions || []);
+        setBlockedIps(data.blockedIps || []);
         setAuditLogs(data.auditLogs || []);
         if (data.currentSessionId) {
           setCurrentSessionId(data.currentSessionId);
@@ -168,13 +171,23 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
                 };
               } catch (err) {}
             }
-          } else if (
-            payload.type === 'SESSION_APPROVED' ||
-            payload.type === 'SESSION_REJECTED' ||
-            payload.type === 'SESSION_REVOKED' ||
-            payload.type === 'EMERGENCY_REVOKE_ALL' ||
-            payload.type === 'AUDIT_LOG'
-          ) {
+          } else if (payload.type === 'SESSION_REVOKED' || payload.type === 'SESSION_REJECTED') {
+            fetchSecurityStatus();
+            if (payload.forceKick && (payload.forceKick.sessionId === currentSessionId)) {
+              alert('Security Alert: Your session has been revoked by the system owner.');
+              localStorage.removeItem('token');
+              localStorage.removeItem('loggedInToken');
+              window.location.reload();
+            }
+          } else if (payload.type === 'EMERGENCY_REVOKE_ALL') {
+            fetchSecurityStatus();
+            if (payload.exceptSessionId && currentSessionId && payload.exceptSessionId !== currentSessionId) {
+              alert('Emergency Lockdown: All external sessions have been revoked by the owner.');
+              localStorage.removeItem('token');
+              localStorage.removeItem('loggedInToken');
+              window.location.reload();
+            }
+          } else if (payload.type === 'SESSION_APPROVED' || payload.type === 'AUDIT_LOG') {
             fetchSecurityStatus();
           }
         } catch (err) {}
@@ -342,7 +355,7 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
     } catch (e) {}
   };
 
-  const handleDirectReject = async (sessionId: string) => {
+  const handleDirectReject = async (sessionId: string, blockIp: boolean = true) => {
     try {
       const res = await fetch('/api/security/reject', {
         method: 'POST',
@@ -350,7 +363,7 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ sessionId, reason: 'Rejected from Security Dashboard' }),
+        body: JSON.stringify({ sessionId, reason: 'Rejected from Security Dashboard', blockIp }),
       });
       if (res.ok) {
         fetchSecurityStatus();
@@ -358,7 +371,7 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
     } catch (e) {}
   };
 
-  const handleDirectRevoke = async (sessionId: string) => {
+  const handleDirectRevoke = async (sessionId: string, blockIp: boolean = false) => {
     try {
       const res = await fetch('/api/security/revoke', {
         method: 'POST',
@@ -366,7 +379,35 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ sessionId, reason: 'Manually revoked by Owner' }),
+        body: JSON.stringify({ sessionId, reason: 'Manually revoked by Owner', blockIp }),
+      });
+      if (res.ok) {
+        fetchSecurityStatus();
+      }
+    } catch (e) {}
+  };
+
+  const handleBlockIp = async (ipToBlock: string) => {
+    if (!ipToBlock.trim()) return;
+    try {
+      const res = await fetch('/api/security/block-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ip: ipToBlock.trim(), reason: 'Manually blocked from Security Dashboard' }),
+      });
+      if (res.ok) {
+        setNewBlockIp('');
+        fetchSecurityStatus();
+      }
+    } catch (e) {}
+  };
+
+  const handleUnblockIp = async (ipToUnblock: string) => {
+    try {
+      const res = await fetch('/api/security/unblock-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ip: ipToUnblock }),
       });
       if (res.ok) {
         fetchSecurityStatus();
@@ -815,45 +856,108 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
       )}
 
       {activeSection === 'revoked' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Blocked & Revoked Sessions</h3>
-              <p className="text-xs text-zinc-400">History of devices that have been denied or revoked access.</p>
+        <div className="space-y-6">
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-red-400" />
+                  IP & Network Blocklist
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Directly reject all connections and requests from specific IP addresses or hostile networks.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. 192.168.1.100 or IP"
+                  value={newBlockIp}
+                  onChange={(e) => setNewBlockIp(e.target.value)}
+                  className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500/50 font-mono w-48"
+                />
+                <button
+                  onClick={() => handleBlockIp(newBlockIp)}
+                  className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Block IP
+                </button>
+              </div>
             </div>
-            <span className="text-xs font-mono text-zinc-500">{revokedSessions.length} records</span>
+
+            {blockedIps.length === 0 ? (
+              <div className="p-4 text-center text-xs text-zinc-500 bg-black/20 rounded-xl border border-white/5">
+                No IP addresses are currently blocked.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {blockedIps.map((ip) => (
+                  <div
+                    key={ip}
+                    className="flex items-center justify-between p-2.5 bg-black/40 border border-red-500/20 rounded-xl text-xs"
+                  >
+                    <span className="font-mono text-red-300 font-bold">{ip}</span>
+                    <button
+                      onClick={() => handleUnblockIp(ip)}
+                      className="text-[10px] text-zinc-400 hover:text-white px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      Unblock
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {revokedSessions.length === 0 ? (
-            <div className="p-8 text-center bg-black/20 border border-white/5 rounded-2xl">
-              <p className="text-xs text-zinc-500">No revoked sessions recorded.</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Blocked & Revoked Sessions</h3>
+                <p className="text-xs text-zinc-400">History of devices that have been denied or revoked access.</p>
+              </div>
+              <span className="text-xs font-mono text-zinc-500">{revokedSessions.length} records</span>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {revokedSessions.map((session) => (
-                <div
-                  key={session.sessionId}
-                  className="bg-black/25 border border-white/5 rounded-xl p-3.5 flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-zinc-300">{session.device}</span>
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-red-500/10 text-red-400 border border-red-500/20 uppercase">
-                          {session.status}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
-                        {session.location} • Revoked on {session.revokedAt ? formatDetailedDate(session.revokedAt) : 'N/A'}
+
+            {revokedSessions.length === 0 ? (
+              <div className="p-8 text-center bg-black/20 border border-white/5 rounded-2xl">
+                <p className="text-xs text-zinc-500">No revoked sessions recorded.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {revokedSessions.map((session) => (
+                  <div
+                    key={session.sessionId}
+                    className="bg-black/25 border border-white/5 rounded-xl p-3.5 flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-zinc-300">{session.device}</span>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-red-500/10 text-red-400 border border-red-500/20 uppercase">
+                            {session.status}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                          {session.location} {session.ip ? `(IP: ${session.ip})` : ''} • Revoked on {session.revokedAt ? formatDetailedDate(session.revokedAt) : 'N/A'}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleBlockIp(session.ip)}
+                        className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                      >
+                        Block IP
+                      </button>
+                      <span className="text-[10px] font-mono text-zinc-600">{session.sessionId}</span>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-600">{session.sessionId}</span>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

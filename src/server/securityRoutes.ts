@@ -1,8 +1,46 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { securityManager } from './securityManager';
 import crypto from 'crypto';
 
 const router = Router();
+
+export function securityEnforcementMiddleware(req: Request, res: Response, next: NextFunction) {
+  const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
+  if (securityManager.isIpBlocked(ip)) {
+    return res.status(403).json({
+      error: 'IP_BLOCKED',
+      message: 'Access from this IP address or network has been blocked by the owner.',
+    });
+  }
+
+  const p = req.path;
+  if (
+    p.startsWith('/api/security') ||
+    p.startsWith('/api/auth/login') ||
+    p.startsWith('/api/auth/discord') ||
+    p.startsWith('/api/health') ||
+    p === '/catalystcord.lua' ||
+    p === '/raw/catalystcord.lua'
+  ) {
+    return next();
+  }
+
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (token && token !== 'guest' && token !== 'undefined') {
+    const check = securityManager.isTokenAllowed(token, req);
+    if (!check.allowed) {
+      return res.status(403).json({
+        error: check.status,
+        message: check.reason || 'This device session is not authorized by the owner.',
+        status: check.status,
+      });
+    }
+  }
+
+  next();
+}
 
 router.get('/status', (req: Request, res: Response) => {
   const authHeader = req.headers['authorization'] || '';
@@ -46,7 +84,7 @@ router.get('/check-session', (req: Request, res: Response) => {
     return res.json({
       success: true,
       session: registered.session,
-      isTrusted: registered.session.trusted,
+      isTrusted: registered.session.trusted || registered.session.userId === securityManager.OWNER_ID,
       isPending: registered.session.status === 'PENDING',
     });
   }
@@ -54,7 +92,7 @@ router.get('/check-session', (req: Request, res: Response) => {
   return res.json({
     success: true,
     session,
-    isTrusted: session.status === 'TRUSTED',
+    isTrusted: (session.status === 'TRUSTED' && session.trusted) || session.userId === securityManager.OWNER_ID,
     isPending: session.status === 'PENDING',
     isRevoked: session.status === 'REVOKED' || session.status === 'REJECTED',
   });
@@ -76,7 +114,7 @@ router.post('/challenge/create', (req: Request, res: Response) => {
   });
 });
 
-router.post('/challenge/verify', (req: Request, res: Response) => {
+router.post('/challenge/verify', async (req: Request, res: Response) => {
   const { challengeId, method, authPayload } = req.body;
   const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
 
@@ -122,13 +160,13 @@ router.post('/challenge/verify', (req: Request, res: Response) => {
     securityManager.approveSession(challenge.targetSessionId, `Owner Verification (${method})`);
     actionResult.approvedSessionId = challenge.targetSessionId;
   } else if (challenge.action === 'REJECT' && challenge.targetSessionId) {
-    securityManager.rejectSession(challenge.targetSessionId, `Rejected via Owner Verification (${method})`);
+    await securityManager.rejectSession(challenge.targetSessionId, `Rejected via Owner Verification (${method})`);
     actionResult.rejectedSessionId = challenge.targetSessionId;
   } else if (challenge.action === 'REVOKE_SESSION' && challenge.targetSessionId) {
-    securityManager.revokeSession(challenge.targetSessionId, `Revoked via Owner Verification (${method})`);
+    await securityManager.revokeSession(challenge.targetSessionId, `Revoked via Owner Verification (${method})`);
     actionResult.revokedSessionId = challenge.targetSessionId;
   } else if (challenge.action === 'REVOKE_ALL') {
-    const count = securityManager.emergencyRevokeAll(challenge.targetSessionId, ip);
+    const count = await securityManager.emergencyRevokeAll(challenge.targetSessionId, ip);
     actionResult.revokedCount = count;
   }
 
@@ -153,39 +191,75 @@ router.post('/approve', (req: Request, res: Response) => {
   res.json({ success: true, message: `Session ${sessionId} approved and trusted.` });
 });
 
-router.post('/reject', (req: Request, res: Response) => {
-  const { sessionId, reason } = req.body;
+router.post('/reject', async (req: Request, res: Response) => {
+  const { sessionId, reason, blockIp } = req.body;
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
-  const ok = securityManager.rejectSession(sessionId, reason || 'Rejected by Owner');
+
+  const ok = await securityManager.rejectSession(sessionId, reason || 'Rejected by Owner');
   if (!ok) {
     return res.status(404).json({ error: 'Session not found' });
   }
-  res.json({ success: true, message: `Session ${sessionId} rejected.` });
+
+  if (blockIp) {
+    const session = securityManager.getStatus().revokedSessions.find((s) => s.sessionId === sessionId);
+    if (session && session.ip && session.ip !== '127.0.0.1') {
+      securityManager.blockIp(session.ip, `Blocked during rejection of ${sessionId}`);
+    }
+  }
+
+  res.json({ success: true, message: `Session ${sessionId} rejected and disconnected.` });
 });
 
-router.post('/revoke', (req: Request, res: Response) => {
-  const { sessionId, reason } = req.body;
+router.post('/revoke', async (req: Request, res: Response) => {
+  const { sessionId, reason, blockIp } = req.body;
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
-  const ok = securityManager.revokeSession(sessionId, reason || 'Revoked by Owner');
+
+  const ok = await securityManager.revokeSession(sessionId, reason || 'Revoked by Owner');
   if (!ok) {
     return res.status(404).json({ error: 'Session not found' });
   }
-  res.json({ success: true, message: `Session ${sessionId} revoked.` });
+
+  if (blockIp) {
+    const session = securityManager.getStatus().revokedSessions.find((s) => s.sessionId === sessionId);
+    if (session && session.ip && session.ip !== '127.0.0.1') {
+      securityManager.blockIp(session.ip, `Blocked during revocation of ${sessionId}`);
+    }
+  }
+
+  res.json({ success: true, message: `Session ${sessionId} revoked and disconnected.` });
 });
 
-router.post('/emergency-revoke-all', (req: Request, res: Response) => {
+router.post('/emergency-revoke-all', async (req: Request, res: Response) => {
   const { currentSessionId } = req.body;
   const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
-  const count = securityManager.emergencyRevokeAll(currentSessionId, ip);
+  const count = await securityManager.emergencyRevokeAll(currentSessionId, ip);
   res.json({
     success: true,
     revokedCount: count,
-    message: `Emergency action completed: ${count} sessions were immediately revoked.`,
+    message: `Emergency action completed: ${count} sessions were immediately terminated, kicked, and revoked.`,
   });
+});
+
+router.post('/block-ip', (req: Request, res: Response) => {
+  const { ip, reason } = req.body;
+  if (!ip) {
+    return res.status(400).json({ error: 'IP address is required' });
+  }
+  securityManager.blockIp(ip, reason || 'Manually blocked from Security Dashboard');
+  res.json({ success: true, message: `IP ${ip} blocked.` });
+});
+
+router.post('/unblock-ip', (req: Request, res: Response) => {
+  const { ip } = req.body;
+  if (!ip) {
+    return res.status(400).json({ error: 'IP address is required' });
+  }
+  securityManager.unblockIp(ip);
+  res.json({ success: true, message: `IP ${ip} unblocked.` });
 });
 
 router.post('/push-subscribe', (req: Request, res: Response) => {

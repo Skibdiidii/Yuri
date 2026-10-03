@@ -1,0 +1,34 @@
+{
+  "sessions": [],
+  "auditLogs": [
+    {
+      "id": "LOG-1791002914381-cc4d",
+      "timestamp": 1791002914381,
+      "eventType": "NOTIFICATION_SENT",
+      "details": "Browser notification dispatched for session SEC-TEST-F0EF",
+      "sessionId": "SEC-TEST-F0EF",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791002913558-3904",
+      "timestamp": 1791002913558,
+      "eventType": "NOTIFICATION_SENT",
+      "details": "Browser notification dispatched for session SEC-TEST-887E",
+      "sessionId": "SEC-TEST-887E",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791002913041-9703",
+      "timestamp": 1791002913041,
+      "eventType": "NOTIFICATION_SENT",
+      "details": "Browser notification dispatched for session SEC-TEST-525F",
+      "sessionId": "SEC-TEST-525F",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    }
+  ],
+  "pushSubscriptions": [],
+  "savedAt": 1791002914381
+}
