@@ -49,12 +49,12 @@ export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [showPatchNotes, setShowPatchNotes] = useState(() => {
     const lastSeen = localStorage.getItem('last_seen_patch');
-    const currentVersion = '1.4.0';
+    const currentVersion = '1.4.1';
     return lastSeen !== currentVersion;
   });
 
   const handleClosePatchNotes = () => {
-    localStorage.setItem('last_seen_patch', '1.4.0');
+    localStorage.setItem('last_seen_patch', '1.4.1');
     setShowPatchNotes(false);
   };
 

@@ -26,6 +26,16 @@ export interface SecuritySession {
   isOwner?: boolean;
 }
 
+export interface DiscordRemoteSession {
+  id_hash: string;
+  os: string;
+  platform?: string;
+  client_version?: string;
+  location?: string;
+  approx_last_used_time?: string;
+  current?: boolean;
+}
+
 export interface SecurityAuditLog {
   id: string;
   accountKey: string;
@@ -35,6 +45,8 @@ export interface SecurityAuditLog {
     | 'OWNER_APPROVED'
     | 'SESSION_REJECTED'
     | 'SESSION_REVOKED'
+    | 'DISCORD_REMOTE_KICK'
+    | 'DISCORD_GLOBAL_LOGOUT'
     | 'VERIFICATION_ATTEMPT'
     | 'FAILED_VERIFICATION'
     | 'TRUSTED_SESSION_CHANGED'
@@ -55,7 +67,7 @@ export interface SecurityChallenge {
   challengeData: string;
   createdAt: number;
   expiresAt: number;
-  action: 'ACCEPT' | 'REJECT' | 'REVOKE_ALL' | 'REVOKE_SESSION';
+  action: 'ACCEPT' | 'REJECT' | 'REVOKE_ALL' | 'REVOKE_SESSION' | 'DISCORD_KICK';
   targetSessionId?: string;
   failedAttempts: number;
 }
@@ -78,6 +90,8 @@ export interface AccountSecurityConfig {
   recoveryHash: string;
   ownerSecretHash?: string;
   blockedIps: string[];
+  autoKickUntrustedDiscord: boolean;
+  allowedCountries: string[];
   createdAt: number;
 }
 
@@ -94,9 +108,8 @@ class SecurityManager {
   private globalBlockedIps: Set<string> = new Set();
   private sseClients: Set<{ res: Response; accountKey?: string }> = new Set();
   private rateLimits: Map<string, { attempts: number; lockedUntil: number }> = new Map();
+  private tokenMemoryMap: Map<string, string> = new Map();
   private terminationHandler: ClientTerminationCallback | null = null;
-
-  public readonly SUPERADMIN_ID = '1545521054930436167';
 
   constructor() {
     this.dataDir = path.join(process.cwd(), 'data');
@@ -179,21 +192,18 @@ class SecurityManager {
   }
 
   public resolveAccountKey(token?: string, userId?: string): string {
-    if (userId) {
-      return `user:${userId}`;
+    if (userId && String(userId).trim().length >= 10) {
+      return `user:${String(userId).trim()}`;
     }
     if (!token) return 'anonymous';
 
     const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
-    if (cleanToken === 'DISCORD_OAUTH_SESSION') {
-      return `oauth:${this.SUPERADMIN_ID}`;
-    }
 
     try {
       const firstPart = cleanToken.split('.')[0];
       if (firstPart) {
         const decoded = Buffer.from(firstPart, 'base64').toString('utf-8');
-        if (/^\d{17,21}$/.test(decoded)) {
+        if (/^\d{16,22}$/.test(decoded)) {
           return `user:${decoded}`;
         }
       }
@@ -215,11 +225,31 @@ class SecurityManager {
         recoveryCode,
         recoveryHash,
         blockedIps: [],
+        autoKickUntrustedDiscord: false,
+        allowedCountries: [],
         createdAt: Date.now(),
       };
       this.accountConfigs.set(accountKey, config);
       this.saveState();
     }
+    return config;
+  }
+
+  public updateAccountConfig(
+    accountKey: string,
+    updates: Partial<Pick<AccountSecurityConfig, 'autoKickUntrustedDiscord' | 'allowedCountries' | 'ownerSecretHash'>>
+  ): AccountSecurityConfig {
+    const config = this.getOrCreateAccountConfig(accountKey);
+    if (updates.autoKickUntrustedDiscord !== undefined) {
+      config.autoKickUntrustedDiscord = updates.autoKickUntrustedDiscord;
+    }
+    if (updates.allowedCountries !== undefined) {
+      config.allowedCountries = updates.allowedCountries;
+    }
+    if (updates.ownerSecretHash !== undefined) {
+      config.ownerSecretHash = updates.ownerSecretHash;
+    }
+    this.saveState();
     return config;
   }
 
@@ -349,13 +379,15 @@ class SecurityManager {
     userData?: { id?: string; username?: string; avatar?: string | null; isOAuth?: boolean }
   ): { session: SecuritySession; isNew: boolean } {
     const tokenHash = this.hashToken(token);
+    this.tokenMemoryMap.set(tokenHash, token);
+
     const ip = (req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1');
     const userAgent = req.headers['user-agent'] || 'Unknown Device';
     const { os, browser, device } = this.parseUserAgent(userAgent);
     const location = this.resolveLocation(req);
     const accountKey = this.resolveAccountKey(token, userData?.id);
 
-    this.getOrCreateAccountConfig(accountKey);
+    const config = this.getOrCreateAccountConfig(accountKey);
 
     for (const s of this.sessions.values()) {
       if (s.accountKey === accountKey && s.tokenHash === tokenHash && s.status === 'TRUSTED') {
@@ -435,6 +467,10 @@ class SecurityManager {
         ip
       );
       this.dispatchLoginNotification(newSession);
+
+      if (config.autoKickUntrustedDiscord) {
+        this.rejectSession(sessionId, 'Auto-kicked untrusted device by security policy').catch(() => {});
+      }
     }
 
     this.saveState();
@@ -473,6 +509,164 @@ class SecurityManager {
       session.device,
       session.ip
     );
+  }
+
+  public async fetchDiscordRemoteSessions(token: string): Promise<DiscordRemoteSession[]> {
+    try {
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
+      if (!cleanToken || cleanToken === 'DISCORD_OAUTH_SESSION' || cleanToken.length < 25) {
+        return [];
+      }
+
+      const res = await fetch('https://discord.com/api/v9/users/@me/sessions', {
+        headers: {
+          Authorization: cleanToken,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+
+      if (!res.ok) {
+        return [];
+      }
+
+      const data = await res.json();
+      const userSessions = data.user_sessions || [];
+
+      return userSessions.map((s: any) => ({
+        id_hash: s.session_id_hash || s.id_hash || '',
+        os: s.client_info?.os || 'Unknown Device',
+        platform: s.client_info?.platform || s.client_info?.client || 'Discord Client',
+        client_version: s.client_info?.version || 'Latest',
+        location: s.client_info?.location || 'Remote Session',
+        approx_last_used_time: s.approx_last_used_time || new Date().toISOString(),
+        current: !!s.current,
+      }));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  public async kickDiscordRemoteSession(
+    token: string,
+    sessionIdHash: string,
+    accountKey?: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
+      if (!cleanToken || cleanToken.length < 25) {
+        return { success: false, message: 'Invalid Discord token' };
+      }
+
+      const accKey = accountKey || this.resolveAccountKey(cleanToken);
+
+      const res = await fetch('https://discord.com/api/v9/users/@me/sessions/logout', {
+        method: 'POST',
+        headers: {
+          Authorization: cleanToken,
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+        body: JSON.stringify({
+          session_id_hashes: [sessionIdHash],
+        }),
+      });
+
+      if (res.ok || res.status === 204) {
+        this.addAuditLog(
+          accKey,
+          'DISCORD_REMOTE_KICK',
+          `Successfully kicked remote Discord session (${sessionIdHash.substring(0, 8)}...) from Discord servers`
+        );
+        this.broadcastEvent(accKey, {
+          type: 'DISCORD_SESSION_KICKED',
+          sessionIdHash,
+        });
+        return { success: true, message: 'Remote device instantly logged out from Discord.' };
+      }
+
+      const errText = await res.text();
+      return { success: false, message: `Discord returned: ${errText || res.statusText}` };
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Failed to communicate with Discord session API' };
+    }
+  }
+
+  public async logoutDiscordToken(
+    token: string,
+    accountKey?: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
+      if (!cleanToken || cleanToken.length < 25) {
+        return { success: false, message: 'Invalid token' };
+      }
+
+      const accKey = accountKey || this.resolveAccountKey(cleanToken);
+
+      const res = await fetch('https://discord.com/api/v9/auth/logout', {
+        method: 'POST',
+        headers: {
+          Authorization: cleanToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: null,
+          voip_provider: null,
+        }),
+      });
+
+      this.addAuditLog(
+        accKey,
+        'DISCORD_GLOBAL_LOGOUT',
+        'Discord authentication token revoked and logged out via Discord auth API'
+      );
+
+      return { success: true, message: 'Token logged out of Discord.' };
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Error communicating with Discord logout endpoint' };
+    }
+  }
+
+  public async emergencyKickAllDiscordSessions(
+    token: string,
+    accountKey?: string
+  ): Promise<{ count: number; success: boolean; message: string }> {
+    try {
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
+      const accKey = accountKey || this.resolveAccountKey(cleanToken);
+
+      const sessions = await this.fetchDiscordRemoteSessions(cleanToken);
+      const targetHashes = sessions.map((s) => s.id_hash).filter(Boolean);
+
+      if (targetHashes.length > 0) {
+        await fetch('https://discord.com/api/v9/users/@me/sessions/logout', {
+          method: 'POST',
+          headers: {
+            Authorization: cleanToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            session_id_hashes: targetHashes,
+          }),
+        });
+      }
+
+      await this.logoutDiscordToken(cleanToken, accKey);
+
+      this.addAuditLog(
+        accKey,
+        'EMERGENCY_REVOKE_ALL',
+        `Emergency kick executed: ${targetHashes.length} remote Discord sessions were forced off Discord`
+      );
+
+      return {
+        count: targetHashes.length,
+        success: true,
+        message: `Kicked ${targetHashes.length} Discord remote sessions and logged out token.`,
+      };
+    } catch (e: any) {
+      return { count: 0, success: false, message: e?.message || 'Failed emergency kick' };
+    }
   }
 
   public createChallenge(
@@ -602,6 +796,11 @@ class SecurityManager {
       session.ip
     );
 
+    const token = this.tokenMemoryMap.get(session.tokenHash);
+    if (token) {
+      this.logoutDiscordToken(token, session.accountKey).catch(() => {});
+    }
+
     if (this.terminationHandler) {
       try {
         await this.terminationHandler(session.tokenHash, session.sessionId);
@@ -642,6 +841,11 @@ class SecurityManager {
       session.ip
     );
 
+    const token = this.tokenMemoryMap.get(session.tokenHash);
+    if (token) {
+      this.logoutDiscordToken(token, session.accountKey).catch(() => {});
+    }
+
     if (this.terminationHandler) {
       try {
         await this.terminationHandler(session.tokenHash, session.sessionId);
@@ -669,6 +873,11 @@ class SecurityManager {
           session.revokedAt = Date.now();
           revokedList.push(session);
           count++;
+
+          const token = this.tokenMemoryMap.get(session.tokenHash);
+          if (token) {
+            this.logoutDiscordToken(token, session.accountKey).catch(() => {});
+          }
 
           if (this.terminationHandler) {
             try {
@@ -705,6 +914,7 @@ class SecurityManager {
     }
 
     const tokenHash = this.hashToken(token);
+    this.tokenMemoryMap.set(tokenHash, token);
     const accountKey = this.resolveAccountKey(token);
 
     for (const s of this.sessions.values()) {
@@ -749,82 +959,85 @@ class SecurityManager {
     const currentHash = currentSessionToken ? this.hashToken(currentSessionToken) : null;
     let currentSessionId: string | null = null;
 
-    const config = this.getOrCreateAccountConfig(accountKey);
+    const allSessions = Array.from(this.sessions.values()).filter((s) => s.accountKey === accountKey);
+    const pendingSessions = allSessions.filter((s) => s.status === 'PENDING');
+    const trustedSessions = allSessions.filter((s) => s.status === 'TRUSTED');
+    const revokedSessions = allSessions.filter((s) => s.status === 'REVOKED' || s.status === 'REJECTED');
 
-    const accountSessions = Array.from(this.sessions.values()).filter((s) => s.accountKey === accountKey);
-    const pendingSessions = accountSessions.filter((s) => s.status === 'PENDING');
-    const trustedSessions = accountSessions.filter((s) => s.status === 'TRUSTED');
-    const revokedSessions = accountSessions.filter((s) => s.status === 'REVOKED' || s.status === 'REJECTED');
-
-    for (const s of accountSessions) {
-      if (currentHash && s.tokenHash === currentHash) {
-        currentSessionId = s.sessionId;
-      }
+    if (currentHash) {
+      const cur = allSessions.find((s) => s.tokenHash === currentHash);
+      if (cur) currentSessionId = cur.sessionId;
     }
 
-    const accountLogs = this.auditLogs.filter((l) => l.accountKey === accountKey || l.accountKey === 'system').slice(0, 100);
-
-    const pushCount = Array.from(this.pushSubscriptions.values()).filter((sub) => sub.accountKey === accountKey).length;
+    const config = this.getOrCreateAccountConfig(accountKey);
+    const logs = this.auditLogs.filter((l) => l.accountKey === accountKey || l.accountKey === 'system');
 
     return {
       accountKey,
-      recoveryCode: config.recoveryCode,
       currentSessionId,
-      pendingSessions,
-      trustedSessions,
-      revokedSessions,
-      blockedIps: config.blockedIps,
       totalPending: pendingSessions.length,
       totalTrusted: trustedSessions.length,
       totalRevoked: revokedSessions.length,
-      totalBlockedIps: config.blockedIps.length,
-      auditLogs: accountLogs,
-      pushSubscribed: pushCount > 0,
-      pushSubscriptionsCount: pushCount,
+      pendingSessions,
+      trustedSessions,
+      revokedSessions,
+      blockedIps: Array.from(new Set([...config.blockedIps, ...this.globalBlockedIps])),
+      autoKickUntrustedDiscord: config.autoKickUntrustedDiscord,
+      allowedCountries: config.allowedCountries,
+      recoveryCode: config.recoveryCode,
+      hasSecretSet: !!config.ownerSecretHash,
+      auditLogs: logs.slice(0, 50),
     };
   }
 
-  public addPushSubscription(sub: PushSubscriptionRecord) {
-    this.pushSubscriptions.set(sub.id, sub);
-    this.saveState();
+  public getChallenge(challengeId: string): SecurityChallenge | undefined {
+    return this.challenges.get(challengeId);
   }
 
-  public removePushSubscription(id: string) {
-    this.pushSubscriptions.delete(id);
+  public deleteChallenge(challengeId: string) {
+    this.challenges.delete(challengeId);
+  }
+
+  public addPushSubscription(subscription: any, accountKey: string, userAgent: string) {
+    const id = `PUSH-${crypto.randomBytes(4).toString('hex')}`;
+    const record: PushSubscriptionRecord = {
+      id,
+      accountKey,
+      endpoint: subscription.endpoint,
+      keys: subscription.keys,
+      createdAt: Date.now(),
+      userAgent,
+    };
+    this.pushSubscriptions.set(id, record);
     this.saveState();
+    return record;
   }
 
   public addSseClient(res: Response, accountKey?: string) {
-    this.sseClients.add({ res, accountKey });
+    const client = { res, accountKey };
+    this.sseClients.add(client);
   }
 
   public removeSseClient(res: Response) {
-    for (const item of this.sseClients) {
-      if (item.res === res) {
-        this.sseClients.delete(item);
+    for (const client of this.sseClients) {
+      if (client.res === res) {
+        this.sseClients.delete(client);
+        break;
       }
     }
   }
 
   public broadcastEvent(accountKey: string, data: any) {
-    const msg = `data: ${JSON.stringify(data)}\n\n`;
+    const payload = JSON.stringify(data);
     for (const client of this.sseClients) {
-      if (!client.accountKey || client.accountKey === accountKey) {
+      if (!client.accountKey || client.accountKey === accountKey || client.accountKey === 'anonymous') {
         try {
-          client.res.write(msg);
+          client.res.write(`data: ${payload}\n\n`);
         } catch (e) {
           this.sseClients.delete(client);
         }
       }
     }
-  }
-
-  public getChallenge(id: string): SecurityChallenge | undefined {
-    return this.challenges.get(id);
-  }
-
-  public deleteChallenge(id: string) {
-    this.challenges.delete(id);
   }
 }
 

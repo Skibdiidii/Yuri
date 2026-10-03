@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v1.4.1",
+    date: "2026-10-03",
+    features: [
+      "Live Discord Account Session Guard with real-time remote session detection",
+      "Instant 1-Click Discord App Kick: Log out remote phones, tablets, and desktop apps directly from Discord servers",
+      "Auto-Kick Untrusted Discord Logins: Automatically terminates unrecognized logins in milliseconds",
+      "Emergency Global Discord Logout: Revokes all external sessions and invalidates unauthorized access tokens",
+      "Multi-User Security Profile Isolation: Personalized protection, trusted devices, and recovery keys for every account"
+    ]
+  },
+  {
     version: "v1.4.0",
     date: "2026-10-03",
     features: [
@@ -20,8 +31,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "v1.3.2",
     date: "2026-09-11",
     features: [
-      "Strict Administrator Access Control locked directly to owner account",
-      "Interactive Linux PTY Terminal with real-time xterm streaming & Cyber Engine AI",
+      "Interactive Linux PTY Terminal with real-time xterm streaming",
       "High-Performance Gateway & Companion Service optimizations"
     ]
   },

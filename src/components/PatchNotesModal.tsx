@@ -9,6 +9,27 @@ interface PatchNotesModalProps {
 export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   const patchHistory = [
     {
+      version: "v1.4.1-stable",
+      date: "October 2026",
+      updates: [
+        {
+          title: "Discord Remote Session Kick Engine",
+          icon: <Zap className="w-5 h-5 text-indigo-400" />,
+          description: "Direct Discord API integration to kick remote phones, tablets, and computers immediately out of your Discord account."
+        },
+        {
+          title: "Auto-Kick Untrusted Discord Logins",
+          icon: <Shield className="w-5 h-5 text-emerald-400" />,
+          description: "Real-time daemon that automatically evicts unrecognized Discord logins in milliseconds before unauthorized activity can occur."
+        },
+        {
+          title: "Multi-User Security Profile Isolation",
+          icon: <Key className="w-5 h-5 text-amber-400" />,
+          description: "Every user account receives isolated device inventories, emergency recovery keys, and independent firewall controls."
+        }
+      ]
+    },
+    {
       version: "v1.4.0-stable",
       date: "October 2026",
       updates: [

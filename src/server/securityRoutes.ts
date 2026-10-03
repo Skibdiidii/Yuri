@@ -76,6 +76,69 @@ router.get('/events', (req: Request, res: Response) => {
   });
 });
 
+router.get('/discord/sessions', async (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+
+  try {
+    const remoteSessions = await securityManager.fetchDiscordRemoteSessions(token);
+    res.json({ success: true, sessions: remoteSessions });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Failed to fetch Discord remote sessions' });
+  }
+});
+
+router.post('/discord/kick-session', async (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const { sessionIdHash } = req.body;
+
+  if (!token || !sessionIdHash) {
+    return res.status(400).json({ error: 'Missing token or sessionIdHash' });
+  }
+
+  const result = await securityManager.kickDiscordRemoteSession(token, sessionIdHash);
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+router.post('/discord/emergency-kick-all', async (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+
+  const result = await securityManager.emergencyKickAllDiscordSessions(token);
+  res.json(result);
+});
+
+router.post('/settings', (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const { autoKickUntrustedDiscord, allowedCountries } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+
+  const accountKey = securityManager.resolveAccountKey(token);
+  const updated = securityManager.updateAccountConfig(accountKey, {
+    autoKickUntrustedDiscord,
+    allowedCountries,
+  });
+
+  res.json({ success: true, config: updated });
+});
+
 router.get('/check-session', (req: Request, res: Response) => {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
@@ -151,197 +214,156 @@ router.post('/challenge/verify', async (req: Request, res: Response) => {
       undefined,
       ip
     );
-    return res.status(403).json({
-      error: 'Authentication failed. Invalid passkey, recovery code, or secret.',
-      locked: false,
-    });
+    return res.status(401).json({ error: 'Verification failed. Invalid authentication credential.' });
   }
 
   securityManager.addAuditLog(
     challenge.accountKey,
     'VERIFICATION_ATTEMPT',
-    `Successful owner verification via ${method}`,
+    `Successful owner verification using ${method}`,
     challenge.targetSessionId,
     undefined,
     ip
   );
 
-  let actionResult: any = { executed: true };
+  securityManager.deleteChallenge(challengeId);
+
   if (challenge.action === 'ACCEPT' && challenge.targetSessionId) {
-    securityManager.approveSession(challenge.targetSessionId, `Owner Verification (${method})`);
-    actionResult.approvedSessionId = challenge.targetSessionId;
-  } else if (challenge.action === 'REJECT' && challenge.targetSessionId) {
-    await securityManager.rejectSession(challenge.targetSessionId, `Rejected via Owner Verification (${method})`);
-    actionResult.rejectedSessionId = challenge.targetSessionId;
-  } else if (challenge.action === 'REVOKE_SESSION' && challenge.targetSessionId) {
-    await securityManager.revokeSession(challenge.targetSessionId, `Revoked via Owner Verification (${method})`);
-    actionResult.revokedSessionId = challenge.targetSessionId;
-  } else if (challenge.action === 'REVOKE_ALL') {
-    const count = await securityManager.emergencyRevokeAll(challenge.accountKey, challenge.targetSessionId, ip);
-    actionResult.revokedCount = count;
+    const ok = securityManager.approveSession(challenge.targetSessionId, `Owner ${method}`);
+    return res.json({ success: ok, message: 'Session approved and marked as trusted.' });
   }
 
-  securityManager.deleteChallenge(challengeId);
-  res.json({
-    success: true,
-    message: 'Owner verification successful and action executed.',
-    action: challenge.action,
-    result: actionResult,
-  });
+  if (challenge.action === 'REJECT' && challenge.targetSessionId) {
+    const ok = await securityManager.rejectSession(challenge.targetSessionId, `Rejected by owner via ${method}`);
+    return res.json({ success: ok, message: 'Session rejected and immediately kicked.' });
+  }
+
+  if (challenge.action === 'REVOKE_SESSION' && challenge.targetSessionId) {
+    const ok = await securityManager.revokeSession(challenge.targetSessionId, `Revoked by owner via ${method}`);
+    return res.json({ success: ok, message: 'Session revoked and kicked from server.' });
+  }
+
+  if (challenge.action === 'REVOKE_ALL') {
+    const count = await securityManager.emergencyRevokeAll(challenge.accountKey, challenge.sessionId, ip);
+    return res.json({ success: true, count, message: `Successfully revoked and kicked ${count} sessions.` });
+  }
+
+  return res.json({ success: true, verified: true });
 });
 
-router.post('/approve', (req: Request, res: Response) => {
+router.post('/approve-session', (req: Request, res: Response) => {
   const { sessionId } = req.body;
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
-  const ok = securityManager.approveSession(sessionId, 'Security Dashboard Direct Approval');
-  if (!ok) {
-    return res.status(404).json({ error: 'Session not found' });
+
+  const ok = securityManager.approveSession(sessionId);
+  if (ok) {
+    res.json({ success: true, message: 'Session approved.' });
+  } else {
+    res.status(404).json({ error: 'Session not found.' });
   }
-  res.json({ success: true, message: `Session ${sessionId} approved and trusted.` });
 });
 
-router.post('/reject', async (req: Request, res: Response) => {
-  const { sessionId, reason, blockIp } = req.body;
-  const authHeader = req.headers['authorization'] || '';
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const accountKey = securityManager.resolveAccountKey(token);
-
+router.post('/reject-session', async (req: Request, res: Response) => {
+  const { sessionId, reason } = req.body;
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
 
-  const ok = await securityManager.rejectSession(sessionId, reason || 'Rejected by Owner');
-  if (!ok) {
-    return res.status(404).json({ error: 'Session not found' });
+  const ok = await securityManager.rejectSession(sessionId, reason || 'Rejected by account owner');
+  if (ok) {
+    res.json({ success: true, message: 'Session rejected and kicked.' });
+  } else {
+    res.status(404).json({ error: 'Session not found.' });
   }
-
-  if (blockIp) {
-    const session = securityManager.getStatus(token).revokedSessions.find((s) => s.sessionId === sessionId);
-    if (session && session.ip && session.ip !== '127.0.0.1') {
-      securityManager.blockIp(session.ip, accountKey, `Blocked during rejection of ${sessionId}`);
-    }
-  }
-
-  res.json({ success: true, message: `Session ${sessionId} rejected and disconnected.` });
 });
 
-router.post('/revoke', async (req: Request, res: Response) => {
-  const { sessionId, reason, blockIp } = req.body;
-  const authHeader = req.headers['authorization'] || '';
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const accountKey = securityManager.resolveAccountKey(token);
-
+router.post('/revoke-session', async (req: Request, res: Response) => {
+  const { sessionId, reason } = req.body;
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
 
-  const ok = await securityManager.revokeSession(sessionId, reason || 'Revoked by Owner');
-  if (!ok) {
-    return res.status(404).json({ error: 'Session not found' });
+  const ok = await securityManager.revokeSession(sessionId, reason || 'Revoked by account owner');
+  if (ok) {
+    res.json({ success: true, message: 'Session revoked and terminated.' });
+  } else {
+    res.status(404).json({ error: 'Session not found.' });
   }
-
-  if (blockIp) {
-    const session = securityManager.getStatus(token).revokedSessions.find((s) => s.sessionId === sessionId);
-    if (session && session.ip && session.ip !== '127.0.0.1') {
-      securityManager.blockIp(session.ip, accountKey, `Blocked during revocation of ${sessionId}`);
-    }
-  }
-
-  res.json({ success: true, message: `Session ${sessionId} revoked and disconnected.` });
 });
 
 router.post('/emergency-revoke-all', async (req: Request, res: Response) => {
-  const { currentSessionId } = req.body;
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const accountKey = securityManager.resolveAccountKey(token);
+  const { currentSessionId } = req.body;
   const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
 
+  const accountKey = securityManager.resolveAccountKey(token);
   const count = await securityManager.emergencyRevokeAll(accountKey, currentSessionId, ip);
-  res.json({
-    success: true,
-    revokedCount: count,
-    message: `Emergency action completed: ${count} sessions of your account were immediately terminated, kicked, and revoked.`,
-  });
+
+  res.json({ success: true, count, message: `Emergency revocation completed: ${count} sessions revoked.` });
 });
 
 router.post('/block-ip', (req: Request, res: Response) => {
   const { ip, reason } = req.body;
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const accountKey = securityManager.resolveAccountKey(token);
+  const accountKey = token ? securityManager.resolveAccountKey(token) : undefined;
 
   if (!ip) {
     return res.status(400).json({ error: 'IP address is required' });
   }
-  securityManager.blockIp(ip, accountKey, reason || 'Manually blocked from Security Dashboard');
-  res.json({ success: true, message: `IP ${ip} blocked.` });
+
+  securityManager.blockIp(ip, accountKey, reason);
+  res.json({ success: true, message: `IP ${ip} has been blocked.` });
 });
 
 router.post('/unblock-ip', (req: Request, res: Response) => {
   const { ip } = req.body;
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const accountKey = securityManager.resolveAccountKey(token);
+  const accountKey = token ? securityManager.resolveAccountKey(token) : undefined;
 
   if (!ip) {
     return res.status(400).json({ error: 'IP address is required' });
   }
+
   securityManager.unblockIp(ip, accountKey);
-  res.json({ success: true, message: `IP ${ip} unblocked.` });
+  res.json({ success: true, message: `IP ${ip} has been unblocked.` });
 });
 
-router.post('/push-subscribe', (req: Request, res: Response) => {
+router.post('/push/subscribe', (req: Request, res: Response) => {
   const { subscription } = req.body;
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const accountKey = securityManager.resolveAccountKey(token);
+  const userAgent = req.headers['user-agent'] || 'Unknown';
 
   if (!subscription || !subscription.endpoint) {
-    return res.status(400).json({ error: 'Invalid push subscription payload' });
+    return res.status(400).json({ error: 'Invalid subscription object' });
   }
-  const id = `PUSH-${crypto.createHash('md5').update(subscription.endpoint).digest('hex').substring(0, 8)}`;
-  securityManager.addPushSubscription({
-    id,
-    accountKey,
-    endpoint: subscription.endpoint,
-    keys: subscription.keys,
-    createdAt: Date.now(),
-    userAgent: req.headers['user-agent'] || 'Unknown',
-  });
-  res.json({ success: true, subscriptionId: id });
+
+  const accountKey = securityManager.resolveAccountKey(token);
+  const record = securityManager.addPushSubscription(subscription, accountKey, userAgent);
+
+  res.json({ success: true, record });
 });
 
 router.post('/test-push', (req: Request, res: Response) => {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const accountKey = securityManager.resolveAccountKey(token);
-  const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
-  const userAgent = req.headers['user-agent'] || 'Chrome / Android (Test)';
-  const { device } = securityManager.parseUserAgent(userAgent);
-  const location = securityManager.resolveLocation(req);
 
-  const testSession = {
-    sessionId: `SEC-TEST-${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
-    accountKey,
-    tokenHash: 'test',
-    device,
-    os: 'Android',
-    browser: 'Chrome',
-    location,
-    detectedAt: Date.now(),
-    lastActiveAt: Date.now(),
-    status: 'PENDING' as const,
-    trusted: false,
-    approvalRequired: true,
-    ip,
-    userAgent,
-  };
+  securityManager.broadcastEvent(accountKey, {
+    type: 'TEST_NOTIFICATION',
+    notification: {
+      title: '🛡️ Yuri Security Shield Active',
+      body: 'Real-time login detection, instant Discord session kicking, and multi-user protection are active.',
+      data: { url: '/#security', timestamp: Date.now() },
+    },
+  });
 
-  securityManager.dispatchLoginNotification(testSession);
-  res.json({ success: true, message: 'Test login notification dispatched to your account devices.' });
+  res.json({ success: true, message: 'Test alert dispatched via SSE and Push channel.' });
 });
 
 export default router;

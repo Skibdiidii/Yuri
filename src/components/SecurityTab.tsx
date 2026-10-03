@@ -21,11 +21,11 @@ import {
   Radio,
   FileText,
   Search,
-  Filter,
   Check,
   X,
-  ExternalLink,
-  Info,
+  Zap,
+  Power,
+  Trash2,
 } from 'lucide-react';
 
 export interface SecuritySession {
@@ -50,6 +50,16 @@ export interface SecuritySession {
   isOwner?: boolean;
 }
 
+export interface DiscordRemoteSession {
+  id_hash: string;
+  os: string;
+  platform?: string;
+  client_version?: string;
+  location?: string;
+  approx_last_used_time?: string;
+  current?: boolean;
+}
+
 export interface SecurityAuditLog {
   id: string;
   timestamp: number;
@@ -58,6 +68,8 @@ export interface SecurityAuditLog {
     | 'OWNER_APPROVED'
     | 'SESSION_REJECTED'
     | 'SESSION_REVOKED'
+    | 'DISCORD_REMOTE_KICK'
+    | 'DISCORD_GLOBAL_LOGOUT'
     | 'VERIFICATION_ATTEMPT'
     | 'FAILED_VERIFICATION'
     | 'TRUSTED_SESSION_CHANGED'
@@ -80,6 +92,9 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
   const [pendingSessions, setPendingSessions] = useState<SecuritySession[]>([]);
   const [trustedSessions, setTrustedSessions] = useState<SecuritySession[]>([]);
   const [revokedSessions, setRevokedSessions] = useState<SecuritySession[]>([]);
+  const [discordRemoteSessions, setDiscordRemoteSessions] = useState<DiscordRemoteSession[]>([]);
+  const [discordLoading, setDiscordLoading] = useState(false);
+  const [autoKickUntrusted, setAutoKickUntrusted] = useState(false);
   const [blockedIps, setBlockedIps] = useState<string[]>([]);
   const [newBlockIp, setNewBlockIp] = useState('');
   const [recoveryCode, setRecoveryCode] = useState<string>('');
@@ -93,41 +108,42 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
 
   const [activeVerification, setActiveVerification] = useState<{
     isOpen: boolean;
-    action: 'ACCEPT' | 'REJECT' | 'REVOKE_ALL' | 'REVOKE_SESSION';
+    action: 'ACCEPT' | 'REJECT' | 'REVOKE_ALL' | 'REVOKE_SESSION' | 'DISCORD_KICK';
     targetSession?: SecuritySession;
+    discordSessionHash?: string;
     challengeId?: string;
     challengeData?: string;
     expiresAt?: number;
+    method: 'passkey' | 'recovery_code' | 'owner_secret';
+    payloadInput: string;
+    error?: string;
+    processing: boolean;
   }>({
     isOpen: false,
     action: 'ACCEPT',
+    method: 'recovery_code',
+    payloadInput: '',
+    processing: false,
   });
 
-  const [authMethod, setAuthMethod] = useState<'passkey' | 'recovery_code' | 'owner_secret'>('passkey');
-  const [authSecretInput, setAuthSecretInput] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
-
-  const [logFilter, setLogFilter] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeSection, setActiveSection] = useState<'pending' | 'trusted' | 'revoked' | 'logs' | 'settings'>('pending');
+  const [searchLog, setSearchLog] = useState('');
+  const [filterType, setFilterType] = useState<string>('ALL');
+  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   const sseRef = useRef<EventSource | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationPermission(Notification.permission);
-      setNotificationsEnabled(Notification.permission === 'granted');
-    }
-  }, []);
+  const showToast = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setActionNotice({ type, text });
+    if (addLog) addLog(`[Security] ${text}`);
+    setTimeout(() => {
+      setActionNotice(null);
+    }, 5000);
+  };
 
-  const fetchSecurityStatus = async () => {
+  const fetchStatus = async () => {
     try {
       const res = await fetch('/api/security/status', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
@@ -137,9 +153,8 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
         setBlockedIps(data.blockedIps || []);
         setRecoveryCode(data.recoveryCode || '');
         setAuditLogs(data.auditLogs || []);
-        if (data.currentSessionId) {
-          setCurrentSessionId(data.currentSessionId);
-        }
+        setCurrentSessionId(data.currentSessionId || null);
+        setAutoKickUntrusted(data.autoKickUntrustedDiscord || false);
       }
     } catch (e) {
     } finally {
@@ -148,56 +163,93 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
     }
   };
 
-  useEffect(() => {
-    fetchSecurityStatus();
-    const interval = setInterval(fetchSecurityStatus, 6000);
-
+  const fetchDiscordSessions = async () => {
+    setDiscordLoading(true);
     try {
-      const sseUrl = '/api/security/events?token=' + encodeURIComponent(token);
-      const es = new EventSource(sseUrl);
-      sseRef.current = es;
+      const res = await fetch('/api/security/discord/sessions', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDiscordRemoteSessions(data.sessions || []);
+      }
+    } catch (e) {
+    } finally {
+      setDiscordLoading(false);
+    }
+  };
 
-      es.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type === 'NEW_LOGIN_DETECTED') {
-            fetchSecurityStatus();
-            if ('Notification' in window && Notification.permission === 'granted' && payload.notification) {
-              try {
-                const n = new Notification(payload.notification.title, {
-                  body: payload.notification.body,
-                  icon: '/favicon.ico',
-                  badge: '/favicon.ico',
-                  data: payload.notification.data,
-                });
-                n.onclick = () => {
-                  window.focus();
-                  setActiveSection('pending');
-                };
-              } catch (err) {}
-            }
-          } else if (payload.type === 'SESSION_REVOKED' || payload.type === 'SESSION_REJECTED') {
-            fetchSecurityStatus();
-            if (payload.forceKick && (payload.forceKick.sessionId === currentSessionId)) {
-              alert('Security Alert: Your session has been revoked by the system owner.');
-              localStorage.removeItem('token');
-              localStorage.removeItem('loggedInToken');
-              window.location.reload();
-            }
-          } else if (payload.type === 'EMERGENCY_REVOKE_ALL') {
-            fetchSecurityStatus();
-            if (payload.exceptSessionId && currentSessionId && payload.exceptSessionId !== currentSessionId) {
-              alert('Emergency Lockdown: All external sessions have been revoked by the owner.');
-              localStorage.removeItem('token');
-              localStorage.removeItem('loggedInToken');
-              window.location.reload();
-            }
-          } else if (payload.type === 'SESSION_APPROVED' || payload.type === 'AUDIT_LOG') {
-            fetchSecurityStatus();
+  const toggleAutoKick = async () => {
+    const nextVal = !autoKickUntrusted;
+    setAutoKickUntrusted(nextVal);
+    try {
+      const res = await fetch('/api/security/settings', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          autoKickUntrustedDiscord: nextVal,
+        }),
+      });
+      if (res.ok) {
+        showToast(
+          nextVal
+            ? '⚡ Auto-Kick Enabled: Unrecognized Discord logins will be kicked within milliseconds!'
+            : 'Auto-Kick Disabled',
+          'success'
+        );
+      }
+    } catch (e) {
+      setAutoKickUntrusted(!nextVal);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationPermission(Notification.permission);
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+
+    fetchStatus();
+    fetchDiscordSessions();
+
+    const sseUrl = `/api/security/events?token=${encodeURIComponent(token)}`;
+    const es = new EventSource(sseUrl);
+    sseRef.current = es;
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'NEW_LOGIN_DETECTED') {
+          showToast(`🚨 New login detected on ${data.session.device} (${data.session.location})`, 'error');
+          if (Notification.permission === 'granted' && data.notification) {
+            new Notification(data.notification.title, {
+              body: data.notification.body,
+              icon: '/icons/shield-alert.png',
+            });
           }
-        } catch (err) {}
-      };
-    } catch (e) {}
+          fetchStatus();
+          fetchDiscordSessions();
+        } else if (data.type === 'AUDIT_LOG' && data.log) {
+          setAuditLogs((prev) => [data.log, ...prev.slice(0, 99)]);
+        } else if (
+          data.type === 'SESSION_APPROVED' ||
+          data.type === 'SESSION_REJECTED' ||
+          data.type === 'SESSION_REVOKED' ||
+          data.type === 'DISCORD_SESSION_KICKED' ||
+          data.type === 'EMERGENCY_REVOKE_ALL'
+        ) {
+          fetchStatus();
+          fetchDiscordSessions();
+        }
+      } catch (e) {}
+    };
+
+    const interval = setInterval(() => {
+      fetchStatus();
+    }, 10000);
 
     return () => {
       clearInterval(interval);
@@ -207,1032 +259,725 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
     };
   }, [token]);
 
-  const requestNotificationPermission = async () => {
+  const requestPushPermission = async () => {
     if (!('Notification' in window)) {
-      alert('This browser does not support desktop/mobile notifications.');
+      showToast('Notifications are not supported in this browser.', 'error');
       return;
     }
+
     try {
-      const perm = await Notification.requestPermission();
-      setNotificationPermission(perm);
-      if (perm === 'granted') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
         setNotificationsEnabled(true);
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-          try {
-            const reg = await navigator.serviceWorker.ready;
-            const sub = await reg.pushManager.getSubscription();
-            if (sub) {
-              await fetch('/api/security/push-subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subscription: sub }),
-              });
-            }
-          } catch (e) {}
-        }
-        new Notification('🔐 Notifications Activated', {
-          body: 'You will receive immediate alerts for new or unrecognized logins across all your devices.',
-          icon: '/favicon.ico',
+        showToast('Push Notifications enabled! You will receive alerts on untrusted logins.', 'success');
+        await fetch('/api/security/test-push', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
         });
       } else {
         setNotificationsEnabled(false);
+        showToast('Notification permission denied.', 'info');
       }
-    } catch (e) {}
+    } catch (e) {
+      showToast('Failed to enable notifications.', 'error');
+    }
   };
 
-  const handleTestPush = async () => {
+  const kickDiscordSessionDirect = async (sessionIdHash: string) => {
     try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🔐 New Login Detected (Test)', {
-          body: 'A new session was detected.\nDevice: Chrome · Android\nLocation: Tokyo, Japan\nTime: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          icon: '/favicon.ico',
-        });
-      }
-      await fetch('/api/security/test-push', {
+      const res = await fetch('/api/security/discord/kick-session', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ sessionIdHash }),
       });
-      fetchSecurityStatus();
-    } catch (e) {}
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('⚡ Device successfully kicked from Discord account!', 'success');
+        fetchDiscordSessions();
+        fetchStatus();
+      } else {
+        showToast(data.message || 'Failed to kick Discord session', 'error');
+      }
+    } catch (e) {
+      showToast('Network error kicking Discord session', 'error');
+    }
   };
 
-  const initiateAction = async (action: 'ACCEPT' | 'REJECT' | 'REVOKE_ALL' | 'REVOKE_SESSION', session?: SecuritySession) => {
-    setAuthLoading(true);
-    setAuthError(null);
-    setAuthSuccess(null);
-    setAuthSecretInput('');
+  const emergencyKickAllDiscord = async () => {
+    if (!confirm('Are you sure? This will kick ALL other phones, apps, and browsers out of your Discord account immediately!')) {
+      return;
+    }
 
     try {
-      const res = await fetch('/api/security/challenge/create', {
+      const res = await fetch('/api/security/discord/emergency-kick-all', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, sessionId: session?.sessionId }),
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.success) {
-        setActiveVerification({
-          isOpen: true,
-          action,
-          targetSession: session,
-          challengeId: data.challengeId,
-          challengeData: data.challengeData,
-          expiresAt: data.expiresAt,
-        });
+        showToast(`🚨 Kicked ${data.count} Discord sessions and logged out token!`, 'success');
+        fetchDiscordSessions();
+        fetchStatus();
       } else {
-        setAuthError(data.error || 'Failed to initialize verification challenge');
+        showToast(data.message || 'Failed emergency kick', 'error');
       }
     } catch (e) {
-      setAuthError('Network error initializing security challenge');
-    } finally {
-      setAuthLoading(false);
+      showToast('Emergency kick failed', 'error');
     }
   };
 
-  const executeVerification = async () => {
-    if (!activeVerification.challengeId) return;
-    setAuthLoading(true);
-    setAuthError(null);
+  const startVerificationChallenge = async (
+    action: 'ACCEPT' | 'REJECT' | 'REVOKE_ALL' | 'REVOKE_SESSION' | 'DISCORD_KICK',
+    targetSession?: SecuritySession,
+    discordSessionHash?: string
+  ) => {
+    try {
+      const res = await fetch('/api/security/challenge/create', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          sessionId: targetSession?.sessionId,
+        }),
+      });
 
-    let authPayload: any = authSecretInput;
-
-    if (authMethod === 'passkey') {
-      try {
-        if (window.PublicKeyCredential && activeVerification.challengeData) {
-          authPayload = {
-            id: 'passkey-credential-' + Date.now(),
-            rawId: activeVerification.challengeData,
-            type: 'public-key',
-            clientDataJSON: btoa(JSON.stringify({ challenge: activeVerification.challengeData, origin: window.location.origin })),
-          };
-        } else {
-          authPayload = 'PASSKEY_SIMULATED_TOKEN';
-        }
-      } catch (err) {
-        authPayload = 'PASSKEY_SIMULATED_TOKEN';
+      if (!res.ok) {
+        throw new Error('Failed to create challenge');
       }
+
+      const data = await res.json();
+      setActiveVerification({
+        isOpen: true,
+        action,
+        targetSession,
+        discordSessionHash,
+        challengeId: data.challengeId,
+        challengeData: data.challengeData,
+        expiresAt: data.expiresAt,
+        method: 'recovery_code',
+        payloadInput: '',
+        processing: false,
+      });
+    } catch (e) {
+      showToast('Failed to initiate owner verification', 'error');
+    }
+  };
+
+  const submitVerification = async () => {
+    if (!activeVerification.challengeId) return;
+
+    if (activeVerification.method !== 'passkey' && !activeVerification.payloadInput.trim()) {
+      setActiveVerification((prev) => ({ ...prev, error: 'Please enter your authentication key or recovery code' }));
+      return;
     }
 
+    setActiveVerification((prev) => ({ ...prev, processing: true, error: undefined }));
+
     try {
+      let authPayload: any = activeVerification.payloadInput.trim();
+
+      if (activeVerification.method === 'passkey') {
+        authPayload = { passkeyVerified: true, timestamp: Date.now() };
+      }
+
       const res = await fetch('/api/security/challenge/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           challengeId: activeVerification.challengeId,
-          method: authMethod,
+          method: activeVerification.method,
           authPayload,
         }),
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        setAuthSuccess(data.message || 'Verification successful!');
-        setTimeout(() => {
-          setActiveVerification({ isOpen: false, action: 'ACCEPT' });
-          setAuthSuccess(null);
-          fetchSecurityStatus();
-        }, 800);
-      } else {
-        setAuthError(data.error || 'Authentication verification failed.');
+      if (!res.ok) {
+        setActiveVerification((prev) => ({
+          ...prev,
+          processing: false,
+          error: data.error || 'Verification failed. Incorrect code or secret.',
+        }));
+        return;
       }
-    } catch (e) {
-      setAuthError('Verification request failed. Check server connectivity.');
-    } finally {
-      setAuthLoading(false);
+
+      if (activeVerification.action === 'DISCORD_KICK' && activeVerification.discordSessionHash) {
+        await kickDiscordSessionDirect(activeVerification.discordSessionHash);
+      }
+
+      showToast(data.message || 'Verification successful! Action completed.', 'success');
+      setActiveVerification({
+        isOpen: false,
+        action: 'ACCEPT',
+        method: 'recovery_code',
+        payloadInput: '',
+        processing: false,
+      });
+      fetchStatus();
+      fetchDiscordSessions();
+    } catch (e: any) {
+      setActiveVerification((prev) => ({
+        ...prev,
+        processing: false,
+        error: e?.message || 'Network error during verification',
+      }));
     }
   };
 
-  const handleDirectApprove = async (sessionId: string) => {
-    try {
-      const res = await fetch('/api/security/approve', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ sessionId }),
-      });
-      if (res.ok) {
-        fetchSecurityStatus();
-      }
-    } catch (e) {}
-  };
-
-  const handleDirectReject = async (sessionId: string, blockIp: boolean = true) => {
-    try {
-      const res = await fetch('/api/security/reject', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ sessionId, reason: 'Rejected from Security Dashboard', blockIp }),
-      });
-      if (res.ok) {
-        fetchSecurityStatus();
-      }
-    } catch (e) {}
-  };
-
-  const handleDirectRevoke = async (sessionId: string, blockIp: boolean = false) => {
-    try {
-      const res = await fetch('/api/security/revoke', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ sessionId, reason: 'Manually revoked by Owner', blockIp }),
-      });
-      if (res.ok) {
-        fetchSecurityStatus();
-      }
-    } catch (e) {}
-  };
-
-  const handleBlockIp = async (ipToBlock: string) => {
-    if (!ipToBlock.trim()) return;
+  const handleBlockIp = async () => {
+    if (!newBlockIp.trim()) return;
     try {
       const res = await fetch('/api/security/block-ip', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ip: ipToBlock.trim(), reason: 'Manually blocked from Security Dashboard' }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ip: newBlockIp.trim() }),
       });
       if (res.ok) {
+        showToast(`IP ${newBlockIp.trim()} added to blocklist`, 'success');
         setNewBlockIp('');
-        fetchSecurityStatus();
+        fetchStatus();
       }
     } catch (e) {}
   };
 
-  const handleUnblockIp = async (ipToUnblock: string) => {
+  const handleUnblockIp = async (ip: string) => {
     try {
       const res = await fetch('/api/security/unblock-ip', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ip: ipToUnblock }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ip }),
       });
       if (res.ok) {
-        fetchSecurityStatus();
+        showToast(`IP ${ip} removed from blocklist`, 'info');
+        fetchStatus();
       }
     } catch (e) {}
   };
 
-  const formatRelativeTime = (ts: number) => {
-    const diff = Math.floor((Date.now() - ts) / 1000);
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
-    return `${Math.floor(diff / 86400)} days ago`;
-  };
-
-  const formatDetailedDate = (ts: number) => {
-    return new Date(ts).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
-
   const filteredLogs = auditLogs.filter((log) => {
-    if (logFilter !== 'ALL' && log.eventType !== logFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        log.details.toLowerCase().includes(q) ||
-        (log.sessionId && log.sessionId.toLowerCase().includes(q)) ||
-        (log.device && log.device.toLowerCase().includes(q))
-      );
-    }
-    return true;
+    const matchesSearch =
+      searchLog === '' ||
+      log.details.toLowerCase().includes(searchLog.toLowerCase()) ||
+      (log.device && log.device.toLowerCase().includes(searchLog.toLowerCase())) ||
+      (log.ip && log.ip.includes(searchLog));
+    const matchesType = filterType === 'ALL' || log.eventType === filterType;
+    return matchesSearch && matchesType;
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-black/40 border border-white/10 rounded-2xl p-5 backdrop-blur-xl">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-white tracking-wide">Security / Login Alerts</h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
-                Owner Protection
-              </span>
+    <div className="space-y-8 max-w-7xl mx-auto pb-16">
+      <AnimatePresence>
+        {actionNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className={`p-4 rounded-2xl flex items-center justify-between shadow-2xl border backdrop-blur-xl ${
+              actionNotice.type === 'success'
+                ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200'
+                : actionNotice.type === 'error'
+                ? 'bg-rose-950/80 border-rose-500/40 text-rose-200'
+                : 'bg-indigo-950/80 border-indigo-500/40 text-indigo-200'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {actionNotice.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+              {actionNotice.type === 'error' && <AlertTriangle className="w-5 h-5 text-rose-400" />}
+              {actionNotice.type === 'info' && <Radio className="w-5 h-5 text-indigo-400" />}
+              <span className="text-sm font-medium">{actionNotice.text}</span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Strict device authentication, cryptographic verification challenges, and real-time session access control.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => {
-              setRefreshing(true);
-              fetchSecurityStatus();
-            }}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs text-zinc-300 hover:text-white transition-all cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-
-          <button
-            onClick={() => initiateAction('REVOKE_ALL')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 hover:text-red-100 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)] cursor-pointer active:scale-95"
-          >
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-            Revoke All Other Sessions
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div
-          onClick={() => setActiveSection('pending')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            activeSection === 'pending'
-              ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
-              : 'bg-black/30 border-white/10 hover:border-white/20'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Pending Logins</span>
-            <div className={`w-2.5 h-2.5 rounded-full ${pendingSessions.length > 0 ? 'bg-amber-400 animate-pulse' : 'bg-zinc-600'}`} />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-white font-mono">{pendingSessions.length}</span>
-            <span className="text-[10px] text-zinc-500">Require Approval</span>
-          </div>
-        </div>
-
-        <div
-          onClick={() => setActiveSection('trusted')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            activeSection === 'trusted'
-              ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-              : 'bg-black/30 border-white/10 hover:border-white/20'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Trusted Sessions</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-white font-mono">{trustedSessions.length}</span>
-            <span className="text-[10px] text-emerald-400 font-mono">Active & Verified</span>
-          </div>
-        </div>
-
-        <div
-          onClick={() => setActiveSection('revoked')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            activeSection === 'revoked'
-              ? 'bg-red-500/10 border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
-              : 'bg-black/30 border-white/10 hover:border-white/20'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Blocked / Revoked</span>
-            <XCircle className="w-4 h-4 text-zinc-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-zinc-300 font-mono">{revokedSessions.length}</span>
-            <span className="text-[10px] text-zinc-500">Restricted</span>
-          </div>
-        </div>
-
-        <div
-          onClick={() => setActiveSection('settings')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            activeSection === 'settings'
-              ? 'bg-purple-500/10 border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
-              : 'bg-black/30 border-white/10 hover:border-white/20'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Web Push Alerts</span>
-            <BellRing className={`w-4 h-4 ${notificationsEnabled ? 'text-purple-400' : 'text-zinc-500'}`} />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className={`text-sm font-bold ${notificationsEnabled ? 'text-purple-300' : 'text-zinc-500'}`}>
-              {notificationsEnabled ? 'Active' : 'Disabled'}
-            </span>
-            <span className="text-[10px] text-zinc-500">Cross-Platform</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex border-b border-white/10 gap-2 pb-1 overflow-x-auto no-scrollbar">
-        {[
-          { id: 'pending', label: `Pending Requests (${pendingSessions.length})`, icon: ShieldAlert },
-          { id: 'trusted', label: `Trusted Devices (${trustedSessions.length})`, icon: ShieldCheck },
-          { id: 'logs', label: 'Security Activity Log', icon: FileText },
-          { id: 'revoked', label: `Revocation History (${revokedSessions.length})`, icon: XCircle },
-          { id: 'settings', label: 'Push & Alerts Config', icon: Bell },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeSection === tab.id;
-          return (
             <button
-              key={tab.id}
-              onClick={() => setActiveSection(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                isActive
-                  ? 'bg-white/10 text-white border border-white/20 shadow-md'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
+              onClick={() => setActionNotice(null)}
+              className="p-1 text-white/50 hover:text-white rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900/90 via-zinc-950/90 to-black p-8 border border-white/10 shadow-2xl backdrop-blur-2xl">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">
+              <ShieldCheck className="w-9 h-9" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-black tracking-tight text-white">Owner Security & Discord Protection</h1>
+                <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  Live Guard
+                </span>
+              </div>
+              <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
+                Real-time multi-platform device authorization, instant Discord session termination, and owner verification safeguard.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={toggleAutoKick}
+              className={`px-4 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 border transition-all ${
+                autoKickUntrusted
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-lg shadow-amber-500/10'
+                  : 'bg-zinc-800/80 border-white/10 text-zinc-400 hover:text-white'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
-              {tab.label}
+              <Zap className={`w-4 h-4 ${autoKickUntrusted ? 'text-amber-400 animate-pulse' : ''}`} />
+              Auto-Kick Untrusted Discord: {autoKickUntrusted ? 'ON' : 'OFF'}
             </button>
-          );
-        })}
+
+            <button
+              onClick={requestPushPermission}
+              className={`px-4 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 border transition-all ${
+                notificationsEnabled
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  : 'bg-zinc-800/80 border-white/10 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              {notificationsEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+              {notificationsEnabled ? 'Web Push Active' : 'Enable Login Push Alerts'}
+            </button>
+
+            <button
+              onClick={() => {
+                setRefreshing(true);
+                fetchStatus();
+                fetchDiscordSessions();
+              }}
+              disabled={refreshing}
+              className="p-2.5 rounded-xl bg-zinc-800/80 border border-white/10 text-zinc-300 hover:text-white transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {activeSection === 'pending' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+      <div className="rounded-3xl bg-zinc-900/60 border border-indigo-500/20 p-6 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <Smartphone className="w-5 h-5" />
+            </div>
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Pending Device Authorizations</h3>
-              <p className="text-xs text-zinc-400">
-                New sessions remain untrusted and restricted from sensitive actions until explicitly accepted by the owner.
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                Live Discord Account Sessions
+                <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-800 text-zinc-300 border border-white/5">
+                  {discordRemoteSessions.length} active
+                </span>
+              </h2>
+              <p className="text-zinc-400 text-xs">
+                Real phones, PC apps, and browsers connected to your actual Discord account via Discord API.
               </p>
             </div>
-            <span className="text-xs font-mono text-zinc-500">{pendingSessions.length} waiting</span>
           </div>
 
-          {pendingSessions.length === 0 ? (
-            <div className="p-12 text-center bg-black/20 border border-white/5 rounded-2xl">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto mb-3">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h4 className="text-sm font-bold text-white">No Pending Login Requests</h4>
-              <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1">
-                All connected sessions have been verified. Any unknown Discord login attempt will immediately trigger an alert and show up here.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pendingSessions.map((session) => (
-                <motion.div
-                  key={session.sessionId}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-black/40 border-2 border-amber-500/30 hover:border-amber-500/60 rounded-2xl p-5 relative overflow-hidden backdrop-blur-xl shadow-[0_0_25px_rgba(245,158,11,0.08)] flex flex-col justify-between gap-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
-                        {session.os === 'Android' || session.os === 'iOS' ? (
-                          <Smartphone className="w-5 h-5" />
-                        ) : (
-                          <Laptop className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">
-                          Pending Login
-                        </div>
-                        <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                          {session.device}
-                        </h4>
-                      </div>
-                    </div>
-
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      ID: {session.sessionId}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs bg-black/30 border border-white/5 rounded-xl p-3">
-                    <div>
-                      <div className="text-[10px] text-zinc-500 uppercase font-mono">Location</div>
-                      <div className="text-zinc-200 font-medium truncate flex items-center gap-1 mt-0.5">
-                        <Globe className="w-3 h-3 text-zinc-400 flex-shrink-0" />
-                        <span className="truncate">{session.location}</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] text-zinc-500 uppercase font-mono">Detected At</div>
-                      <div className="text-zinc-200 font-medium truncate flex items-center gap-1 mt-0.5">
-                        <Clock className="w-3 h-3 text-zinc-400 flex-shrink-0" />
-                        <span>{formatDetailedDate(session.detectedAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-white/10">
-                    <button
-                      onClick={() => initiateAction('ACCEPT', session)}
-                      className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] active:scale-95 cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1.5"
-                    >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      Accept
-                    </button>
-
-                    <button
-                      onClick={() => initiateAction('REJECT', session)}
-                      className="flex-1 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1.5"
-                    >
-                      <X className="w-4 h-4" />
-                      Reject
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeSection === 'trusted' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Trusted Sessions & Devices</h3>
-              <p className="text-xs text-zinc-400">
-                These sessions have passed cryptographic owner verification and have full authorized access.
-              </p>
-            </div>
-            <span className="text-xs font-mono text-emerald-400">{trustedSessions.length} active</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchDiscordSessions}
+              disabled={discordLoading}
+              className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 hover:text-white text-xs border border-white/10 flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${discordLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <button
+              onClick={emergencyKickAllDiscord}
+              className="px-3.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 text-xs font-semibold border border-rose-500/30 flex items-center gap-1.5 shadow-lg shadow-rose-950/50"
+            >
+              <Power className="w-3.5 h-3.5" />
+              Kick All Other Discord Apps
+            </button>
           </div>
-
-          {trustedSessions.length === 0 ? (
-            <div className="p-10 text-center bg-black/20 border border-white/5 rounded-2xl">
-              <p className="text-xs text-zinc-500">No active trusted sessions recorded.</p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {trustedSessions.map((session) => {
-                const isCurrent = session.sessionId === currentSessionId;
-                return (
-                  <div
-                    key={session.sessionId}
-                    className="bg-black/30 border border-white/10 hover:border-emerald-500/30 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
-                        {session.os === 'Android' || session.os === 'iOS' ? (
-                          <Smartphone className="w-5 h-5" />
-                        ) : (
-                          <Laptop className="w-5 h-5" />
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-white">{session.device}</h4>
-                          {isCurrent && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
-                              Current Device
-                            </span>
-                          )}
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                            TRUSTED
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1 flex-wrap">
-                          <span className="flex items-center gap-1 font-mono text-[11px]">
-                            <Globe className="w-3 h-3 text-zinc-500" />
-                            {session.location}
-                          </span>
-                          <span>•</span>
-                          <span className="text-[11px]">
-                            Last active: {formatRelativeTime(session.lastActiveAt)}
-                          </span>
-                          <span>•</span>
-                          <span className="font-mono text-[10px] text-zinc-500">ID: {session.sessionId}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => initiateAction('REVOKE_SESSION', session)}
-                        className="px-3.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
-                      >
-                        <Lock className="w-3 h-3" />
-                        Revoke
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
-      )}
 
-      {activeSection === 'logs' && (
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Security Activity Audit Trail</h3>
-              <p className="text-xs text-zinc-400">
-                Tamper-evident chronological logs of all login events, approvals, revocations, and verification attempts.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="Filter logs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 w-40"
-                />
-              </div>
-
-              <select
-                value={logFilter}
-                onChange={(e) => setLogFilter(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-zinc-300 focus:outline-none cursor-pointer"
+        {discordLoading && discordRemoteSessions.length === 0 ? (
+          <div className="p-8 text-center text-zinc-500 text-sm">Querying Discord API for active sessions...</div>
+        ) : discordRemoteSessions.length === 0 ? (
+          <div className="p-8 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded-2xl">
+            No remote Discord sessions detected or logged in as OAuth.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {discordRemoteSessions.map((ds) => (
+              <div
+                key={ds.id_hash}
+                className="p-5 rounded-2xl bg-zinc-950/60 border border-white/5 hover:border-indigo-500/30 transition-all flex items-start justify-between gap-4"
               >
-                <option value="ALL">All Events</option>
-                <option value="NEW_SESSION">New Session</option>
-                <option value="OWNER_APPROVED">Owner Approved</option>
-                <option value="SESSION_REJECTED">Session Rejected</option>
-                <option value="SESSION_REVOKED">Session Revoked</option>
-                <option value="VERIFICATION_ATTEMPT">Verification</option>
-                <option value="FAILED_VERIFICATION">Failed Verification</option>
-                <option value="EMERGENCY_REVOKE_ALL">Emergency Revoke</option>
-                <option value="NOTIFICATION_SENT">Notification Sent</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden">
-            <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto font-mono text-xs">
-              {filteredLogs.length === 0 ? (
-                <div className="p-8 text-center text-zinc-500">No security audit logs match the current query.</div>
-              ) : (
-                filteredLogs.map((log) => {
-                  let badgeColor = 'bg-zinc-800 text-zinc-400 border-zinc-700';
-                  if (log.eventType === 'NEW_SESSION') badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-                  if (log.eventType === 'OWNER_APPROVED') badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-                  if (log.eventType === 'SESSION_REJECTED' || log.eventType === 'SESSION_REVOKED') badgeColor = 'bg-red-500/20 text-red-300 border-red-500/30';
-                  if (log.eventType === 'EMERGENCY_REVOKE_ALL') badgeColor = 'bg-red-600/30 text-red-200 border-red-500/50';
-                  if (log.eventType === 'NOTIFICATION_SENT') badgeColor = 'bg-purple-500/20 text-purple-300 border-purple-500/30';
-
-                  return (
-                    <div key={log.id} className="p-3.5 hover:bg-white/[0.02] flex items-start justify-between gap-4 transition-colors">
-                      <div className="flex items-start gap-3">
-                        <span className="text-[11px] text-zinc-500 whitespace-nowrap pt-0.5">
-                          {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase ${badgeColor}`}>
-                              {log.eventType.replace(/_/g, ' ')}
-                            </span>
-                            {log.sessionId && (
-                              <span className="text-zinc-400 text-[10px]">Session: {log.sessionId}</span>
-                            )}
-                            {log.device && (
-                              <span className="text-zinc-500 text-[10px]">({log.device})</span>
-                            )}
-                          </div>
-                          <p className="text-zinc-300 font-sans text-xs mt-1">{log.details}</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] text-zinc-600 whitespace-nowrap hidden sm:inline">
-                        {new Date(log.timestamp).toLocaleDateString()}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeSection === 'revoked' && (
-        <div className="space-y-6">
-          <div className="bg-black/30 border border-white/10 rounded-2xl p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-red-400" />
-                  IP & Network Blocklist
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  Directly reject all connections and requests from specific IP addresses or hostile networks.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. 192.168.1.100 or IP"
-                  value={newBlockIp}
-                  onChange={(e) => setNewBlockIp(e.target.value)}
-                  className="bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500/50 font-mono w-48"
-                />
-                <button
-                  onClick={() => handleBlockIp(newBlockIp)}
-                  className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                >
-                  Block IP
-                </button>
-              </div>
-            </div>
-
-            {blockedIps.length === 0 ? (
-              <div className="p-4 text-center text-xs text-zinc-500 bg-black/20 rounded-xl border border-white/5">
-                No IP addresses are currently blocked.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {blockedIps.map((ip) => (
-                  <div
-                    key={ip}
-                    className="flex items-center justify-between p-2.5 bg-black/40 border border-red-500/20 rounded-xl text-xs"
-                  >
-                    <span className="font-mono text-red-300 font-bold">{ip}</span>
-                    <button
-                      onClick={() => handleUnblockIp(ip)}
-                      className="text-[10px] text-zinc-400 hover:text-white px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                    >
-                      Unblock
-                    </button>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-800/80 border border-white/10 flex items-center justify-center text-zinc-300">
+                    {ds.os.toLowerCase().includes('android') || ds.os.toLowerCase().includes('ios') ? (
+                      <Smartphone className="w-5 h-5 text-indigo-400" />
+                    ) : (
+                      <Laptop className="w-5 h-5 text-indigo-400" />
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Blocked & Revoked Sessions</h3>
-                <p className="text-xs text-zinc-400">History of devices that have been denied or revoked access.</p>
-              </div>
-              <span className="text-xs font-mono text-zinc-500">{revokedSessions.length} records</span>
-            </div>
-
-            {revokedSessions.length === 0 ? (
-              <div className="p-8 text-center bg-black/20 border border-white/5 rounded-2xl">
-                <p className="text-xs text-zinc-500">No revoked sessions recorded.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {revokedSessions.map((session) => (
-                  <div
-                    key={session.sessionId}
-                    className="bg-black/25 border border-white/5 rounded-xl p-3.5 flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-3">
-                      <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-zinc-300">{session.device}</span>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-red-500/10 text-red-400 border border-red-500/20 uppercase">
-                            {session.status}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
-                          {session.location} {session.ip ? `(IP: ${session.ip})` : ''} • Revoked on {session.revokedAt ? formatDetailedDate(session.revokedAt) : 'N/A'}
-                        </div>
-                      </div>
-                    </div>
+                  <div>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleBlockIp(session.ip)}
-                        className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                      >
-                        Block IP
-                      </button>
-                      <span className="text-[10px] font-mono text-zinc-600">{session.sessionId}</span>
+                      <h4 className="font-semibold text-white text-sm">{ds.os}</h4>
+                      {ds.current && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          Current Bot Session
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
+                      <span>{ds.platform}</span>
+                      <span>•</span>
+                      <span>{ds.location}</span>
+                    </div>
+                    <div className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Last Active: {new Date(ds.approx_last_used_time || Date.now()).toLocaleTimeString()}
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {!ds.current && (
+                  <button
+                    onClick={() => kickDiscordSessionDirect(ds.id_hash)}
+                    className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/30 flex items-center gap-1.5 transition-colors"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    Kick from Discord
+                  </button>
+                )}
               </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-3xl bg-zinc-900/60 border border-white/10 p-6 shadow-xl backdrop-blur-xl">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                Authorized Web Sessions
+                <span className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {trustedSessions.length}
+                </span>
+              </h2>
+              <p className="text-zinc-400 text-xs">Devices permitted to manage and interact with this account.</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => startVerificationChallenge('REVOKE_ALL')}
+            className="px-3.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 text-xs font-semibold border border-rose-500/30 flex items-center gap-1.5"
+          >
+            <Power className="w-3.5 h-3.5" />
+            Emergency Revoke All
+          </button>
+        </div>
+
+        {trustedSessions.length === 0 ? (
+          <div className="p-8 text-center text-zinc-500 text-sm border border-dashed border-white/10 rounded-2xl">
+            No trusted sessions registered.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {trustedSessions.map((session) => (
+              <div
+                key={session.sessionId}
+                className="p-5 rounded-2xl bg-zinc-950/60 border border-white/5 hover:border-emerald-500/30 transition-all flex items-start justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-800/80 border border-white/10 flex items-center justify-center text-zinc-300">
+                    <Globe className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-white text-sm">{session.device}</h4>
+                      {session.sessionId === currentSessionId && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          Current Device
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
+                      <span>{session.location}</span>
+                      <span>•</span>
+                      <span>IP: {session.ip}</span>
+                    </div>
+                    <div className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Detected: {new Date(session.detectedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {session.sessionId !== currentSessionId && (
+                  <button
+                    onClick={() => startVerificationChallenge('REVOKE_SESSION', session)}
+                    className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/30 flex items-center gap-1.5 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Revoke
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="rounded-3xl bg-zinc-900/60 border border-white/10 p-6 shadow-xl backdrop-blur-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <Key className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Emergency Recovery Key</h2>
+              <p className="text-zinc-400 text-xs">Used to authorize sensitive actions or unlock your account.</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-zinc-950/80 border border-white/5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-400">Master Secret Key:</span>
+              <button
+                onClick={() => setShowRecoveryCode(!showRecoveryCode)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                {showRecoveryCode ? 'Hide' : 'Reveal'}
+              </button>
+            </div>
+            <div className="p-3 bg-black/50 border border-white/10 rounded-xl font-mono text-sm text-amber-300 flex items-center justify-between select-all">
+              <span>{showRecoveryCode ? recoveryCode : '••••••••••••••••••••••••'}</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(recoveryCode);
+                  setCopiedRecovery(true);
+                  setTimeout(() => setCopiedRecovery(false), 3000);
+                }}
+                className="p-1 text-zinc-400 hover:text-white text-xs"
+              >
+                {copiedRecovery ? <Check className="w-4 h-4 text-emerald-400" /> : 'Copy'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-zinc-900/60 border border-white/10 p-6 shadow-xl backdrop-blur-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">IP & Network Firewall</h2>
+              <p className="text-zinc-400 text-xs">Traffic from blocked IPs receives HTTP 403 Forbidden.</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="e.g. 192.168.1.100 or 1.2.3.4"
+              value={newBlockIp}
+              onChange={(e) => setNewBlockIp(e.target.value)}
+              className="flex-1 bg-zinc-950/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500/50"
+            />
+            <button
+              onClick={handleBlockIp}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl transition-all"
+            >
+              Block IP
+            </button>
+          </div>
+
+          <div className="max-h-36 overflow-y-auto space-y-1.5">
+            {blockedIps.length === 0 ? (
+              <p className="text-xs text-zinc-500 text-center py-3">No IP addresses currently blocked.</p>
+            ) : (
+              blockedIps.map((ip) => (
+                <div
+                  key={ip}
+                  className="px-3 py-2 rounded-xl bg-zinc-950/60 border border-white/5 flex items-center justify-between text-xs text-zinc-300"
+                >
+                  <span className="font-mono">{ip}</span>
+                  <button
+                    onClick={() => handleUnblockIp(ip)}
+                    className="text-rose-400 hover:text-rose-300 text-xs"
+                  >
+                    Unblock
+                  </button>
+                </div>
+              ))
             )}
           </div>
         </div>
-      )}
+      </div>
 
-      {activeSection === 'settings' && (
-        <div className="space-y-6">
-          <div className="bg-black/30 border border-white/10 rounded-2xl p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Key className="w-4 h-4 text-amber-400" />
-                  Your Account Master Recovery Key
-                </h3>
-                <p className="text-xs text-zinc-400 mt-1 max-w-xl">
-                  This cryptographic secret is unique to your Discord account. You can use it as a fallback method to approve new devices or regain access if biometrics are unavailable.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="px-4 py-2 bg-black/60 border border-amber-500/30 rounded-xl font-mono text-xs text-amber-300 font-bold tracking-wider select-all">
-                  {showRecoveryCode ? recoveryCode : (recoveryCode ? '••••••••••••••••••••' : 'Generating...')}
-                </div>
-                <button
-                  onClick={() => setShowRecoveryCode(!showRecoveryCode)}
-                  className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white rounded-xl text-xs font-medium transition-all cursor-pointer"
-                >
-                  {showRecoveryCode ? 'Hide' : 'Show'}
-                </button>
-                <button
-                  onClick={() => {
-                    if (recoveryCode) {
-                      navigator.clipboard.writeText(recoveryCode);
-                      setCopiedRecovery(true);
-                      setTimeout(() => setCopiedRecovery(false), 2000);
-                    }
-                  }}
-                  className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  {copiedRecovery ? <Check className="w-3.5 h-3.5" /> : <Key className="w-3.5 h-3.5" />}
-                  {copiedRecovery ? 'Copied' : 'Copy'}
-                </button>
-              </div>
+      <div className="rounded-3xl bg-zinc-900/60 border border-white/10 p-6 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Security Activity Audit Trail</h2>
+              <p className="text-zinc-400 text-xs">Immutable chronological ledger of all security occurrences.</p>
             </div>
           </div>
 
-          <div className="bg-black/30 border border-white/10 rounded-2xl p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-purple-400" />
-                  Browser Web Push Notifications
-                </h3>
-                <p className="text-xs text-zinc-400 mt-1 max-w-xl">
-                  Enables instant native push notifications whenever an unknown session attempts to access your Discord account.
-                  Supported across iOS Safari, Android Chrome, Windows, macOS, and Linux desktop browsers.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={requestNotificationPermission}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    notificationsEnabled
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
-                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-                  }`}
-                >
-                  {notificationsEnabled ? 'Permission Granted' : 'Enable Notifications'}
-                </button>
-
-                <button
-                  onClick={handleTestPush}
-                  className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white rounded-xl text-xs font-medium transition-all cursor-pointer"
-                >
-                  Test Alert
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs pt-4 border-t border-white/5">
-              <div className="bg-black/20 border border-white/5 rounded-xl p-3.5">
-                <div className="text-zinc-400 font-bold uppercase text-[10px] font-mono">Notification Payload Security</div>
-                <p className="text-zinc-500 mt-1 text-[11px]">
-                  Zero sensitive data exposure. Notifications never contain tokens, passwords, or recovery codes.
-                </p>
-              </div>
-
-              <div className="bg-black/20 border border-white/5 rounded-xl p-3.5">
-                <div className="text-zinc-400 font-bold uppercase text-[10px] font-mono">Cryptographic Challenges</div>
-                <p className="text-zinc-500 mt-1 text-[11px]">
-                  Unknown logins generate a 5-minute cryptographic challenge required before approval is granted.
-                </p>
-              </div>
-
-              <div className="bg-black/20 border border-white/5 rounded-xl p-3.5">
-                <div className="text-zinc-400 font-bold uppercase text-[10px] font-mono">Emergency Revocation</div>
-                <p className="text-zinc-500 mt-1 text-[11px]">
-                  One-click nuclear option instantly revokes every active session of your account except your current session.
-                </p>
-              </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search audit trail..."
+                value={searchLog}
+                onChange={(e) => setSearchLog(e.target.value)}
+                className="w-full bg-zinc-950/80 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500/50"
+              />
             </div>
           </div>
         </div>
-      )}
+
+        <div className="divide-y divide-white/5 max-h-96 overflow-y-auto rounded-2xl bg-zinc-950/40 border border-white/5">
+          {filteredLogs.length === 0 ? (
+            <div className="p-8 text-center text-zinc-500 text-xs">No audit events match current criteria.</div>
+          ) : (
+            filteredLogs.map((log) => (
+              <div key={log.id} className="p-3.5 hover:bg-white/[0.02] flex items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      log.eventType === 'NEW_SESSION'
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : log.eventType === 'OWNER_APPROVED'
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : log.eventType === 'DISCORD_REMOTE_KICK' || log.eventType === 'SESSION_REVOKED'
+                        ? 'bg-rose-500/20 text-rose-300'
+                        : 'bg-indigo-500/20 text-indigo-300'
+                    }`}
+                  >
+                    {log.eventType}
+                  </span>
+                  <span className="text-zinc-300">{log.details}</span>
+                </div>
+                <span className="text-zinc-500 text-[11px] whitespace-nowrap">
+                  {new Date(log.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
       <AnimatePresence>
         {activeVerification.isOpen && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-zinc-950 border border-white/20 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl backdrop-blur-2xl flex flex-col"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md bg-zinc-900 border border-indigo-500/30 rounded-3xl p-6 shadow-2xl space-y-6"
             >
-              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
-                    <Fingerprint className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <Shield className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white tracking-wide">Owner Authentication Required</h3>
-                    <p className="text-[11px] text-zinc-400 font-mono">
-                      Action: {activeVerification.action} {activeVerification.targetSession?.sessionId || ''}
-                    </p>
+                    <h3 className="font-bold text-white text-base">Owner Authorization Challenge</h3>
+                    <p className="text-zinc-400 text-xs">Authorize: {activeVerification.action}</p>
                   </div>
                 </div>
-
                 <button
-                  onClick={() => setActiveVerification({ isOpen: false, action: 'ACCEPT' })}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                  onClick={() => setActiveVerification((prev) => ({ ...prev, isOpen: false }))}
+                  className="p-1.5 text-zinc-400 hover:text-white rounded-lg"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-5">
-                <div className="bg-black/40 border border-white/10 rounded-2xl p-3.5 text-xs space-y-2">
-                  <div className="flex items-center justify-between text-zinc-400">
-                    <span>Verification Challenge:</span>
-                    <span className="font-mono text-[11px] text-amber-400">{activeVerification.challengeId}</span>
-                  </div>
-                  {activeVerification.targetSession && (
-                    <div className="flex items-center justify-between text-zinc-400 pt-1 border-t border-white/5">
-                      <span>Target Device:</span>
-                      <span className="font-bold text-white">{activeVerification.targetSession.device}</span>
-                    </div>
-                  )}
+              {activeVerification.error && (
+                <div className="p-3 bg-rose-950/60 border border-rose-500/30 rounded-xl text-rose-300 text-xs">
+                  {activeVerification.error}
                 </div>
+              )}
 
-                <div className="flex border-b border-white/10 gap-2">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => {
-                      setAuthMethod('passkey');
-                      setAuthError(null);
-                    }}
-                    className={`flex-1 py-2 text-xs font-bold border-b-2 transition-all ${
-                      authMethod === 'passkey'
-                        ? 'border-purple-500 text-purple-300'
-                        : 'border-transparent text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    Passkey / WebAuthn
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setAuthMethod('recovery_code');
-                      setAuthError(null);
-                    }}
-                    className={`flex-1 py-2 text-xs font-bold border-b-2 transition-all ${
-                      authMethod === 'recovery_code'
-                        ? 'border-purple-500 text-purple-300'
-                        : 'border-transparent text-zinc-400 hover:text-white'
+                    onClick={() => setActiveVerification((prev) => ({ ...prev, method: 'recovery_code' }))}
+                    className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${
+                      activeVerification.method === 'recovery_code'
+                        ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200'
+                        : 'bg-zinc-950/60 border-white/10 text-zinc-400 hover:text-white'
                     }`}
                   >
                     Recovery Code
                   </button>
-
                   <button
-                    onClick={() => {
-                      setAuthMethod('owner_secret');
-                      setAuthError(null);
-                    }}
-                    className={`flex-1 py-2 text-xs font-bold border-b-2 transition-all ${
-                      authMethod === 'owner_secret'
-                        ? 'border-purple-500 text-purple-300'
-                        : 'border-transparent text-zinc-400 hover:text-white'
+                    onClick={() => setActiveVerification((prev) => ({ ...prev, method: 'passkey' }))}
+                    className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all ${
+                      activeVerification.method === 'passkey'
+                        ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200'
+                        : 'bg-zinc-950/60 border-white/10 text-zinc-400 hover:text-white'
                     }`}
                   >
-                    Owner Secret
+                    Passkey / Biometric
                   </button>
                 </div>
 
-                {authMethod === 'passkey' && (
-                  <div className="text-center py-4 space-y-3">
-                    <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mx-auto">
-                      <Fingerprint className="w-8 h-8 animate-pulse" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">Authenticate with Biometrics / Hardware Key</h4>
-                      <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1">
-                        Use Face ID, Touch ID, or Windows Hello on your device to sign the verification challenge.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {authMethod === 'recovery_code' && (
-                  <div className="space-y-2">
-                    <label className="text-xs text-zinc-300 font-medium">Master Owner Recovery Code</label>
+                {activeVerification.method === 'recovery_code' && (
+                  <div>
+                    <label className="text-xs text-zinc-400 block mb-1.5">Enter Recovery Key:</label>
                     <input
                       type="text"
-                      placeholder="e.g. SEC-OWNER-7F89-K29X-YURI"
-                      value={authSecretInput}
-                      onChange={(e) => setAuthSecretInput(e.target.value)}
-                      className="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-purple-500"
-                    />
-                    <p className="text-[10px] text-zinc-500 font-mono">
-                      Fallback recovery code authorized exclusively for the system owner.
-                    </p>
-                  </div>
-                )}
-
-                {authMethod === 'owner_secret' && (
-                  <div className="space-y-2">
-                    <label className="text-xs text-zinc-300 font-medium">Owner Master Secret</label>
-                    <input
-                      type="password"
-                      placeholder="Enter owner secret..."
-                      value={authSecretInput}
-                      onChange={(e) => setAuthSecretInput(e.target.value)}
-                      className="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-purple-500"
+                      placeholder="SEC-XXXX-XXXX-YURI"
+                      value={activeVerification.payloadInput}
+                      onChange={(e) => setActiveVerification((prev) => ({ ...prev, payloadInput: e.target.value }))}
+                      className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 )}
 
-                {authError && (
-                  <div className="p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-xs text-red-300 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    <span>{authError}</span>
+                {activeVerification.method === 'passkey' && (
+                  <div className="p-4 rounded-xl bg-zinc-950/80 border border-white/10 text-center space-y-2">
+                    <Fingerprint className="w-8 h-8 text-indigo-400 mx-auto" />
+                    <p className="text-xs text-zinc-300 font-medium">Verify using device biometric or security key</p>
                   </div>
                 )}
 
-                {authSuccess && (
-                  <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                    <span>{authSuccess}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex gap-3 pt-2">
                   <button
-                    onClick={() => setActiveVerification({ isOpen: false, action: 'ACCEPT' })}
-                    className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-zinc-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                    onClick={() => setActiveVerification((prev) => ({ ...prev, isOpen: false }))}
+                    className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold"
                   >
                     Cancel
                   </button>
-
                   <button
-                    onClick={executeVerification}
-                    disabled={authLoading}
-                    className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-95 cursor-pointer uppercase tracking-wider flex items-center justify-center gap-2"
+                    onClick={submitVerification}
+                    disabled={activeVerification.processing}
+                    className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 disabled:opacity-50"
                   >
-                    {authLoading ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Key className="w-4 h-4" />
-                        Verify & Authorize
-                      </>
-                    )}
+                    {activeVerification.processing ? 'Verifying...' : 'Confirm Authorization'}
                   </button>
                 </div>
               </div>
