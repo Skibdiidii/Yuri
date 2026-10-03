@@ -33,6 +33,13 @@ if (typeof window !== 'undefined') {
             } catch (_) {}
             return DEFAULT_DIMENSIONS;
           },
+          set(val) {
+            try {
+              if (this && this._renderer && this._renderer.value) {
+                this._renderer.value.dimensions = val;
+              }
+            } catch (_) {}
+          },
           configurable: true,
           enumerable: true
         });
@@ -72,8 +79,8 @@ if (typeof window !== 'undefined') {
 
         try {
           const rs = core?._renderService;
-          if (rs && typeof rs.hasRenderer === 'function' && rs.hasRenderer()) {
-            const dims = rs.dimensions;
+          if (rs) {
+            const dims = rs.dimensions || DEFAULT_DIMENSIONS;
             if (dims && dims.css && dims.css.cell) {
               cellWidth = dims.css.cell.width;
               cellHeight = dims.css.cell.height;
