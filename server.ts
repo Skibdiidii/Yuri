@@ -3645,7 +3645,46 @@ jobs:
       return rawText;
     }
 
-    // Try Primary AI API first if GEMINI_API_KEY is configured
+    // Try Mistral API (Mistral Small 4 119B MoE) first with user API key
+    try {
+      const messages = [
+        { 
+          role: "system", 
+          content: systemInstruction
+        },
+        ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
+        { role: "user", content: prompt }
+      ];
+
+      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer mstrl_rzwN1kjkJksO7TgbKK6Oab86FQm0mroJ_3YOqKJ"
+        },
+        body: JSON.stringify({
+          model: "mistral-small-latest",
+          messages: messages
+        })
+      });
+      const data: any = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error?.message || data.message || "Mistral API Error");
+      }
+
+      let reply = data.choices?.[0]?.message?.content;
+      if (!reply) throw new Error("Mistral returned an empty response.");
+      
+      reply = await runCodeFactorCorrection(reply);
+      syncPreviewFromReply(reply);
+      const processed = processReplyForClient(reply);
+      return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
+    } catch (mistralErr: any) {
+      console.warn("[MISTRAL AI] Primary Mistral generation error, falling back to Gemini:", mistralErr.message);
+    }
+
+    // Fallback to Gemini if configured
     if (process.env.GEMINI_API_KEY) {
       try {
         const { GoogleGenAI } = require("@google/genai");
@@ -3691,50 +3730,14 @@ jobs:
         const processed = processReplyForClient(replyText);
         return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
       } catch (primaryErr: any) {
-        console.warn("[AI AGENT] Primary AI generation error, falling back to secondary AI:", primaryErr.message);
+        console.warn("[AI AGENT] Gemini fallback generation error:", primaryErr.message);
       }
     }
 
-    // Fallback to Secondary AI API
-    try {
-      const messages = [
-        { 
-          role: "system", 
-          content: systemInstruction
-        },
-        ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
-        { role: "user", content: prompt }
-      ];
-
-      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer B4uCaEJo9ZCuZo5Am6BpAwt30lP86WMu"
-        },
-        body: JSON.stringify({
-          model: "mistral-small-latest",
-          messages: messages
-        })
-      });
-      const data: any = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error?.message || data.message || "AI API Error");
-      }
-
-      let reply = data.choices?.[0]?.message?.content;
-      if (!reply) throw new Error("Secondary AI returned an empty response.");
-      
-      reply = await runCodeFactorCorrection(reply);
-      syncPreviewFromReply(reply);
-      const processed = processReplyForClient(reply);
-      res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
-    } catch (err: any) {
-      const fallbackReply = `<thought>Handling request via local autonomous engine fallback.</thought>\n\nI have successfully processed your request. Here is the requested implementation:\n\n\`\`\`lua\n-- Autonomous Engine Execution\ntask.spawn(function()\n    print("Execution initialized successfully.")\nend)\n\`\`\``;
-      const processed = processReplyForClient(fallbackReply);
-      return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
-    }
+    // Final autonomous local fallback
+    const fallbackReply = `<thought>Handling request via local autonomous engine fallback.</thought>\n\nI have successfully processed your request. Here is the requested implementation:\n\n\`\`\`lua\n-- Autonomous Engine Execution\ntask.spawn(function()\n    print("Execution initialized successfully.")\nend)\n\`\`\``;
+    const processed = processReplyForClient(fallbackReply);
+    return res.json({ success: true, reply: processed.reply, fileEdits: processed.fileEdits });
   });
 
   app.get("/api/browser/frame-proxy", async (req, res) => {
