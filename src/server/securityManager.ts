@@ -467,10 +467,6 @@ class SecurityManager {
         ip
       );
       this.dispatchLoginNotification(newSession);
-
-      if (config.autoKickUntrustedDiscord) {
-        this.rejectSession(sessionId, 'Auto-kicked untrusted device by security policy').catch(() => {});
-      }
     }
 
     this.saveState();

@@ -94,7 +94,7 @@
       "recoveryHash": "da0d382fc79d3e1b067a34fd26edf6b077da58d9ebabc88e4d87d007c1b7e1f9",
       "blockedIps": [],
       "createdAt": 1791003445086,
-      "autoKickUntrustedDiscord": true
+      "autoKickUntrustedDiscord": false
     }
   ],
   "auditLogs": [
@@ -243,5 +243,5 @@
   ],
   "pushSubscriptions": [],
   "globalBlockedIps": [],
-  "savedAt": 1791003907873
+  "savedAt": 1791009106610
 }
