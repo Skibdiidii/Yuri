@@ -1,6 +1,80 @@
 {
-  "sessions": [],
+  "sessions": [
+    {
+      "sessionId": "SEC-135B-8F81",
+      "tokenHash": "0436b14a0daefdc1f4bcb8fa59fef7a28dc6fee2e08f316b568cc967f9d3a7e3",
+      "username": "Discord User",
+      "avatar": null,
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+      "device": "Chrome · Android",
+      "os": "Android",
+      "browser": "Chrome",
+      "location": "Secure Cloud Gateway",
+      "detectedAt": 1791003089802,
+      "lastActiveAt": 1791003089802,
+      "status": "PENDING",
+      "trusted": false,
+      "approvalRequired": true,
+      "isOwner": false
+    },
+    {
+      "sessionId": "SEC-CA57-1F48",
+      "tokenHash": "e8ac77e88f925d437e1973ed6ac3bedd73a49b950d92abb0dcd66981adf3c4da",
+      "userId": "1548134722557714503",
+      "username": "imologpt",
+      "avatar": "https://cdn.discordapp.com/avatars/1548134722557714503/1acd2094fd4c644e6c885e608d478104.webp",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+      "device": "Chrome · Android",
+      "os": "Android",
+      "browser": "Chrome",
+      "location": "Secure Cloud Gateway",
+      "detectedAt": 1791003134425,
+      "lastActiveAt": 1791003150541,
+      "status": "PENDING",
+      "trusted": false,
+      "approvalRequired": true,
+      "isOwner": false
+    }
+  ],
   "auditLogs": [
+    {
+      "id": "LOG-1791003134426-ca5d",
+      "timestamp": 1791003134426,
+      "eventType": "NOTIFICATION_SENT",
+      "details": "Browser notification dispatched for session SEC-CA57-1F48",
+      "sessionId": "SEC-CA57-1F48",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791003134425-bcef",
+      "timestamp": 1791003134425,
+      "eventType": "NEW_SESSION",
+      "details": "New login detected on Chrome · Android (Secure Cloud Gateway)",
+      "sessionId": "SEC-CA57-1F48",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791003089803-5eb4",
+      "timestamp": 1791003089803,
+      "eventType": "NOTIFICATION_SENT",
+      "details": "Browser notification dispatched for session SEC-135B-8F81",
+      "sessionId": "SEC-135B-8F81",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
+    {
+      "id": "LOG-1791003089802-049f",
+      "timestamp": 1791003089802,
+      "eventType": "NEW_SESSION",
+      "details": "New login detected on Chrome · Android (Secure Cloud Gateway)",
+      "sessionId": "SEC-135B-8F81",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e"
+    },
     {
       "id": "LOG-1791002914381-cc4d",
       "timestamp": 1791002914381,
@@ -30,5 +104,6 @@
     }
   ],
   "pushSubscriptions": [],
-  "savedAt": 1791002914381
+  "blockedIps": [],
+  "savedAt": 1791003150541
 }

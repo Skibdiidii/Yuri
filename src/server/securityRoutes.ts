@@ -6,10 +6,14 @@ const router = Router();
 
 export function securityEnforcementMiddleware(req: Request, res: Response, next: NextFunction) {
   const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
-  if (securityManager.isIpBlocked(ip)) {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = token ? securityManager.resolveAccountKey(token) : undefined;
+
+  if (securityManager.isIpBlocked(ip, accountKey)) {
     return res.status(403).json({
       error: 'IP_BLOCKED',
-      message: 'Access from this IP address or network has been blocked by the owner.',
+      message: 'Access from this IP address or network has been blocked by the account owner.',
     });
   }
 
@@ -25,15 +29,12 @@ export function securityEnforcementMiddleware(req: Request, res: Response, next:
     return next();
   }
 
-  const authHeader = req.headers['authorization'] || '';
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-
   if (token && token !== 'guest' && token !== 'undefined') {
     const check = securityManager.isTokenAllowed(token, req);
     if (!check.allowed) {
       return res.status(403).json({
         error: check.status,
-        message: check.reason || 'This device session is not authorized by the owner.',
+        message: check.reason || 'This device session is not authorized by the account owner.',
         status: check.status,
       });
     }
@@ -50,12 +51,16 @@ router.get('/status', (req: Request, res: Response) => {
 });
 
 router.get('/events', (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || (req.query.token as string) || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = token ? securityManager.resolveAccountKey(token) : undefined;
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  securityManager.addSseClient(res);
+  securityManager.addSseClient(res, accountKey);
 
   const heartbeat = setInterval(() => {
     try {
@@ -84,7 +89,7 @@ router.get('/check-session', (req: Request, res: Response) => {
     return res.json({
       success: true,
       session: registered.session,
-      isTrusted: registered.session.trusted || registered.session.userId === securityManager.OWNER_ID,
+      isTrusted: registered.session.trusted,
       isPending: registered.session.status === 'PENDING',
     });
   }
@@ -92,7 +97,7 @@ router.get('/check-session', (req: Request, res: Response) => {
   return res.json({
     success: true,
     session,
-    isTrusted: (session.status === 'TRUSTED' && session.trusted) || session.userId === securityManager.OWNER_ID,
+    isTrusted: session.status === 'TRUSTED' && session.trusted,
     isPending: session.status === 'PENDING',
     isRevoked: session.status === 'REVOKED' || session.status === 'REJECTED',
   });
@@ -100,11 +105,15 @@ router.get('/check-session', (req: Request, res: Response) => {
 
 router.post('/challenge/create', (req: Request, res: Response) => {
   const { action, sessionId } = req.body;
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
+
   if (!action) {
     return res.status(400).json({ error: 'Action is required' });
   }
 
-  const challenge = securityManager.createChallenge(action, sessionId);
+  const challenge = securityManager.createChallenge(accountKey, action, sessionId);
   res.json({
     success: true,
     challengeId: challenge.challengeId,
@@ -132,9 +141,10 @@ router.post('/challenge/verify', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Verification challenge has expired.' });
   }
 
-  const isValid = securityManager.verifyOwnerAuth(method, authPayload, ip);
+  const isValid = securityManager.verifyOwnerAuth(challenge.accountKey, method, authPayload, ip);
   if (!isValid) {
     securityManager.addAuditLog(
+      challenge.accountKey,
       'FAILED_VERIFICATION',
       `Failed owner verification attempt using ${method}`,
       challenge.targetSessionId,
@@ -148,6 +158,7 @@ router.post('/challenge/verify', async (req: Request, res: Response) => {
   }
 
   securityManager.addAuditLog(
+    challenge.accountKey,
     'VERIFICATION_ATTEMPT',
     `Successful owner verification via ${method}`,
     challenge.targetSessionId,
@@ -166,7 +177,7 @@ router.post('/challenge/verify', async (req: Request, res: Response) => {
     await securityManager.revokeSession(challenge.targetSessionId, `Revoked via Owner Verification (${method})`);
     actionResult.revokedSessionId = challenge.targetSessionId;
   } else if (challenge.action === 'REVOKE_ALL') {
-    const count = await securityManager.emergencyRevokeAll(challenge.targetSessionId, ip);
+    const count = await securityManager.emergencyRevokeAll(challenge.accountKey, challenge.targetSessionId, ip);
     actionResult.revokedCount = count;
   }
 
@@ -193,6 +204,10 @@ router.post('/approve', (req: Request, res: Response) => {
 
 router.post('/reject', async (req: Request, res: Response) => {
   const { sessionId, reason, blockIp } = req.body;
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
+
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
@@ -203,9 +218,9 @@ router.post('/reject', async (req: Request, res: Response) => {
   }
 
   if (blockIp) {
-    const session = securityManager.getStatus().revokedSessions.find((s) => s.sessionId === sessionId);
+    const session = securityManager.getStatus(token).revokedSessions.find((s) => s.sessionId === sessionId);
     if (session && session.ip && session.ip !== '127.0.0.1') {
-      securityManager.blockIp(session.ip, `Blocked during rejection of ${sessionId}`);
+      securityManager.blockIp(session.ip, accountKey, `Blocked during rejection of ${sessionId}`);
     }
   }
 
@@ -214,6 +229,10 @@ router.post('/reject', async (req: Request, res: Response) => {
 
 router.post('/revoke', async (req: Request, res: Response) => {
   const { sessionId, reason, blockIp } = req.body;
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
+
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID is required' });
   }
@@ -224,9 +243,9 @@ router.post('/revoke', async (req: Request, res: Response) => {
   }
 
   if (blockIp) {
-    const session = securityManager.getStatus().revokedSessions.find((s) => s.sessionId === sessionId);
+    const session = securityManager.getStatus(token).revokedSessions.find((s) => s.sessionId === sessionId);
     if (session && session.ip && session.ip !== '127.0.0.1') {
-      securityManager.blockIp(session.ip, `Blocked during revocation of ${sessionId}`);
+      securityManager.blockIp(session.ip, accountKey, `Blocked during revocation of ${sessionId}`);
     }
   }
 
@@ -235,41 +254,58 @@ router.post('/revoke', async (req: Request, res: Response) => {
 
 router.post('/emergency-revoke-all', async (req: Request, res: Response) => {
   const { currentSessionId } = req.body;
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
   const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
-  const count = await securityManager.emergencyRevokeAll(currentSessionId, ip);
+
+  const count = await securityManager.emergencyRevokeAll(accountKey, currentSessionId, ip);
   res.json({
     success: true,
     revokedCount: count,
-    message: `Emergency action completed: ${count} sessions were immediately terminated, kicked, and revoked.`,
+    message: `Emergency action completed: ${count} sessions of your account were immediately terminated, kicked, and revoked.`,
   });
 });
 
 router.post('/block-ip', (req: Request, res: Response) => {
   const { ip, reason } = req.body;
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
+
   if (!ip) {
     return res.status(400).json({ error: 'IP address is required' });
   }
-  securityManager.blockIp(ip, reason || 'Manually blocked from Security Dashboard');
+  securityManager.blockIp(ip, accountKey, reason || 'Manually blocked from Security Dashboard');
   res.json({ success: true, message: `IP ${ip} blocked.` });
 });
 
 router.post('/unblock-ip', (req: Request, res: Response) => {
   const { ip } = req.body;
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
+
   if (!ip) {
     return res.status(400).json({ error: 'IP address is required' });
   }
-  securityManager.unblockIp(ip);
+  securityManager.unblockIp(ip, accountKey);
   res.json({ success: true, message: `IP ${ip} unblocked.` });
 });
 
 router.post('/push-subscribe', (req: Request, res: Response) => {
   const { subscription } = req.body;
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
+
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'Invalid push subscription payload' });
   }
   const id = `PUSH-${crypto.createHash('md5').update(subscription.endpoint).digest('hex').substring(0, 8)}`;
   securityManager.addPushSubscription({
     id,
+    accountKey,
     endpoint: subscription.endpoint,
     keys: subscription.keys,
     createdAt: Date.now(),
@@ -279,6 +315,9 @@ router.post('/push-subscribe', (req: Request, res: Response) => {
 });
 
 router.post('/test-push', (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const accountKey = securityManager.resolveAccountKey(token);
   const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
   const userAgent = req.headers['user-agent'] || 'Chrome / Android (Test)';
   const { device } = securityManager.parseUserAgent(userAgent);
@@ -286,6 +325,7 @@ router.post('/test-push', (req: Request, res: Response) => {
 
   const testSession = {
     sessionId: `SEC-TEST-${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
+    accountKey,
     tokenHash: 'test',
     device,
     os: 'Android',
@@ -301,7 +341,7 @@ router.post('/test-push', (req: Request, res: Response) => {
   };
 
   securityManager.dispatchLoginNotification(testSession);
-  res.json({ success: true, message: 'Test login notification dispatched successfully.' });
+  res.json({ success: true, message: 'Test login notification dispatched to your account devices.' });
 });
 
 export default router;

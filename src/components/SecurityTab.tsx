@@ -82,6 +82,9 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
   const [revokedSessions, setRevokedSessions] = useState<SecuritySession[]>([]);
   const [blockedIps, setBlockedIps] = useState<string[]>([]);
   const [newBlockIp, setNewBlockIp] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState<string>('');
+  const [showRecoveryCode, setShowRecoveryCode] = useState(false);
+  const [copiedRecovery, setCopiedRecovery] = useState(false);
   const [auditLogs, setAuditLogs] = useState<SecurityAuditLog[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
@@ -132,6 +135,7 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
         setTrustedSessions(data.trustedSessions || []);
         setRevokedSessions(data.revokedSessions || []);
         setBlockedIps(data.blockedIps || []);
+        setRecoveryCode(data.recoveryCode || '');
         setAuditLogs(data.auditLogs || []);
         if (data.currentSessionId) {
           setCurrentSessionId(data.currentSessionId);
@@ -149,7 +153,8 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
     const interval = setInterval(fetchSecurityStatus, 6000);
 
     try {
-      const es = new EventSource('/api/security/events');
+      const sseUrl = '/api/security/events?token=' + encodeURIComponent(token);
+      const es = new EventSource(sseUrl);
       sseRef.current = es;
 
       es.onmessage = (event) => {
@@ -962,7 +967,46 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
       )}
 
       {activeSection === 'settings' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Key className="w-4 h-4 text-amber-400" />
+                  Your Account Master Recovery Key
+                </h3>
+                <p className="text-xs text-zinc-400 mt-1 max-w-xl">
+                  This cryptographic secret is unique to your Discord account. You can use it as a fallback method to approve new devices or regain access if biometrics are unavailable.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="px-4 py-2 bg-black/60 border border-amber-500/30 rounded-xl font-mono text-xs text-amber-300 font-bold tracking-wider select-all">
+                  {showRecoveryCode ? recoveryCode : (recoveryCode ? '••••••••••••••••••••' : 'Generating...')}
+                </div>
+                <button
+                  onClick={() => setShowRecoveryCode(!showRecoveryCode)}
+                  className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white rounded-xl text-xs font-medium transition-all cursor-pointer"
+                >
+                  {showRecoveryCode ? 'Hide' : 'Show'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (recoveryCode) {
+                      navigator.clipboard.writeText(recoveryCode);
+                      setCopiedRecovery(true);
+                      setTimeout(() => setCopiedRecovery(false), 2000);
+                    }
+                  }}
+                  className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {copiedRecovery ? <Check className="w-3.5 h-3.5" /> : <Key className="w-3.5 h-3.5" />}
+                  {copiedRecovery ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-black/30 border border-white/10 rounded-2xl p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -1015,7 +1059,7 @@ export default function SecurityTab({ token, addLog }: SecurityTabProps) {
               <div className="bg-black/20 border border-white/5 rounded-xl p-3.5">
                 <div className="text-zinc-400 font-bold uppercase text-[10px] font-mono">Emergency Revocation</div>
                 <p className="text-zinc-500 mt-1 text-[11px]">
-                  One-click nuclear option instantly revokes every active session except the current owner session.
+                  One-click nuclear option instantly revokes every active session of your account except your current session.
                 </p>
               </div>
             </div>
