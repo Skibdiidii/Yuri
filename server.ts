@@ -3535,11 +3535,10 @@ jobs:
       "When the user asks for terminal help, Linux commands, bash scripts, or debugging, provide precise shell commands and step-by-step instructions.\n\n" +
       "WEBSITE BUILDING & BROWSER PREVIEW CAPABILITIES:\n" +
       "When the user asks you to build any website (e.g. for a barber shop, gym, restaurant, SaaS company, gaming group, creative portfolio, e-commerce, or any business or personal topic):\n" +
-      "1. Build a COMPLETE, production-ready, beautiful modern website in a single file HTML with embedded CSS and JavaScript.\n" +
-      "2. STYLING: Always use Tailwind CSS via CDN (<script src=\"https://cdn.tailwindcss.com\"></script>), modern typography (Google Fonts like Plus Jakarta Sans, Cinzel, Inter, Playfair), and icons (FontAwesome 6 or inline SVG).\n" +
-      "3. RICH MEDIA (IMAGES & VIDEOS): Automatically curate and embed high-resolution, topic-relevant royalty-free images (Unsplash) and videos.\n" +
-      "4. OUTPUT FORMAT FOR WEBSITES: When you generate a website, wrap the complete HTML in `<website_preview name=\"Website Title\">\n...HTML code...\n</website_preview>`.\n" +
-      "5. IMPORTANT: NEVER show raw HTML website code in your chat response text. The UI automatically extracts and loads the website into the Browser Preview tab. Keep your conversational response clean and concise, and do not dump raw HTML code in the chat.\n\n" +
+      "1. Build a COMPLETE, production-ready, breathtaking, god-tier modern website in a single file HTML with embedded CSS and JavaScript.\n" +
+      "2. STYLING & MEDIA: Always use Tailwind CSS via CDN (<script src=\"https://cdn.tailwindcss.com\"></script>), premium Google Fonts (Plus Jakarta Sans, Cinzel, Inter, Playfair Display), Lucide/FontAwesome icons, high-resolution Unsplash photos, and embedded background videos/elements.\n" +
+      "3. CHAT RESPONSE vs PREVIEW: Send a professional, clean conversational explanation of the website features, design choices, and sections in your chat response text. NEVER dump raw HTML code in the chat response.\n" +
+      "4. OUTPUT FORMAT: Wrap the complete production HTML code inside `<website_preview name=\"Website Title\">\n<!DOCTYPE html>\n...\n</website_preview>`. The UI automatically loads it into the Browser Preview tab.\n\n" +
       "EXECUTION & CONVERSATIONAL FORMAT (MANDATORY):\n" +
       "- ALWAYS start your response by wrapping your friendly, highly detailed, step-by-step planning phase inside <thought>...</thought> tags, in this format: <thought>Okay, the user asked for [prompt]. I'm planning on how I can make this. Okay, so first we will...</thought>.\n" +
       "- This keeps your thoughts and planning phase neatly minimized in the UI for the user.\n" +
@@ -10876,11 +10875,18 @@ ${list.substring(0, 1900)}`,
         ]);
       }
       activeStreams.set(token, { video: videoProcess, audio: audioProcess });
-      if (
+      if (typeof connection.playVideo === "function") {
+        console.log(`[STREAM] Calling connection.playVideo for ${token}`);
+        connection.playVideo(streamUrl, {
+          fps: 30,
+          resolution: [res_w, res_h],
+          preset: "ultrafast",
+        });
+      } else if (
         connection.streamConnection &&
         typeof connection.streamConnection.playVideo === "function"
       ) {
-        console.log(`[STREAM] Calling playVideo for ${token}`);
+        console.log(`[STREAM] Calling streamConnection.playVideo for ${token}`);
         connection.streamConnection.playVideo(videoProcess.stdout);
       } else {
         console.error(`[STREAM] playVideo method not found for ${token}`);
@@ -11736,6 +11742,19 @@ ${list.substring(0, 1900)}`,
     try {
       const connections = client.voice.connections;
       for (const [guildId, connection] of connections) {
+        const channelId = connection.channelId || client.voice?.adapters?.get?.(guildId)?.channelId;
+        if (channelId && !soundId.startsWith("http")) {
+          try {
+            await fetch(`https://discord.com/api/v10/channels/${channelId}/send-soundboard-sound`, {
+              method: 'POST',
+              headers: {
+                'Authorization': token,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ sound_id: soundId, source_guild_id: guildId })
+            });
+          } catch (e) {}
+        }
         if (soundId.startsWith("http")) {
           const ffmpegProcess = spawn(ffmpeg, [
             "-i",
