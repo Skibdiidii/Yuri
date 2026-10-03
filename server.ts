@@ -3271,7 +3271,6 @@ jobs:
       }
 
       if (extractedHtml) {
-        // Strip markdown code fences if wrapped in ```html ... ```
         if (extractedHtml.startsWith("```html")) {
           extractedHtml = extractedHtml.replace(/^```html\s*/i, "").replace(/```$/, "").trim();
         } else if (extractedHtml.startsWith("```")) {
@@ -3284,6 +3283,7 @@ jobs:
           const fs = require("fs");
           fs.mkdirSync("/tmp/preview", { recursive: true });
           fs.writeFileSync("/tmp/preview/index.html", extractedHtml, "utf8");
+          fs.writeFileSync("public/index.html", extractedHtml, "utf8");
         } catch (_) {}
       }
     } catch (e) {

@@ -86,14 +86,14 @@
       "userId": "1545521054930436167",
       "username": "imans0571",
       "avatar": "https://cdn.discordapp.com/avatars/1545521054930436167/2e0eceda60ab886489ba34bac1849100.webp",
-      "ip": "2001:fd8:e194:9100:9e93:b21b:b864:b53e",
+      "ip": "180.191.80.196",
       "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
       "device": "Chrome · Android",
       "os": "Android",
       "browser": "Chrome",
       "location": "Secure Cloud Gateway",
       "detectedAt": 1791009421396,
-      "lastActiveAt": 1791010531947,
+      "lastActiveAt": 1791010880480,
       "status": "TRUSTED",
       "trusted": true,
       "approvalRequired": false,
@@ -284,5 +284,5 @@
   ],
   "pushSubscriptions": [],
   "globalBlockedIps": [],
-  "savedAt": 1791010531947
+  "savedAt": 1791010880480
 }

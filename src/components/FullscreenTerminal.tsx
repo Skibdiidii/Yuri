@@ -106,6 +106,7 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
   
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiMode, setAiMode] = useState<'normal' | 'terminal' | 'planner'>('normal');
   
   
   const [isImgLoading, setIsImgLoading] = useState(false);
@@ -349,9 +350,17 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
     stopRequestedRef.current = false;
     isAutoExecutingRef.current = true;
     
-    const promptText = aiPrompt.trim();
-    const newUserMsg: ChatMessage = { role: 'user', content: promptText, timestamp: Date.now() };
-    
+    let rawPrompt = aiPrompt.trim();
+    let promptText = rawPrompt;
+    if (aiMode === 'normal') {
+      promptText = `[Mode: Normal Chat with Code & Download]\n${rawPrompt}`;
+    } else if (aiMode === 'terminal') {
+      promptText = `[Mode: Terminal & Code Execution]\n${rawPrompt}`;
+    } else if (aiMode === 'planner') {
+      promptText = `[Mode: Website Maker & Planning]\nPlease generate a complete responsive website using <website_preview name="Generated Site">...</website_preview> if requested.\n${rawPrompt}`;
+    }
+
+    const newUserMsg: ChatMessage = { role: 'user', content: rawPrompt, timestamp: Date.now() };
     const updatedHistory = [...chatHistory, newUserMsg];
     setChatHistory(updatedHistory);
     setAiPrompt('');
@@ -952,6 +961,40 @@ export default function FullscreenTerminal({ onBack }: { onBack?: () => void }) 
             )}
           </div>
           
+          <div className="px-4 py-2 bg-[#06060a] border-t border-white/5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Mode:</span>
+            <button
+              onClick={() => setAiMode('normal')}
+              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                aiMode === 'normal' 
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' 
+                  : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+              }`}
+            >
+              1. Normal Chat (Talk + Code + Download)
+            </button>
+            <button
+              onClick={() => setAiMode('terminal')}
+              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                aiMode === 'terminal' 
+                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30' 
+                  : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+              }`}
+            >
+              2. Terminal & Code Execution
+            </button>
+            <button
+              onClick={() => setAiMode('planner')}
+              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                aiMode === 'planner' 
+                  ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30' 
+                  : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+              }`}
+            >
+              3. Website Maker & Planning
+            </button>
+          </div>
+
           <div className="p-4 border-t border-white/5 bg-[#08080C] flex gap-3">
             <div className="flex-1 relative flex items-center">
               <span className="absolute left-3 text-emerald-500 font-bold text-sm select-none">$</span>
