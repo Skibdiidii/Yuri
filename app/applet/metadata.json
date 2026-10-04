@@ -1,0 +1,6 @@
+{
+  "name": "NexusOS Mobile Roblox OS",
+  "description": "Realistic horizontal iPhone Mobile OS in Roblox with Discord, Notes, Safari (Jina reader), and Real Linux/Code Terminal",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
