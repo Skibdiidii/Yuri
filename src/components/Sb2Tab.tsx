@@ -89,7 +89,7 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
   const [formExecLoading, setFormExecLoading] = useState(false);
   const [formExecResult, setFormExecResult] = useState<{ success: boolean; msg: string } | null>(null);
 
-  const AUTH_URL = 'https://discord.com/oauth2/authorize?client_id=1545467399493521478';
+  const AUTH_URL = 'https://discord.com/oauth2/authorize?client_id=1545467399493521478&integration_type=1&scope=applications.commands';
   const GIF_URL = 'https://i.pinimg.com/originals/5f/a0/e3/5fa0e3e226de58362578fd5e28caabf1.gif';
 
   const fetchStatus = async () => {
@@ -616,13 +616,13 @@ export default function Sb2Tab({ onBack }: Sb2TabProps) {
                 <span className="text-xs font-mono text-zinc-300">Uptime: {formatUptime(botStatus.uptime)}</span>
               </div>
               <a 
-                href={`https://discord.com/api/oauth2/authorize?client_id=1545467399493521478&permissions=8&scope=bot%20applications.commands`} 
+                href={`https://discord.com/oauth2/authorize?client_id=1545467399493521478&integration_type=1&scope=applications.commands`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg flex items-center gap-2 transition-all"
               >
                 <Bot className="w-3.5 h-3.5" />
-                <span>Invite Controller</span>
+                <span>Authorize Controller (Account)</span>
               </a>
               <a 
                 href={`https://discord.com/api/oauth2/authorize?client_id=1545528232898465893&permissions=8&scope=bot%20applications.commands`} 

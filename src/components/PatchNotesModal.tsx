@@ -13,6 +13,11 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
       date: "October 2026",
       updates: [
         {
+          title: "Discord Account User App Authorization",
+          icon: <Zap className="w-5 h-5 text-purple-400" />,
+          description: "Fixed installation type errors by switching Russian Controller Bot OAuth to direct account user installation (integration_type=1), enabling instant authorization inside user accounts."
+        },
+        {
           title: "Native Discord UDP Screenshare Protocol",
           icon: <Monitor className="w-5 h-5 text-indigo-400" />,
           description: "Integrated @gabrielmaialva33/discord-video-stream with native Discord UDP packetization, H.264/VP8 video encoding, and preview thumbnails so viewers can watch high-res screen streams with zero blank screens."

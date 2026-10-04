@@ -40,8 +40,8 @@ export const YURI_BOT_TOKEN = process.env.YURI_BOT_TOKEN || process.env.DISCORD_
 export const RUSSIAN_CONTROLLER_BOT_ID = "1545467399493521478";
 export const SERVER_ACTIONS_BOT_ID = "1545528232898465893";
 
-export const RUSSIAN_BOT_INVITE_URL = `https://discord.com/api/oauth2/authorize?client_id=${RUSSIAN_CONTROLLER_BOT_ID}&permissions=8&scope=bot%20applications.commands`;
-export const SERVER_BOT_INVITE_URL = `https://discord.com/api/oauth2/authorize?client_id=${SERVER_ACTIONS_BOT_ID}&permissions=8&scope=bot%20applications.commands`;
+export const RUSSIAN_BOT_INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${RUSSIAN_CONTROLLER_BOT_ID}&integration_type=1&scope=applications.commands`;
+export const SERVER_BOT_INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${SERVER_ACTIONS_BOT_ID}&permissions=8&scope=bot%20applications.commands`;
 
 export const KNOWN_BOT_TOKENS: string[] = Array.from(
   new Set(
@@ -889,7 +889,7 @@ export function buildHelpEmbed(page: number, botUser: any): { embed: EmbedBuilde
       .setStyle(ButtonStyle.Success)
       .setEmoji("🚀"),
     new ButtonBuilder()
-      .setLabel("➕ Russian Bot (Controller)")
+      .setLabel("⚡ Authorize Russian Bot (Account)")
       .setStyle(ButtonStyle.Link)
       .setURL(RUSSIAN_BOT_INVITE_URL),
     new ButtonBuilder()
@@ -1457,7 +1457,7 @@ async function createAndRunBot(
           if (selected === "run_russian") {
             const isDead = Math.random() < 1 / 6;
             const russianBtn = new ButtonBuilder()
-              .setLabel("🎲 Invite Russian Bot (Controller)")
+              .setLabel("⚡ Authorize Russian Bot (Account)")
               .setStyle(ButtonStyle.Link)
               .setURL(RUSSIAN_BOT_INVITE_URL);
             const serverBtn = new ButtonBuilder()
@@ -1836,7 +1836,7 @@ async function createAndRunBot(
       if (commandName === "russian") {
         const isDead = Math.random() < 1 / 6;
         const russianBtn = new ButtonBuilder()
-          .setLabel("🎲 Invite Russian Bot (Controller)")
+          .setLabel("⚡ Authorize Russian Bot (Account)")
           .setStyle(ButtonStyle.Link)
           .setURL(RUSSIAN_BOT_INVITE_URL);
         const serverBtn = new ButtonBuilder()
