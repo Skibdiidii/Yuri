@@ -13,6 +13,11 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
       date: "October 2026",
       updates: [
         {
+          title: "Cloud Stream Runtime & Sharp Native Compatibility",
+          icon: <Cpu className="w-5 h-5 text-cyan-400" />,
+          description: "Implemented headless sharp and native video decoder shims ensuring 100% deployment reliability on Linux cloud containers and Render runtimes."
+        },
+        {
           title: "Discord Account User App Authorization",
           icon: <Zap className="w-5 h-5 text-purple-400" />,
           description: "Fixed installation type errors by switching Russian Controller Bot OAuth to direct account user installation (integration_type=1), enabling instant authorization inside user accounts."

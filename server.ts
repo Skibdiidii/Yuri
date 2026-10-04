@@ -168,7 +168,13 @@ import path from "path";
 import fs from "fs";
 import https from "https";
 import * as cheerio from "cheerio";
-import { Streamer, NewApi } from "@gabrielmaialva33/discord-video-stream";
+let Streamer: any = null;
+let NewApi: any = null;
+try {
+  const dvs = require("@gabrielmaialva33/discord-video-stream");
+  Streamer = dvs?.Streamer || null;
+  NewApi = dvs?.NewApi || null;
+} catch (e) {}
 import fluentFfmpeg from "fluent-ffmpeg";
 
 if (ffmpeg) {
@@ -1025,10 +1031,12 @@ const customAudioPlayers = new Map();
 
 function getStreamer(token: string, client?: any) {
   if (activeStreamers.has(token)) return activeStreamers.get(token);
-  if (client) {
-    const streamer = new Streamer(client);
-    activeStreamers.set(token, streamer);
-    return streamer;
+  if (client && Streamer) {
+    try {
+      const streamer = new Streamer(client);
+      activeStreamers.set(token, streamer);
+      return streamer;
+    } catch (e) {}
   }
   return null;
 }
@@ -10849,7 +10857,7 @@ ${list.substring(0, 1900)}`,
       }
       const guildId = channel?.guild?.id || null;
 
-      if (streamer && channelId) {
+      if (streamer && channelId && NewApi) {
         try {
           console.log(`[STREAMER] Starting Go Live video stream via @gabrielmaialva33/discord-video-stream for ${token}`);
           if (!streamer.voiceConnection) {
