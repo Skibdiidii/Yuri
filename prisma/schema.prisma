@@ -1,0 +1,432 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Guild {
+  id        String   @id // Discord Guild ID
+  name      String
+  ownerId   String
+  icon      String?
+  joinedAt  DateTime @default(now())
+  active    Boolean  @default(true)
+}
+
+model GuildSettings {
+  id                   String   @id @default(cuid())
+  guildId              String   @unique
+  prefix               String   @default(".")
+  modLogChannelId      String?
+  serverLogChannelId   String?
+  memberLogChannelId   String?
+  voiceLogChannelId    String?
+  automodEnabled       Boolean  @default(true)
+  antiSpam             Boolean  @default(true)
+  antiFlood            Boolean  @default(true)
+  antiMention          Boolean  @default(true)
+  antiInvite           Boolean  @default(true)
+  antiLink             Boolean  @default(false)
+  antiCaps             Boolean  @default(false)
+  badWords             String   @default("")
+  duplicateDetection   Boolean  @default(true)
+  raidProtection       Boolean  @default(true)
+  minAccountAgeDays    Int      @default(0)
+  autoTimeoutMinutes   Int      @default(5)
+  levelingEnabled      Boolean  @default(true)
+  economyEnabled       Boolean  @default(true)
+  verificationEnabled  Boolean  @default(false)
+  verifiedRoleId       String?
+  unverifiedRoleId     String?
+  starThreshold        Int      @default(3)
+  starboardChannelId   String?
+  suggestionChannelId  String?
+  reportChannelId      String?
+}
+
+model User {
+  id            String   @id // Discord User ID
+  username      String
+  discriminator String   @default("0")
+  avatar        String?
+  createdAt     DateTime @default(now())
+}
+
+model Warnings {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  reason      String
+  timestamp   DateTime @default(now())
+
+  @@index([guildId, userId])
+}
+
+model Cases {
+  id           Int      @id @default(autoincrement())
+  guildId      String
+  caseNumber   Int
+  type         String
+  targetId     String
+  targetTag    String
+  moderatorId  String
+  moderatorTag String
+  reason       String
+  duration     String?
+  timestamp    DateTime @default(now())
+
+  @@index([guildId, caseNumber])
+}
+
+model XP {
+  id           String   @id @default(cuid())
+  guildId      String
+  userId       String
+  xp           Int      @default(0)
+  level        Int      @default(0)
+  lastXpEarned DateTime @default(now())
+
+  @@unique([guildId, userId])
+  @@index([guildId, xp])
+}
+
+model Economy {
+  id        String    @id @default(cuid())
+  guildId   String
+  userId    String
+  wallet    Int       @default(100)
+  bank      Int       @default(0)
+  lastDaily DateTime?
+  lastWork  DateTime?
+
+  @@unique([guildId, userId])
+}
+
+model Inventory {
+  id         String   @id @default(cuid())
+  guildId    String
+  userId     String
+  itemId     String
+  itemName   String
+  quantity   Int      @default(1)
+  acquiredAt DateTime @default(now())
+
+  @@index([guildId, userId])
+}
+
+model Tickets {
+  id           String    @id @default(cuid())
+  guildId      String
+  ticketNumber Int
+  channelId    String
+  creatorId    String
+  claimedById  String?
+  status       String    @default("OPEN")
+  category     String    @default("general")
+  reason       String?
+  closedAt     DateTime?
+  closedById   String?
+  createdAt    DateTime  @default(now())
+
+  @@index([guildId, status])
+}
+
+model TicketMessages {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  authorTag String
+  content   String
+  timestamp DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model Giveaways {
+  id             String   @id @default(cuid())
+  guildId        String
+  channelId      String
+  messageId      String
+  prize          String
+  winnerCount    Int      @default(1)
+  endsAt         DateTime
+  hostId         String
+  ended          Boolean  @default(false)
+  winners        String   @default("[]")
+  entries        String   @default("[]")
+  requiredRoleId String?
+  minLevel       Int      @default(0)
+
+  @@index([guildId, ended])
+}
+
+model Polls {
+  id        String    @id @default(cuid())
+  guildId   String
+  channelId String
+  messageId String
+  question  String
+  options   String
+  anonymous Boolean   @default(false)
+  endsAt    DateTime?
+  closed    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([guildId])
+}
+
+model CustomCommands {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  response  String
+  creatorId String
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, name])
+}
+
+model Reminders {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  channelId String
+  text      String
+  dueAt     DateTime
+  recurring String?
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([dueAt, completed])
+}
+
+model ScheduledTasks {
+  id           String    @id @default(cuid())
+  guildId      String
+  channelId    String
+  taskType     String
+  content      String
+  cronSchedule String?
+  runAt        DateTime?
+  active       Boolean   @default(true)
+
+  @@index([guildId, active])
+}
+
+model ReactionRoles {
+  id        String @id @default(cuid())
+  guildId   String
+  channelId String
+  messageId String
+  emoji     String
+  roleId    String
+  type      String @default("BUTTON")
+
+  @@index([guildId, messageId])
+}
+
+model Suggestions {
+  id            String   @id @default(cuid())
+  guildId       String
+  channelId     String
+  messageId     String
+  authorId      String
+  suggestion    String
+  status        String   @default("PENDING")
+  staffResponse String?
+  upvotes       String   @default("[]")
+  downvotes     String   @default("[]")
+  createdAt     DateTime @default(now())
+
+  @@index([guildId])
+}
+
+model Reports {
+  id         String   @id @default(cuid())
+  guildId    String
+  channelId  String?
+  reporterId String
+  targetId   String
+  reason     String
+  messageUrl String?
+  status     String   @default("OPEN")
+  createdAt  DateTime @default(now())
+
+  @@index([guildId, status])
+}
+
+model Invites {
+  id        String   @id @default(cuid())
+  guildId   String
+  code      String
+  inviterId String
+  uses      Int      @default(0)
+  maxUses   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([guildId, code])
+}
+
+model Backups {
+  id        String   @id @default(cuid())
+  guildId   String
+  creatorId String
+  data      String
+  createdAt DateTime @default(now())
+
+  @@index([guildId])
+}
+
+model WelcomeSettings {
+  id               String  @id @default(cuid())
+  guildId          String  @unique
+  enabled          Boolean @default(true)
+  welcomeChannelId String?
+  goodbyeChannelId String?
+  welcomeMessage   String  @default("Welcome {mention} to {server}! You are member #{memberCount}.")
+  goodbyeMessage   String  @default("{username} just left {server}. We now have {memberCount} members.")
+  sendEmbed        Boolean @default(true)
+}
+
+model VoiceWelcomeSettings {
+  id                       String  @id @default(cuid())
+  guildId                  String  @unique
+  enabled                  Boolean @default(true)
+  voiceChannelId           String?
+  welcomeChannelId         String?
+  template                 String  @default("Hello {display}. Welcome to the server. Make sure you add {owner}.")
+  volume                   Float   @default(1.0)
+  ttsEnabled               Boolean @default(true)
+  ignoreBots               Boolean @default(true)
+  announceReturningMembers Boolean @default(false)
+  autoJoin                 Boolean @default(true)
+  autoReconnect            Boolean @default(true)
+  disconnectWhenEmpty      Boolean @default(true)
+  cooldown                 Int     @default(10)
+}
+
+model AIConversations {
+  id        String   @id @default(cuid())
+  guildId   String
+  channelId String
+  userId    String
+  role      String
+  content   String
+  timestamp DateTime @default(now())
+
+  @@index([guildId, channelId])
+  @@index([guildId, userId])
+}
+
+model AIUsage {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  tokens      Int      @default(0)
+  latencyMs   Int      @default(0)
+  success     Boolean  @default(true)
+  rateLimited Boolean  @default(false)
+  timestamp   DateTime @default(now())
+
+  @@index([guildId, timestamp])
+}
+
+model Logs {
+  id          String   @id @default(cuid())
+  guildId     String
+  category    String
+  action      String
+  details     String
+  executorId  String?
+  targetId    String?
+  timestamp   DateTime @default(now())
+
+  @@index([guildId, timestamp])
+}
+
+model LiveTalkSettings {
+  id                      String   @id @default(cuid())
+  guildId                 String   @unique
+  enabled                 Boolean  @default(false)
+  currentVoiceChannelId   String?
+  preferredVoiceChannelId String?
+  reconnectEnabled        Boolean  @default(true)
+  voiceSettings           String   @default("{\"volume\":1.0,\"language\":\"en\"}")
+  conversationSettings    String   @default("{\"maxResponseLength\":300,\"persona\":\"conversational\"}")
+  ttsSettings             String   @default("{\"speed\":1.0,\"pitch\":1.0}")
+  cooldownSettings        String   @default("{\"debounceMs\":1500,\"speakerCooldownSeconds\":3}")
+  updatedAt               DateTime @default(now()) @updatedAt
+}
+
+model VoiceMasterSettings {
+  id             String   @id @default(cuid())
+  guildId        String   @unique
+  enabled        Boolean  @default(true)
+  categoryId     String?
+  hubChannelId   String?  // The "➕ Join to Create" channel
+  panelChannelId String?  // Text channel with interactive control panel
+  defaultLimit   Int      @default(0)
+  defaultName    String   @default("🎮 {username}'s Room")
+  updatedAt      DateTime @default(now()) @updatedAt
+}
+
+model TempVoiceChannel {
+  id          String   @id @default(cuid())
+  guildId     String
+  channelId   String   @unique
+  ownerId     String
+  isLocked    Boolean  @default(false)
+  isHidden    Boolean  @default(false)
+  userLimit   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([guildId, ownerId])
+}
+
+model SavedPlaylist {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  name      String
+  tracks    String   // JSON stringified AudioTrack[]
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, name])
+  @@index([guildId, userId])
+}
+
+model AIChannel {
+  id          String   @id @default(cuid())
+  guildId     String
+  channelId   String   @unique
+  channelName String?
+  setBy       String
+  createdAt   DateTime @default(now())
+
+  @@index([guildId])
+}
+
+model UserAIMemory {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  username          String
+  displayName       String?
+  avatarUrl         String?
+  bannerUrl         String?
+  accentColor       String?
+  bio               String?
+  rolesSummary      String?
+  facts             String   @default("[]")
+  notes             String   @default("")
+  personality       String   @default("")
+  conversationCount Int      @default(0)
+  lastSeenAt        DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt
+}
+
+
+
