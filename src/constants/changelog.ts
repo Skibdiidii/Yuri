@@ -10,8 +10,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-10-07",
     features: [
       "Production SPA fallback & static file routing engine for 100% uptime on Render & Cloud VPS",
+      "Dynamic Vite host authorization (allowedHosts) for unrestricted access across cloud subdomains",
+      "Official 24/7 Yuri Bot engine gateway credentials & token initialization",
       "Dynamic Vite dev/production middleware failover preventing 404/Cannot GET errors",
-      "Official 24/7 Yuri Bot engine background gateway resilience and health API stabilization",
       "Optimized port binding and network auto-recovery for containerized environments"
     ]
   },
