@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Zap, Sparkles, Shield, Rocket, Info, Eye, Layers, RefreshCw, Cpu, Globe, Lock, Key, Bell, Monitor, Mic, Music, Radio, CheckCircle } from 'lucide-react';
+import { X, Zap, Sparkles, Shield, Rocket, Info, Eye, Layers, RefreshCw, Cpu, Globe, Lock, Key, Bell, Monitor, Mic, Music, Radio, CheckCircle, Bot, Server } from 'lucide-react';
 
 interface PatchNotesModalProps {
   onClose: () => void;
@@ -8,6 +8,22 @@ interface PatchNotesModalProps {
 
 export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   const patchHistory = [
+    {
+      version: "v1.4.4-stable",
+      date: "October 2026",
+      updates: [
+        {
+          title: "Discord Gateway Authentication & Token Refresh",
+          icon: <Bot className="w-5 h-5 text-emerald-400" />,
+          description: "Updated Discord Gateway authentication pipeline with refreshed credentials, ensuring 24/7 background uptime and instant gateway handshakes."
+        },
+        {
+          title: "Render Allowed Hosts & Security Whitelist",
+          icon: <Server className="w-5 h-5 text-cyan-400" />,
+          description: "Configured allowed host validation for yuri-bfwg.onrender.com domain and wildcards, eliminating host blockades and maintaining continuous HTTP/WebSocket proxying."
+        }
+      ]
+    },
     {
       version: "v1.4.3-stable",
       date: "October 2026",
@@ -278,7 +294,7 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white uppercase tracking-tight">System Patch Notes</h2>
-              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Version v1.4.2-stable</p>
+              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Version v1.4.4-stable</p>
             </div>
           </div>
           <button 
