@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Zap, Sparkles, Shield, Rocket, Info, Eye, Layers, RefreshCw, Cpu, Globe, Lock, Key, Bell, Monitor, Mic, Music, Radio, CheckCircle, Bot, Server } from 'lucide-react';
+import { X, Zap, Sparkles, Shield, Rocket, Info, Eye, Layers, RefreshCw, Cpu, Globe, Lock, Key, Bell, Monitor, Mic, Music, Radio, CheckCircle, Bot, Server, Terminal, Database } from 'lucide-react';
 
 interface PatchNotesModalProps {
   onClose: () => void;
@@ -8,6 +8,32 @@ interface PatchNotesModalProps {
 
 export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   const patchHistory = [
+    {
+      version: "v1.4.5-stable",
+      date: "October 2026",
+      updates: [
+        {
+          title: "Full Yuri Multi-Tool & VPS Terminal Restored",
+          icon: <Terminal className="w-5 h-5 text-emerald-400" />,
+          description: "Reconnected all Yuri endpoints, Discord REST proxies (/api/catalystcord/proxy, /api/yuricord/proxy), full token validation, and live hardware telemetry."
+        },
+        {
+          title: "Instant Token Authentication & Profile Resolution",
+          icon: <Shield className="w-5 h-5 text-cyan-400" />,
+          description: "Fixed login validation errors by implementing direct Discord API token handshakes with fallback admin session caching and user profile resolution."
+        },
+        {
+          title: "Realtime PTY WebSocket VPS Shell",
+          icon: <Cpu className="w-5 h-5 text-purple-400" />,
+          description: "Embedded bi-directional interactive Linux terminal using pty_shell.py and WebSocket streaming with ANSI color rendering and dynamic xterm resize."
+        },
+        {
+          title: "Supabase Multi-Node State Synchronization",
+          icon: <Database className="w-5 h-5 text-amber-400" />,
+          description: "Re-established Supabase cloud database synchronization for persistent user tokens, configuration profiles, and remote device inventories."
+        }
+      ]
+    },
     {
       version: "v1.4.4-stable",
       date: "October 2026",
@@ -294,7 +320,7 @@ export default function PatchNotesModal({ onClose }: PatchNotesModalProps) {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white uppercase tracking-tight">System Patch Notes</h2>
-              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Version v1.4.4-stable</p>
+              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Version v1.4.5-stable</p>
             </div>
           </div>
           <button 

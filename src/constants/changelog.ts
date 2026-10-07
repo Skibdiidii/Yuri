@@ -6,6 +6,37 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v1.4.5",
+    date: "2026-10-07",
+    features: [
+      "Unified Yuri Multi-Tool & Harumi Bot 24/7 backend architecture",
+      "Restored Discord Token Authentication with instant validation and user profile caching",
+      "Interactive Fullscreen VPS Linux PTY Terminal with real-time WebSocket shell streaming",
+      "Supabase multi-node state synchronization for tokens, settings, RPC, and security sessions",
+      "Discord REST API Proxy (/api/yuricord/proxy, /api/catalystcord/proxy) with accelerated header passthrough",
+      "Dedicated Voice Channel soundboard, mic audio streaming, and screen broadcast engine"
+    ]
+  },
+  {
+    version: "v1.4.4",
+    date: "2026-10-07",
+    features: [
+      "Discord Gateway Authentication & Token Refresh for 24/7 background uptime",
+      "Render Allowed Hosts & Security Whitelist configuration for yuri-bfwg.onrender.com"
+    ]
+  },
+  {
+    version: "v1.4.3",
+    date: "2026-10-06",
+    features: [
+      "App Detection & Background Music Scrobbler with live Last.fm scrobbler integration",
+      "Comprehensive Application RPC Presets with 1-click profiles for VS Code, IntelliJ, Roblox, Minecraft",
+      "Realtime Discord Screen Live Preview Monitor with FPS counter and Discord LIVE overlays",
+      "VC Microphone Audio Dispatch Engine with converted Opus framing and crisp audio transmission",
+      "Verified owner badges, community presets, and platform designations"
+    ]
+  },
+  {
     version: "v1.4.2",
     date: "2026-10-07",
     features: [
