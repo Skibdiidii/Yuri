@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v1.4.2",
+    date: "2026-10-07",
+    features: [
+      "Production SPA fallback & static file routing engine for 100% uptime on Render & Cloud VPS",
+      "Dynamic Vite dev/production middleware failover preventing 404/Cannot GET errors",
+      "Official 24/7 Yuri Bot engine background gateway resilience and health API stabilization",
+      "Optimized port binding and network auto-recovery for containerized environments"
+    ]
+  },
+  {
     version: "v1.4.1",
     date: "2026-10-03",
     features: [

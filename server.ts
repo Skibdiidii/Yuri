@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import path from 'path';
+import fs from 'fs';
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { EmbedBuilder } from 'discord.js';
@@ -2404,15 +2406,23 @@ echo "=========================================="
     }
   });
 
-  // Mount Vite middleware for dev or serve static files in production
-  if (process.env.NODE_ENV !== 'production') {
+  const distPath = path.resolve(process.cwd(), 'dist');
+  const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, 'index.html'));
+
+  if (process.env.NODE_ENV === 'production' && hasDist) {
+    app.use(express.static(distPath));
+    app.get('*', (req: Request, res: Response, next: Function) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/catalystcord.lua') || req.path.startsWith('/raw/')) {
+        return next();
+      }
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  } else {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
-    app.use(express.static('dist'));
   }
 
   const port = config.port;
