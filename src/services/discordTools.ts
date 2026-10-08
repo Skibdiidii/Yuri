@@ -286,7 +286,7 @@ export class AccountManager {
   }
 
   async checkAccount(acc: any) {
-    const { status, data }: { status: number; data: any } = await apiRequest("GET", "/users/@me", acc.token, null, acc.proxy);
+    const { status, data } = await apiRequest("GET", "/users/@me", acc.token, null, acc.proxy);
     acc.lastChecked = Date.now();
 
     if (status === 200) {
@@ -312,7 +312,7 @@ export class AccountManager {
   }
 
   async checkAll(concurrency = 5) {
-    const results: any[] = [];
+    const results = [];
     const queue = [...this.accounts];
     const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
       while (queue.length) {
@@ -359,20 +359,19 @@ export async function checkToken(token: string, proxy: string | null = null) {
   if (status !== 200) { result.error = `HTTP ${status}`; return result; }
 
   result.valid = true;
-  const d: any = data;
-  result.userId = d.id;
-  result.username = d.username;
-  result.discriminator = d.discriminator || "0";
-  result.globalName = d.global_name || null;
-  result.email = d.email || null;
-  result.phone = d.phone || null;
-  result.verified = d.verified || false;
-  result.mfaEnabled = d.mfa_enabled || false;
-  result.nitroType = NITRO_TYPES[d.premium_type || 0] || "Unknown";
-  result.rawFlags = (d.flags || 0) | (d.public_flags || 0);
+  result.userId = data.id;
+  result.username = data.username;
+  result.discriminator = data.discriminator || "0";
+  result.globalName = data.global_name || null;
+  result.email = data.email || null;
+  result.phone = data.phone || null;
+  result.verified = data.verified || false;
+  result.mfaEnabled = data.mfa_enabled || false;
+  result.nitroType = NITRO_TYPES[data.premium_type || 0] || "Unknown";
+  result.rawFlags = (data.flags || 0) | (data.public_flags || 0);
   result.flags = parseFlags(result.rawFlags);
-  result.locale = d.locale || null;
-  if (d.id) result.createdAt = snowflakeToDate(d.id);
+  result.locale = data.locale || null;
+  if (data.id) result.createdAt = snowflakeToDate(data.id);
 
   const endpoints = [
     ["/users/@me/guilds?with_counts=true", "guilds"],
@@ -387,7 +386,7 @@ export async function checkToken(token: string, proxy: string | null = null) {
     endpoints.map(([path]) => apiRequest("GET", path, token, null, proxy))
   );
 
-  responses.forEach(({ status: s, data: d }: { status: number; data: any }, i) => {
+  responses.forEach(({ status: s, data: d }, i) => {
     const key = endpoints[i][1];
     if (s !== 200 || !Array.isArray(d)) return;
 
@@ -418,7 +417,7 @@ export async function checkToken(token: string, proxy: string | null = null) {
 }
 
 export async function checkTokens(tokens: string[], proxy: string | null = null, concurrency = 5) {
-  const results: any[] = [];
+  const results = [];
   const queue = [...tokens];
   const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
     while (queue.length) {
@@ -540,7 +539,7 @@ export class Warmup {
         await sleep(typingDuration(text));
       }
 
-      const { status, data }: { status: number; data: any } = await this._sendMessage(channelId, text);
+      const { status, data } = await this._sendMessage(channelId, text);
       if (status === 200) {
         sent++;
         this.totalMessagesSent++;
@@ -625,7 +624,6 @@ export class FriendAutomator {
 
   _loadState() {
     try {
-      if (!this.stateFile) return;
       const raw = fs.readFileSync(this.stateFile, "utf8");
       this.targets = JSON.parse(raw);
     } catch { this.targets = []; }
@@ -674,7 +672,7 @@ export class FriendAutomator {
   }
 
   async _openDM(userId: string) {
-    const { status, data }: { status: number; data: any } = await apiRequest("POST", "/users/@me/channels", this.token, { recipient_id: userId }, this.proxy);
+    const { status, data } = await apiRequest("POST", "/users/@me/channels", this.token, { recipient_id: userId }, this.proxy);
     return status === 200 ? data.id : null;
   }
 
@@ -691,7 +689,7 @@ export class FriendAutomator {
     if ([FRIEND_STATUS.MESSAGED, FRIEND_STATUS.BLOCKED, FRIEND_STATUS.ALREADY].includes(target.status)) return;
 
     if (target.status === FRIEND_STATUS.PENDING) {
-      const { status, data }: { status: number; data: any } = await this._sendFR(target, captchaKey);
+      const { status, data } = await this._sendFR(target, captchaKey);
 
       if (status === 200 || status === 204) {
         target.addedAt = Date.now();

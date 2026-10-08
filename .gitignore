@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+sessions_backup.json
+server_recovered.js
+uploads/

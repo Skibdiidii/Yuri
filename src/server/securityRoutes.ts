@@ -83,7 +83,7 @@ router.post('/discord/kick-all', async (req: Request, res: Response) => {
   }
 
   try {
-    const kickedCount = await securityManager.emergencyKickAllDiscordSessions(token);
+    const kickedCount = await securityManager.kickAllDiscordRemoteSessions(token);
     res.json({ success: true, kickedCount });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Failed to kick all Discord sessions' });
@@ -93,33 +93,38 @@ router.post('/discord/kick-all', async (req: Request, res: Response) => {
 router.get('/sessions', (req: Request, res: Response) => {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const status = securityManager.getStatus(token);
-  const sessions = [...status.trustedSessions, ...status.pendingSessions, ...status.revokedSessions];
+  const sessions = securityManager.getSessions(token);
   res.json({ success: true, sessions });
 });
 
 router.post('/sessions/approve', (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const { sessionId } = req.body;
-  const success = securityManager.approveSession(sessionId);
+  const success = securityManager.approveSession(token, sessionId);
   res.json({ success });
 });
 
-router.post('/sessions/reject', async (req: Request, res: Response) => {
+router.post('/sessions/reject', (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const { sessionId } = req.body;
-  const success = await securityManager.rejectSession(sessionId);
+  const success = securityManager.rejectSession(token, sessionId);
   res.json({ success });
 });
 
-router.post('/sessions/revoke', async (req: Request, res: Response) => {
+router.post('/sessions/revoke', (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const { sessionId } = req.body;
-  const success = await securityManager.revokeSession(sessionId);
+  const success = securityManager.revokeSession(token, sessionId);
   res.json({ success });
 });
 
 router.get('/audit', (req: Request, res: Response) => {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const logs = securityManager.getStatus(token).auditLogs;
+  const logs = securityManager.getAuditLogs(token);
   res.json({ success: true, logs });
 });
 
@@ -127,8 +132,7 @@ router.post('/settings', (req: Request, res: Response) => {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const updates = req.body;
-  const accountKey = securityManager.resolveAccountKey(token);
-  const settings = securityManager.updateAccountConfig(accountKey, updates);
+  const settings = securityManager.updateSettings(token, updates);
   res.json({ success: true, settings });
 });
 
@@ -136,8 +140,7 @@ router.post('/ip/block', (req: Request, res: Response) => {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const { ip, reason } = req.body;
-  const accountKey = securityManager.resolveAccountKey(token);
-  securityManager.blockIp(ip, accountKey, reason);
+  securityManager.blockIp(ip, token, reason);
   res.json({ success: true });
 });
 

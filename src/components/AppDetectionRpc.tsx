@@ -412,12 +412,9 @@ export default function AppDetectionRpc({ onApplyPreset, onInstantUpdate, token 
         smallImageKey: 'https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/spotify.png',
         smallImageText: isPlaying ? 'Listening Live' : 'Scrobbled via Last.fm',
         type: 'LISTENING',
-        url: '',
         startTimestamp: Date.now().toString(),
         button1Label: 'Listen on Spotify',
-        button1Url: `https://open.spotify.com/search/${encodeURIComponent(trackName + ' ' + artistName)}`,
-        button2Label: '',
-        button2Url: ''
+        button1Url: `https://open.spotify.com/search/${encodeURIComponent(trackName + ' ' + artistName)}`
       };
 
       setCustomForm(updatedConfig as any);
@@ -482,7 +479,6 @@ export default function AppDetectionRpc({ onApplyPreset, onInstantUpdate, token 
         smallImageKey: customForm.smallImageKey || '',
         smallImageText: customForm.smallImageText || '',
         type: customForm.type || 'PLAYING',
-        url: '',
         startTimestamp: Date.now().toString(),
         button1Label: customForm.button1Label || '',
         button1Url: customForm.button1Url || '',

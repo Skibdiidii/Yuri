@@ -1,6 +1,10 @@
 {
-  "name": "Harumi - Public Multi-Feature Discord Community Bot",
-  "description": "Production-ready all-in-one Discord community bot featuring Harumi AI, dynamic voice TTS welcome system, 100+ real-time commands, moderation, automod, tickets, leveling, economy, and command center.",
-  "requestFramePermissions": [],
+  "name": "Yuri Selfbot",
+  "description": "An elegant and formal Discord automation and status customizer dashboard with RPC settings, custom voice presence, connection tools, and automated utilities.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

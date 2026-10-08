@@ -3406,7 +3406,7 @@ async function createAndRunBot(
       if (!text) return;
       const mocked = text
         .split("")
-        .map((c: string, i: number) => (i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()))
+        .map((c, i) => (i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()))
         .join("");
       const embed = new EmbedBuilder()
         .setColor(0xed4245)

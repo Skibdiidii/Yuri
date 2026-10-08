@@ -13,7 +13,6 @@ import {
 import play from "play-dl";
 import ffmpegPath from "ffmpeg-static";
 import { spawn, type ChildProcess } from "child_process";
-// @ts-ignore
 import ytSearch from "yt-search";
 
 export interface GuildVoiceState {
