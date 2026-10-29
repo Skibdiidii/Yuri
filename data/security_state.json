@@ -1,0 +1,61 @@
+{
+  "sessions": [
+    {
+      "sessionId": "SEC-64AD-D9E7",
+      "accountKey": "user:1545521054930436167",
+      "tokenHash": "2ec3b59b58b2f3e6fe8fe417f9f3527d857529666deecdd47ec52bdeb1055e4c",
+      "userId": "1545521054930436167",
+      "username": "exquisite_courgette_97678",
+      "avatar": "https://cdn.discordapp.com/avatars/1545521054930436167/62a8884e266c822ce4e9e5b1cfcfc8fa.webp",
+      "ip": "2001:fd8:e158:5e00:4b97:6d37:7a36:fa4a",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "device": "Chrome · Android",
+      "os": "Android",
+      "browser": "Chrome",
+      "location": "Secure Cloud Gateway",
+      "detectedAt": 1793277294361,
+      "lastActiveAt": 1793277627819,
+      "status": "TRUSTED",
+      "trusted": true,
+      "approvalRequired": false,
+      "approvedAt": 1793277294361,
+      "isOwner": true
+    }
+  ],
+  "accountConfigs": [
+    {
+      "accountKey": "user:1545521054930436167",
+      "recoveryCode": "SEC-953A66-F15686-YURI",
+      "recoveryHash": "3e157a64114118b83d0425ff638845be7b1ecae83456e291ffec58e206498470",
+      "blockedIps": [],
+      "autoKickUntrustedDiscord": false,
+      "allowedCountries": [],
+      "createdAt": 1793227511701
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "LOG-1793277294362-6613",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1793277294362,
+      "eventType": "TRUSTED_SESSION_CHANGED",
+      "details": "Device Chrome · Android registered as primary trusted device",
+      "sessionId": "SEC-64AD-D9E7",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e158:5e00:4b97:6d37:7a36:fa4a"
+    },
+    {
+      "id": "LOG-1793277294362-9b54",
+      "accountKey": "user:1545521054930436167",
+      "timestamp": 1793277294362,
+      "eventType": "NEW_SESSION",
+      "details": "Primary device initialized on Chrome · Android (Secure Cloud Gateway)",
+      "sessionId": "SEC-64AD-D9E7",
+      "device": "Chrome · Android",
+      "ip": "2001:fd8:e158:5e00:4b97:6d37:7a36:fa4a"
+    }
+  ],
+  "pushSubscriptions": [],
+  "globalBlockedIps": [],
+  "savedAt": 1793277627819
+}
