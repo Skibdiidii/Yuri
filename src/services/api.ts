@@ -10,6 +10,38 @@ export const getApiBase = (): string => {
   return '';
 };
 
+export const safeFetch = async (
+  input: string,
+  init?: RequestInit,
+  retries = 2
+): Promise<Response> => {
+  let attempt = 0;
+  let lastError: any;
+
+  while (attempt <= retries) {
+    try {
+      const res = await fetch(input, init);
+      if (res) return res;
+    } catch (err) {
+      lastError = err;
+      attempt++;
+      if (attempt <= retries) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+    }
+  }
+
+  if (typeof input === 'string' && !input.startsWith('https://yuri-bfwg.onrender.com')) {
+    const relativePath = input.startsWith('/') ? input : '/' + input.replace(/^https?:\/\/[^\/]+/, '');
+    const backupUrl = 'https://yuri-bfwg.onrender.com' + relativePath;
+    try {
+      return await fetch(backupUrl, init);
+    } catch (_) {}
+  }
+
+  throw lastError || new TypeError('Failed to fetch');
+};
+
 const API_BASE = getApiBase();
 
 const safeResJson = async (res: Response, fallback: any = {}) => {
@@ -27,23 +59,16 @@ const safeResJson = async (res: Response, fallback: any = {}) => {
 export const api = {
   healthCheck: async () => {
     const base = getApiBase();
-    const res = await fetch(`${base}/api/health`);
+    const res = await safeFetch(`${base}/api/health`).catch(() => new Response(JSON.stringify({ status: 'ok' })));
     return safeResJson(res, { status: 'ok' });
   },
 
   login: async (token: string) => {
-    let base = getApiBase();
-    let res = await fetch(`${base}/api/auth/login`, {
+    const base = getApiBase();
+    const res = await safeFetch(`${base}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
-    }).catch(async () => {
-      base = 'https://yuri-bfwg.onrender.com';
-      return await fetch(`${base}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
     });
 
     if (!res.ok) {

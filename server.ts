@@ -2155,12 +2155,21 @@ process.on("uncaughtExceptionMonitor", (err) => {
 async function startServer() {
   const app = express();
   const PORT = 3e3;
-  console.log("Starting server initialization...");
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, x-client-geo, cf-ipcountry");
+    res.header("Access-Control-Expose-Headers", "Content-Length, Content-Type");
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
+    next();
+  });
   app.use(
     cors({
       origin: "*",
-      methods: ["GET", "POST", "OPTIONS"],
-      allowedHeaders: ["Authorization", "Content-Type"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+      allowedHeaders: ["Authorization", "Content-Type", "Origin", "X-Requested-With", "Accept", "Cache-Control", "Pragma"],
     }),
   );
   app.options("*", cors());

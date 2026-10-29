@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { api, getApiBase } from '../services/api';
+import { api, getApiBase, safeFetch } from '../services/api';
 import { 
   Globe, 
   MapPin, 
@@ -287,7 +287,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
     try {
       const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/discord/callback`);
-      const res = await fetch(`${getApiBase()}/api/auth/discord/url?redirect_uri=${redirectUri}&client_id=1545766712618520596`);
+      const res = await safeFetch(`${getApiBase()}/api/auth/discord/url?redirect_uri=${redirectUri}&client_id=1545766712618520596`);
       
       if (!res.ok) {
         const errData = await res.json();
@@ -346,7 +346,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     setCopySuccess(false);
     
     try {
-      const res = await fetch(`${getApiBase()}/api/auth/extract-token`, {
+      const res = await safeFetch(`${getApiBase()}/api/auth/extract-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
