@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://yuri-bfwg.onrender.com/api/:path*"
+    },
+    {
+      "source": "/catalystcord.lua",
+      "destination": "https://yuri-bfwg.onrender.com/catalystcord.lua"
+    },
+    {
+      "source": "/raw/catalystcord.lua",
+      "destination": "https://yuri-bfwg.onrender.com/raw/catalystcord.lua"
+    },
+    {
+      "source": "/linux-desktop.sh",
+      "destination": "https://yuri-bfwg.onrender.com/linux-desktop.sh"
+    }
+  ]
+}

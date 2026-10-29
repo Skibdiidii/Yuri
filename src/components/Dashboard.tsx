@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Trash2, Activity, Users, Settings, Skull, Mic, MessageSquare, UserPlus, LogOut, Flame, AlertTriangle, Type, Eraser, ShieldAlert, Gamepad2, Terminal, RefreshCw, History, Server, Sliders, User, Globe, Heart, Zap, MonitorPlay, Shield, Search, Sparkles, LineChart, TrendingUp, ArrowLeft, Bot } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getApiBase } from '../services/api';
 import { BotSession, RpcConfig } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import FullscreenTerminal from './FullscreenTerminal';
@@ -23,7 +23,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-const API_BASE = '';
+const API_BASE = getApiBase();
 
 export default function Dashboard({ onLogout }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<'tokens' | 'actions' | 'raid' | 'settings' | 'admin' | 'rpc' | 'commands' | 'tos' | 'faq' | 'get_token' | 'rotator' | 'vc' | 'audio_vm' | 'changelog' | 'revenge' | 'hosting' | 'configs' | 'donation' | 'nitro_sniper' | 'captcha' | 'server_management' | 'cosmetics' | 'metrics' | 'system_console' | 'username_finder' | 'browser' | 'platforms'>(() => {

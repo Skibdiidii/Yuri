@@ -1,6 +1,16 @@
 import { BotSession } from '../types';
 
-const API_BASE = '';
+export const getApiBase = (): string => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host.endsWith('.vercel.app') || host.includes('vercel')) {
+      return 'https://yuri-bfwg.onrender.com';
+    }
+  }
+  return '';
+};
+
+const API_BASE = getApiBase();
 
 const safeResJson = async (res: Response, fallback: any = {}) => {
   try {
@@ -16,16 +26,26 @@ const safeResJson = async (res: Response, fallback: any = {}) => {
 
 export const api = {
   healthCheck: async () => {
-    const res = await fetch(`${API_BASE}/api/health`);
+    const base = getApiBase();
+    const res = await fetch(`${base}/api/health`);
     return safeResJson(res, { status: 'ok' });
   },
 
   login: async (token: string) => {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+    let base = getApiBase();
+    let res = await fetch(`${base}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
+    }).catch(async () => {
+      base = 'https://yuri-bfwg.onrender.com';
+      return await fetch(`${base}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
     });
+
     if (!res.ok) {
       const errorData = await safeResJson(res, {}).catch(() => ({}));
       throw new Error(errorData.error || 'Login failed');
