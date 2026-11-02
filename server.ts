@@ -13344,6 +13344,25 @@ function resolveProviderToHttpUrl(img: string): string | null {
   return null;
 }
 
+function toDiscordRpcAssetUrl(cdnUrl: string): string {
+  if (!cdnUrl || typeof cdnUrl !== "string") return cdnUrl;
+  cdnUrl = cdnUrl.trim();
+  if (cdnUrl.startsWith("external/") || cdnUrl.startsWith("mp:")) {
+    return cdnUrl;
+  }
+  if (/^[0-9]{17,20}$/.test(cdnUrl)) {
+    return cdnUrl;
+  }
+  if (cdnUrl.startsWith("http://") || cdnUrl.startsWith("https://")) {
+    try {
+      const parsed = new URL(cdnUrl);
+      const proto = parsed.protocol.replace(":", "");
+      return `external/${proto}/${parsed.host}${parsed.pathname}${parsed.search}`;
+    } catch (_) {}
+  }
+  return cdnUrl;
+}
+
 async function formatImageForRpc(img: any): Promise<string | null> {
   if (!img || typeof img !== "string") return null;
   img = img.trim();
@@ -13354,18 +13373,18 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   }
 
   if (uploadCdnMap.has(img)) {
-    return uploadCdnMap.get(img)!;
+    return toDiscordRpcAssetUrl(uploadCdnMap.get(img)!);
   }
   const baseName = path.basename(img);
   if (uploadCdnMap.has(baseName)) {
-    return uploadCdnMap.get(baseName)!;
+    return toDiscordRpcAssetUrl(uploadCdnMap.get(baseName)!);
   }
 
   if (
     img.startsWith("https://cdn.discordapp.com/attachments/") ||
     img.startsWith("https://media.discordapp.net/attachments/")
   ) {
-    return img;
+    return toDiscordRpcAssetUrl(img);
   }
 
   const targetUrl = resolveProviderToHttpUrl(img) || (img.startsWith("http") ? img : null);
@@ -13374,7 +13393,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
   }
 
   if (uploadCdnMap.has(targetUrl)) {
-    return uploadCdnMap.get(targetUrl)!;
+    return toDiscordRpcAssetUrl(uploadCdnMap.get(targetUrl)!);
   }
 
   if (targetUrl.includes("/uploads/")) {
@@ -13382,7 +13401,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
       const parsedPath = new URL(targetUrl, "http://localhost").pathname;
       const filename = path.basename(parsedPath);
       if (uploadCdnMap.has(filename)) {
-        return uploadCdnMap.get(filename)!;
+        return toDiscordRpcAssetUrl(uploadCdnMap.get(filename)!);
       }
       const localPath = path.join(process.cwd(), "uploads", filename);
       if (fs.existsSync(localPath)) {
@@ -13394,7 +13413,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
           uploadCdnMap.set(img, cdnUrl);
           uploadCdnMap.set(targetUrl, cdnUrl);
           saveUploadCdnMap();
-          return cdnUrl;
+          return toDiscordRpcAssetUrl(cdnUrl);
         }
       }
     } catch (err) {
@@ -13430,7 +13449,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
           uploadCdnMap.set(img, cdnUrl);
           uploadCdnMap.set(targetUrl, cdnUrl);
           saveUploadCdnMap();
-          return cdnUrl;
+          return toDiscordRpcAssetUrl(cdnUrl);
         }
       }
     } else {
@@ -13442,11 +13461,7 @@ async function formatImageForRpc(img: any): Promise<string | null> {
 
   if (URL.canParse(targetUrl)) {
     const parsed = new URL(targetUrl);
-    if (parsed.hostname === "cdn.discordapp.com" || parsed.hostname === "media.discordapp.net") {
-      return targetUrl;
-    }
-    const proto = parsed.protocol.replace(":", "");
-    return `external/${proto}/${parsed.host}${parsed.pathname}${parsed.search}`;
+    return toDiscordRpcAssetUrl(targetUrl);
   }
 
   return img;
