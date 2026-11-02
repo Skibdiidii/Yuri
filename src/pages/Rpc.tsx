@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, ExternalLink, Info, Upload, Download, Copy, CheckCircle, Bot, Activity, Shield, Sparkles } from 'lucide-react';
+import { Save, Trash2, ExternalLink, Info, Upload, Download, Copy, CheckCircle, Bot, Activity, Shield, Sparkles, Radio } from 'lucide-react';
 import { RpcConfig } from '../types';
 import { getApiBase, safeFetch } from '../services/api';
 import AppDetectionRpc from '../components/AppDetectionRpc';
@@ -261,8 +261,11 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                         onClick={() => setActiveTab('app_detection')}
                         className={`px-4 py-2 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'app_detection' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
                     >
-                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        <Radio className="w-4 h-4 text-emerald-400" />
                         App Detection
+                        <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded font-bold border border-emerald-500/30">
+                            Auto
+                        </span>
                     </button>
                     <button 
                         onClick={() => setActiveTab('community')}
