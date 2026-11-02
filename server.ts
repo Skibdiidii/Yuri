@@ -13613,26 +13613,33 @@ async function formatImageForRpc(img: any): Promise<string | null> {
           r.setAssetsSmallText(null);
         }
 
-        if (cfg.button1Label && cfg.button1Url) {
-          let bUrl1 = cfg.button1Url.trim();
-          if (!bUrl1.startsWith("http://") && !bUrl1.startsWith("https://")) {
-            bUrl1 = "https://" + bUrl1;
+        if (rpcType !== "STREAMING") {
+          const bLabel1 = (cfg.button1Label || "").trim();
+          let bUrl1 = (cfg.button1Url || "").trim();
+          if (bLabel1) {
+            if (!bUrl1) bUrl1 = "https://discord.com";
+            else if (!bUrl1.startsWith("http://") && !bUrl1.startsWith("https://")) {
+              bUrl1 = "https://" + bUrl1;
+            }
+            try {
+              r.addButton(bLabel1, bUrl1);
+            } catch (err) {
+              console.warn("[RPC] Warning setting button 1:", err);
+            }
           }
-          try {
-            r.addButton(cfg.button1Label, bUrl1);
-          } catch (err) {
-            console.warn("[RPC] Warning setting button 1 URL:", err);
-          }
-        }
-        if (cfg.button2Label && cfg.button2Url) {
-          let bUrl2 = cfg.button2Url.trim();
-          if (!bUrl2.startsWith("http://") && !bUrl2.startsWith("https://")) {
-            bUrl2 = "https://" + bUrl2;
-          }
-          try {
-            r.addButton(cfg.button2Label, bUrl2);
-          } catch (err) {
-            console.warn("[RPC] Warning setting button 2 URL:", err);
+
+          const bLabel2 = (cfg.button2Label || "").trim();
+          let bUrl2 = (cfg.button2Url || "").trim();
+          if (bLabel2) {
+            if (!bUrl2) bUrl2 = "https://discord.com";
+            else if (!bUrl2.startsWith("http://") && !bUrl2.startsWith("https://")) {
+              bUrl2 = "https://" + bUrl2;
+            }
+            try {
+              r.addButton(bLabel2, bUrl2);
+            } catch (err) {
+              console.warn("[RPC] Warning setting button 2:", err);
+            }
           }
         }
 
