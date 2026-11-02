@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, ExternalLink, Info, Upload, Download, Copy, CheckCircle, Bot, Activity, Shield } from 'lucide-react';
+import { Save, Trash2, ExternalLink, Info, Upload, Download, Copy, CheckCircle, Bot, Activity, Shield, Sparkles } from 'lucide-react';
 import { RpcConfig } from '../types';
 import { getApiBase, safeFetch } from '../services/api';
+import AppDetectionRpc from '../components/AppDetectionRpc';
 
 const API_BASE = getApiBase();
 const OWNER_ID = '1413100448482857081'; 
@@ -26,7 +27,7 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
     const [status, setStatus] = useState('');
     const [uploading, setUploading] = useState(false);
     const [communityPresets, setCommunityPresets] = useState<CommunityPreset[]>([]);
-    const [activeTab, setActiveTab] = useState<'my_presets' | 'community'>('my_presets');
+    const [activeTab, setActiveTab] = useState<'my_presets' | 'app_detection' | 'community'>('my_presets');
     const [appDetectionEnabled, setAppDetectionEnabled] = useState(true);
 
     const currentUser = React.useMemo(() => {
@@ -255,6 +256,13 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                         className={`px-4 py-2 font-semibold transition-colors ${activeTab === 'my_presets' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}
                     >
                         My Presets
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('app_detection')}
+                        className={`px-4 py-2 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'app_detection' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        App Detection
                     </button>
                     <button 
                         onClick={() => setActiveTab('community')}
@@ -665,6 +673,19 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                     </div>
                 )}
             </div>
+            ) : activeTab === 'app_detection' ? (
+                <AppDetectionRpc 
+                    onApplyPreset={(newConfig) => {
+                        setConfig(newConfig);
+                        setActiveTab('my_presets');
+                        setStatus('App Detection template loaded into editor!');
+                    }}
+                    onInstantUpdate={async (newConfig) => {
+                        setConfig(newConfig);
+                        await handleUpdate();
+                    }}
+                    token={token}
+                />
             ) : (
                 <div className="bg-black/20 border border-white/10 rounded-xl p-6 mb-8">
                     <h2 className="text-xl font-bold text-white mb-4">Community RPC Presets</h2>
