@@ -1019,6 +1019,7 @@ const pendingClients = new Map();
 import WebSocket, { WebSocketServer } from "ws";
 const sessions = new Map();
 const rpcSettings = new Map();
+const appDetectionState = new Map();
 let adminGlobalStatusText = "";
 const rpcSelectedIndex = new Map();
 const serverManagementConfig = new Map();
@@ -13270,6 +13271,38 @@ ${list.substring(0, 1900)}`,
       return res.status(500).json({ error: err?.message || "Failed to convert image" });
     }
   });
+  app.get("/api/rpc/app-detection/status", (req, res) => {
+    let rawAuth = req.query.token || req.headers.authorization || "";
+    let token = (rawAuth as string).replace(/^Bearer\s+/i, "").trim();
+    const enabled = appDetectionState.get(token) ?? true;
+    res.json({ enabled });
+  });
+  app.post("/api/rpc/app-detection/toggle", async (req, res) => {
+    let rawAuth = req.body?.token || req.headers.authorization || "";
+    let token = (rawAuth as string).replace(/^Bearer\s+/i, "").trim();
+    const { enabled } = req.body || {};
+    const currentState = appDetectionState.get(token) ?? true;
+    const newState = typeof enabled === "boolean" ? enabled : !currentState;
+    appDetectionState.set(token, newState);
+
+    try {
+      const client = await getClient(token);
+      if (client && client.user) {
+        if (!newState) {
+          client.user.setActivity(null);
+        } else {
+          const configs = rpcSettings.get(token) || [];
+          const idx = rpcSelectedIndex.get(token) || 0;
+          const cfg = configs[idx] || configs[0];
+          if (cfg && typeof updateActivity === "function") {
+            await updateActivity(cfg);
+          }
+        }
+      }
+    } catch (_) {}
+
+    res.json({ success: true, enabled: newState });
+  });
   app.get("/api/rpc/settings", (req, res) => {
     const token = req.headers.authorization;
     if (!token) return res.json({ configs: [], selectedIndex: 0 });
@@ -13468,6 +13501,11 @@ async function formatImageForRpc(img: any): Promise<string | null> {
 }
 
       const updateActivity = __name(async (cfg, overrideState) => {
+        if (appDetectionState.has(token) && appDetectionState.get(token) === false) {
+          try { client.user?.setActivity(null); } catch (_) {}
+          return;
+        }
+
         const r = new RichPresence(client);
         
         // Prepare activities array

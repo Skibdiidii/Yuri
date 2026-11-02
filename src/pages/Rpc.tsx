@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, ExternalLink, Info, Upload, Download, Copy, CheckCircle } from 'lucide-react';
+import { Save, Trash2, ExternalLink, Info, Upload, Download, Copy, CheckCircle, Bot, Activity, Shield } from 'lucide-react';
 import { RpcConfig } from '../types';
+import { getApiBase, safeFetch } from '../services/api';
 
-const API_BASE = '';
+const API_BASE = getApiBase();
 const OWNER_ID = '1413100448482857081'; 
 
 interface CommunityPreset extends RpcConfig {
@@ -26,6 +27,7 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
     const [uploading, setUploading] = useState(false);
     const [communityPresets, setCommunityPresets] = useState<CommunityPreset[]>([]);
     const [activeTab, setActiveTab] = useState<'my_presets' | 'community'>('my_presets');
+    const [appDetectionEnabled, setAppDetectionEnabled] = useState(true);
 
     const currentUser = React.useMemo(() => {
         try {
@@ -42,7 +44,34 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                 setCommunityPresets(JSON.parse(saved));
             } catch {}
         }
-    }, []);
+
+        safeFetch(`${API_BASE}/api/rpc/app-detection/status?token=${encodeURIComponent(token)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (typeof data.enabled === 'boolean') {
+                    setAppDetectionEnabled(data.enabled);
+                }
+            })
+            .catch(() => {});
+    }, [token]);
+
+    const handleToggleAppDetection = async () => {
+        const nextState = !appDetectionEnabled;
+        setAppDetectionEnabled(nextState);
+        try {
+            const res = await safeFetch(`${API_BASE}/api/rpc/app-detection/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                body: JSON.stringify({ token, enabled: nextState })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setStatus(`App Detection ${nextState ? 'ACTIVE' : 'DISABLED'}`);
+            }
+        } catch (e) {
+            setStatus(`Failed to toggle App Detection: ${e}`);
+        }
+    };
 
     const saveCommunityPresets = (newPresets: CommunityPreset[]) => {
         setCommunityPresets(newPresets);
@@ -198,10 +227,26 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
 
     return (
         <div className="p-8 max-w-4xl mx-auto text-zinc-100">
-            <h1 className="text-3xl font-bold mb-8 flex items-center gap-3">
-                <ExternalLink className="w-8 h-8 text-indigo-500" />
-                Rich Presence (RPC)
-            </h1>
+            <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <ExternalLink className="w-8 h-8 text-indigo-500" />
+                    <span>Rich Presence (RPC) & App Detection</span>
+                </h1>
+
+                <button
+                    onClick={handleToggleAppDetection}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2.5 border shadow-lg cursor-pointer ${
+                        appDetectionEnabled 
+                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 shadow-emerald-500/10' 
+                            : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
+                    }`}
+                    title="Toggle Discord Application Detection and Status Display"
+                >
+                    <div className={`w-2.5 h-2.5 rounded-full ${appDetectionEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'}`} />
+                    <Bot className="w-4 h-4" />
+                    <span>App Detection: {appDetectionEnabled ? 'ACTIVE' : 'DISABLED'}</span>
+                </button>
+            </div>
 
             <div className="flex items-center justify-between gap-4 mb-6 border-b border-white/10 pb-2">
                 <div className="flex gap-4">
@@ -242,6 +287,31 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                             className="px-4 py-2 rounded-lg text-sm font-medium bg-black/20 border border-white/10 text-zinc-400 hover:bg-white/5"
                         >
                             + Add
+                        </button>
+                        <button
+                            onClick={() => {
+                                setConfig(prev => ({
+                                    ...prev,
+                                    name: 'App Detection Mode',
+                                    details: 'Active Application Detected',
+                                    state: 'Running via Yuri Client',
+                                    largeImageKey: 'https://i.imgur.com/p2qNFag.jpeg',
+                                    largeImageText: 'App Detector v2.0',
+                                    button1Label: 'App Detection Info',
+                                    button1Url: 'https://github.com',
+                                    button2Label: 'Yuri Client',
+                                    button2Url: 'https://discord.gg/eaEB3q7pEb',
+                                    type: 'PLAYING',
+                                    url: '',
+                                    applicationId: '443492577546600448',
+                                    startTimestamp: Date.now().toString()
+                                }));
+                                setStatus('App Detection Preset Applied!');
+                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 flex items-center gap-1.5"
+                        >
+                            <Bot className="w-4 h-4" />
+                            <span>App Detection Preset</span>
                         </button>
                         <button
                             onClick={() => {

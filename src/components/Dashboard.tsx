@@ -768,7 +768,8 @@ Useless piece of shit`,
               active={activeTab === 'rpc'} 
               onClick={() => setActiveTab('rpc')} 
               icon={Gamepad2} 
-              label="RPC" 
+              label="RPC & App Detection" 
+              badge="DETECT"
             />
             <SidebarItem 
               active={activeTab === 'nitro_sniper'} 
