@@ -38,6 +38,22 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
         }
     }, [token]);
 
+    const getPreviewImageUrl = (url?: string) => {
+        if (!url) return '';
+        const trimmed = url.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+        if (trimmed.startsWith('mp:attachments/')) {
+            return `https://cdn.discordapp.com/${trimmed.replace(/^mp:/, '')}`;
+        }
+        if (trimmed.startsWith('external/https/')) {
+            return `https://${trimmed.replace(/^external\/https\//, '')}`;
+        }
+        if (trimmed.startsWith('external/http/')) {
+            return `http://${trimmed.replace(/^external\/http\//, '')}`;
+        }
+        return trimmed;
+    };
+
     useEffect(() => {
         const saved = localStorage.getItem('rpcCommunityPresets');
         if (saved) {
@@ -387,8 +403,77 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                     )}
                 </div>
 
+                {/* Discord Live Status Preview Card */}
+                <div className="bg-[#111214] border border-[#232428] rounded-2xl p-5 mb-6 shadow-2xl relative overflow-hidden">
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                                {config.type === 'LISTENING' ? 'Listening to Spotify' : 
+                                 config.type === 'WATCHING' ? 'Watching' : 
+                                 config.type === 'STREAMING' ? 'Live on Twitch' : 
+                                 config.type === 'COMPETING' ? 'Competing in' : 'Playing a Game'}
+                            </span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-mono">Live Activity Preview</span>
+                    </div>
+
+                    <div className="flex items-start gap-4">
+                        <div className="relative flex-shrink-0">
+                            {config.largeImageKey ? (
+                                <img
+                                    src={getPreviewImageUrl(config.largeImageKey)}
+                                    alt="Large Asset"
+                                    className="w-16 h-16 rounded-xl object-cover border border-white/10 bg-black/40 shadow-md"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).src = 'https://i.imgur.com/p2qNFag.jpeg';
+                                    }}
+                                />
+                            ) : (
+                                <div className="w-16 h-16 rounded-xl bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-zinc-600 text-xs font-mono">
+                                    No Icon
+                                </div>
+                            )}
+
+                            {config.smallImageKey && (
+                                <img
+                                    src={getPreviewImageUrl(config.smallImageKey)}
+                                    alt="Small Asset"
+                                    className="w-6 h-6 rounded-full object-cover absolute -bottom-1.5 -right-1.5 border-2 border-[#111214] shadow"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-1">
+                            <h4 className="text-sm font-bold text-white truncate">{config.name || 'Application Activity'}</h4>
+                            <p className="text-xs text-zinc-300 truncate font-medium">{config.details || 'No details configured'}</p>
+                            <p className="text-[11px] text-zinc-400 truncate">{config.state || 'Active status'}</p>
+                            <p className="text-[10px] text-zinc-500 font-mono pt-0.5">
+                                {hoursElapsed ? `${hoursElapsed}m elapsed` : '00:45 elapsed'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {(config.button1Label || config.button2Label) && (
+                        <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-white/5">
+                            {config.button1Label && (
+                                <div className="py-1.5 px-3 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold text-zinc-300 text-center truncate">
+                                    {config.button1Label}
+                                </div>
+                            )}
+                            {config.button2Label && (
+                                <div className="py-1.5 px-3 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold text-zinc-300 text-center truncate">
+                                    {config.button2Label}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 <div className="grid grid-cols-1 gap-6">
-                    {}
                     <div className="space-y-4">
                         <h3 className="text-lg font-medium text-zinc-300 border-b border-zinc-800 pb-2">Configuration</h3>
                         
@@ -514,6 +599,31 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                                         />
                                     </label>
                                 </div>
+                                {config.largeImageKey && (
+                                    <div className="flex items-center justify-between gap-3 p-2.5 bg-black/40 border border-emerald-500/30 rounded-lg">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <img 
+                                                src={getPreviewImageUrl(config.largeImageKey)} 
+                                                alt="Large Asset Preview" 
+                                                className="w-10 h-10 rounded object-cover border border-white/10 flex-shrink-0"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://i.imgur.com/p2qNFag.jpeg';
+                                                }}
+                                            />
+                                            <div className="min-w-0">
+                                                <span className="text-[11px] font-bold text-emerald-400 block">Uploaded Large Asset</span>
+                                                <span className="text-[10px] text-zinc-400 truncate block max-w-[280px]">{config.largeImageKey}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setConfig({...config, largeImageKey: ''})}
+                                            className="px-2 py-1 text-[10px] text-zinc-400 hover:text-red-400 hover:bg-white/5 rounded transition-colors"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         
@@ -552,6 +662,31 @@ export default function Rpc({ configs, setConfigs, selectedIndex, setSelectedInd
                                         />
                                     </label>
                                 </div>
+                                {config.smallImageKey && (
+                                    <div className="flex items-center justify-between gap-3 p-2.5 bg-black/40 border border-emerald-500/30 rounded-lg">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <img 
+                                                src={getPreviewImageUrl(config.smallImageKey)} 
+                                                alt="Small Asset Preview" 
+                                                className="w-8 h-8 rounded-full object-cover border border-white/10 flex-shrink-0"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).style.display = 'none';
+                                                }}
+                                            />
+                                            <div className="min-w-0">
+                                                <span className="text-[11px] font-bold text-emerald-400 block">Uploaded Small Icon</span>
+                                                <span className="text-[10px] text-zinc-400 truncate block max-w-[280px]">{config.smallImageKey}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setConfig({...config, smallImageKey: ''})}
+                                            className="px-2 py-1 text-[10px] text-zinc-400 hover:text-red-400 hover:bg-white/5 rounded transition-colors"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
